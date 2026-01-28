@@ -1280,7 +1280,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
     return (
       <div className="space-y-3">
         {list.map((item: any, index: number) => {
-          const isVisible = item?.visible ?? false;
+          const isVisible = item?.visible ?? item?.visibility ?? false; // ✅ Added support for 'visibility'
           // Ensure backticks are used for template literal
           const id = item?.documentId || item?._id || `child-${index}`;
 

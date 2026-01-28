@@ -1335,20 +1335,56 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
     const cat = childCategories.find(c => (c.documentId || (c as any)._id) === id);
     if (!cat) return;
 
-    // Optimistically toggle
-    const updated = { ...cat, visible: !(cat as any).visible /* or isChildCategoryVisible */ };
-    setChildCategories(prev => prev.map(c => (c.documentId || (c as any)._id) === id ? updated : c));
+    // ✅ CRITICAL FIX: Correctly resolve current visibility
+    // If we only check .visible and it's undefined, it defaults to false, so toggle makes it true. 
+    // If it's undefined but 'visibility' is true, we falsely think it's false and toggle to true (staying true).
+    const currentVisibility = (cat as any).visible ?? (cat as any).visibility ?? (cat as any).Visibility ?? false;
+    const newVal = !currentVisibility;
 
-    // Need sub info for path
-    const sub = subCategories.find(s => (s.documentId || (s as any)._id) === cat.subCategoryId);
-    if (sub) {
-      try {
-        await api.put(`/main/${sub.mainCategoryId}/sub/${sub.documentId}/child/${id}`, updated);
-      } catch (e) {
-        console.error(e);
-        // Revert
-        setChildCategories(prev => prev.map(c => (c.documentId || (c as any)._id) === id ? cat : c));
+    // Create updated object for local state (update BOTH keys to be safe)
+    const updatedLocal = {
+      ...cat,
+      visible: newVal,
+      visibility: newVal
+    };
+
+    // Optimistically update local state
+    setChildCategories(prev => prev.map(c => (c.documentId || (c as any)._id) === id ? updatedLocal : c));
+
+    try {
+      const sub = subCategories.find(s => (s.documentId || (s as any)._id) === cat.subCategoryId);
+
+      let url = "";
+      if (sub) {
+        url = `/main/${sub.mainCategoryId}/sub/${sub.documentId}/child/${id}`;
+      } else {
+        const main = mainCategories.find(m => (m._id || (m as any).id) === (cat as any).mainCategoryId);
+        if (main) {
+          url = `/main/${main._id}/child/${id}`;
+        }
       }
+
+      if (url) {
+        // Send ALL variations to ensure backend updates the right one
+        const payload = {
+          ...cat,
+          visible: newVal,
+          visibility: newVal, // ✅ Lowercase 'visibility' matches your DB screenshot
+          Visibility: newVal,
+          isChildCategoryVisible: newVal
+        };
+
+        console.log("🚀 Toggling Child Visibility:", url, payload);
+        await api.put(url, payload);
+      } else {
+        console.warn("Could not determine parent path for child category toggle");
+      }
+
+    } catch (e) {
+      console.error("Failed to toggle child visibility", e);
+      // Revert on failure
+      setChildCategories(prev => prev.map(c => (c.documentId || (c as any)._id) === id ? cat : c));
+      alert("Failed to update visibility");
     }
   };
 
