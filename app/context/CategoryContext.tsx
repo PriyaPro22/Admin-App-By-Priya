@@ -53,24 +53,100 @@ export interface ChildCategory {
 }
 
 // Deep Child Category Interface
+// Deep Child Category Interface
 export interface DeepChildCategory {
   id: string;
+  documentId?: string; // Add this if inconsistent
   childCategoryId: string;
   childCategoryName: string; // denormalized
+
+  // Content
   firstTitle: string;
   secondTitle: string;
   description: string;
+
+  // URLs & Media
+  webviewUrl?: string;
+  imageUri?: string | null;
+
+  // Pricing & Time
+  originalPrice?: number;
+  discountType?: string; // "%" | "Flat"
+  discountValue?: number;
+  gst?: number;
+  gstType?: string;
+  priceAfterGst?: number;
+  currentPrice?: number;
+  minTime?: number | string;
+  maxTime?: number | string;
+
+  // Visibility (Main)
   visible?: boolean;
+  deepCategoryVisible?: boolean; // Sometimes used as main visibility
+
+  // Field Visibility Flags
+  firstTitleVisible?: boolean;
+  secondTitleVisible?: boolean;
+  descriptionVisible?: boolean;
+  webviewUrlVisible?: boolean;
+  originalPriceVisible?: boolean;
+  currentPriceVisible?: boolean;
+  minTimeVisible?: boolean;
+  maxTimeVisible?: boolean;
+  photoVisible?: boolean;
+  videoVisible?: boolean;
+
+  // Navigation Context (For Updates)
+  mainCategoryId?: string;
+  subCategoryId?: string | null;
 }
 
 // Sub Deep Child Category Interface
 export interface SubDeepChildCategory {
   id: string;
+  subDeepKey?: string;
+  documentId?: string;
+
+  // Navigation
   deepChildCategoryId: string;
-  deepChildCategoryName: string; // denormalized
-  title: string;
+  childCategoryId: string; // needed for path
+  mainCategoryId?: string; // needed for path
+  subCategoryId?: string | null;
+
+  deepChildCategoryName: string;
+
+  // Content
+  firstTitle: string;
+  secondTitle: string;
   description: string;
-  visible?: boolean;
+  webviewUrl?: string;
+
+  // Visibility
+  visible?: boolean; // main toggle usage
+  subDeepCategoryVisible?: boolean;
+
+  // Pricing & Time
+  originalPrice?: number;
+  discountType?: string;
+  discountValue?: number;
+  gst?: number;
+  gstType?: string;
+  priceAfterGst?: number;
+  currentPrice?: number;
+  minTime?: number | string;
+  maxTime?: number | string;
+
+  // Field Visibility flags
+  firstTitleVisible?: boolean;
+  secondTitleVisible?: boolean;
+  descriptionVisible?: boolean;
+  webviewUrlVisible?: boolean;
+  originalPriceVisible?: boolean;
+  currentPriceVisible?: boolean;
+  minTimeVisible?: boolean;
+  maxTimeVisible?: boolean;
+  photoVisible?: boolean;
+  videoVisible?: boolean;
 }
 
 interface CategoryContextType {
@@ -87,7 +163,7 @@ interface CategoryContextType {
   // Implementation uses (mainId, childId, subId)
   fetchDeepChildCategories: (mainId: string, childId: string, subId?: string | null) => Promise<void>;
 
-  fetchSubDeepChildCategories: (mainId: string, subId: string | null, childId: string, deepId: string) => void;
+  fetchSubDeepChildCategories: (mainId: string, childId: string, deepId: string, subId?: string | null) => void;
 
   addMainCategory: (category: Omit<MainCategory, 'id'>) => Promise<void>;
   addSubCategory: (category: Omit<SubCategory, 'id'>) => Promise<void>;
@@ -109,8 +185,8 @@ interface CategoryContextType {
   toggleSubHasSubCategory: (id: string) => Promise<void>;
 
   toggleChildVisibility: (id: string) => Promise<void>;
-  toggleDeepChildVisibility: (id: string) => Promise<void>;
-  toggleSubDeepChildVisibility: (id: string) => void;
+  toggleDeepChildVisibility: (id: string, field?: string) => Promise<void>;
+  toggleSubDeepChildVisibility: (id: string, field?: string) => void;
 }
 
 const CategoryContext = createContext<CategoryContextType | undefined>(undefined);
@@ -368,12 +444,17 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       const res = await api.get(url);
       const rawData = res.data?.data || {};
 
-      // 🔥 OBJECT → ARRAY FIX
-      const list = Array.isArray(rawData)
+      // 🔥 OBJECT → ARRAY FIX & INJECT PARENT IDs
+      const list = (Array.isArray(rawData)
         ? rawData
         : Object.entries(rawData).map(([id, value]: any) => ({
           documentId: id,
           ...value,
+        }))).map((item: any) => ({
+          ...item,
+          mainCategoryId: mainId,
+          childCategoryId: childId,
+          subCategoryId: subId
         }));
 
       console.log("✅ FINAL DEEP CHILD LIST:", list);
@@ -411,11 +492,19 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       const res = await api.get(url);
       const rawData = res.data?.data || {};
 
-      const list = Array.isArray(rawData)
+      const list = (Array.isArray(rawData)
         ? rawData
         : Object.entries(rawData).map(([id, value]: any) => ({
           subDeepKey: id,
+          documentId: id, // Consistent naming
+          id: id,
           ...value,
+        }))).map((item: any) => ({
+          ...item,
+          mainCategoryId: mainId,
+          childCategoryId: childKey,
+          deepChildCategoryId: deepKey,
+          subCategoryId: subId
         }));
 
       console.log("✅ FINAL SUB-DEEP LIST:", list);
@@ -1388,18 +1477,115 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const toggleDeepChildVisibility = async (id: string) => {
-    // Implementation similar to above, fixing ID checks
+  const toggleDeepChildVisibility = async (id: string, field: string = "visible") => {
     const cat = deepChildCategories.find(c => (c.id || (c as any).documentId) === id);
     if (!cat) return;
-    const updated = { ...cat, visible: !cat.visible };
+
+    // Determine current value safety
+    const currentVal = (cat as any)[field] ?? false;
+    const newVal = !currentVal;
+
+    const updated = { ...cat, [field]: newVal };
+
+    // Toggle main visibility alias if needed
+    if (field === "deepCategoryVisible") {
+      updated.visible = newVal;
+    }
+
     setDeepChildCategories(prev => prev.map(c => (c.id || (c as any).documentId) === id ? updated : c));
+
+    // Optimistic UI
+    setDeepChildCategories(prev => prev.map(c => (c.id || (c as any).documentId) === id ? updated : c));
+
+    try {
+      const token = localStorage.getItem("token");
+      const mainCategoryId = cat.mainCategoryId;
+      const childCategoryId = cat.childCategoryId;
+      const subCategoryId = cat.subCategoryId;
+
+      // Ensure specific ID is used for URL
+      const deepId = cat.id || (cat as any).documentId;
+
+      if (!mainCategoryId || !childCategoryId) {
+        console.error("Missing parent IDs for deep child update", cat);
+        return;
+      }
+
+      let url = "";
+      if (subCategoryId) {
+        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepId}`;
+      } else {
+        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepId}`;
+      }
+
+      console.log(`🚀 Updating Deep Child Field [${field}] to [${newVal}]`, url);
+
+      await axios.put(url, updated, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "x-api-token": "super_secure_token",
+          "Content-Type": "application/json",
+        }
+      });
+
+    } catch (e: any) {
+      console.error("Failed to update deep child category", e.response?.data || e);
+      // Revert if needed, or just alert
+      // setDeepChildCategories(prev => prev.map(c => (c.id || (c as any).documentId) === id ? cat : c));
+    }
   };
 
-  const toggleSubDeepChildVisibility = (id: string) => {
+  const toggleSubDeepChildVisibility = async (id: string, field: string = "visible") => {
+
+    // Find item
+    const cat = subDeepChildCategories.find((cat) => (cat.id || (cat as any).subDeepKey || (cat as any).documentId) === id);
+    if (!cat) return;
+
+    // Determine values
+    const currentVal = (cat as any)[field] ?? false;
+    const newVal = !currentVal;
+
+    const updated = { ...cat, [field]: newVal };
+    if (field === "subDeepCategoryVisible") {
+      updated.visible = newVal;
+    }
+
+    // Optimistic Update
     setSubDeepChildCategories((prev) =>
-      prev.map((cat) => (cat.id === id ? { ...cat, visible: !cat.visible } : cat))
+      prev.map((c) => (c.id === id || (c as any).subDeepKey === id) ? updated : c)
     );
+
+    // Persist to Backend
+    try {
+      const token = localStorage.getItem("token");
+      const { mainCategoryId, subCategoryId, childCategoryId, deepChildCategoryId, subDeepKey, documentId } = cat;
+      const subDeepId = subDeepKey || documentId || id;
+
+      if (!mainCategoryId || !childCategoryId || !deepChildCategoryId) {
+        console.error("Missing parent context for sub-deep update", cat);
+        return;
+      }
+
+      let url = "";
+
+      if (subCategoryId) {
+        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepId}`;
+      } else {
+        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child-key/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepId}`;
+      }
+
+      console.log(`🚀 Updating Sub-Deep Field [${field}] to [${newVal}]`, url);
+
+      await axios.put(url, updated, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "x-api-token": "super_secure_token",
+          "Content-Type": "application/json",
+        }
+      });
+    } catch (e: any) {
+      console.error("Failed to update sub-deep child category", e.response?.data || e);
+    }
   };
 
   return (

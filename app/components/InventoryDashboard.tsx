@@ -132,9 +132,9 @@ const InventoryDashboard = () => {
     };
 
     const handleDeepChildCategoryClick = (item: any) => {
-        const id = item.id || item._id;
+        const id = item.documentId || item.id || item._id;
         setSelectedDeepChildCategoryId(id);
-        setSelectedDeepChildCategoryName(item.name);
+        setSelectedDeepChildCategoryName(item.firstTitle || item.name || "Deep Category");
 
         if (selectedMainCategoryId && selectedChildCategoryId) {
             // Correct order: mainId, childKey, deepKey, subId
@@ -189,8 +189,10 @@ const InventoryDashboard = () => {
     const handleToggleMain = (item: any) => toggleMainVisibility(item._id || item.id);
     const handleToggleSub = (item: any) => toggleSubVisibility(item.documentId || item._id || item.id);
     const handleToggleChild = (item: any) => toggleChildVisibility(item.documentId || item._id || item.id);
-    const handleToggleDeep = (item: any) => toggleDeepChildVisibility(item.id || item._id);
+    const handleToggleDeep = (item: any, field?: string) => toggleDeepChildVisibility(item.id || item._id, field);
 
+
+    const handleToggleSubDeep = (item: any, field?: string) => toggleSubDeepChildVisibility(item.id || item.subDeepKey || item.documentId, field);
 
     return (
         <div className="mx-auto max-w-4xl pb-20 bg-gray-50 min-h-screen px-4 md:px-0">
@@ -400,6 +402,7 @@ const InventoryDashboard = () => {
                                 type="subDeep"
                                 filterId={selectedDeepChildCategoryId}
                                 onDeleteClick={handleDeleteSubDeep}
+                                onToggleVisibility={handleToggleSubDeep}
                             />
                         </div>
                     )}

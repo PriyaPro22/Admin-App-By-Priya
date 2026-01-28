@@ -468,7 +468,7 @@
 //     const finalPrice = useMemo(() => {
 //         const original = parseFloat(formData.originalPrice) || 0;
 //         const discountVal = parseFloat(formData.discountValue) || 0;
-        
+
 //         if (formData.discountType === "percentage") {
 //             const discounted = original - (original * discountVal / 100);
 //             return Math.max(0, discounted);
@@ -501,19 +501,19 @@
 //                 !mainInputRef.current?.contains(event.target as Node)) {
 //                 setMainOpen(false);
 //             }
-            
+
 //             if (subOpen && subDropdownRef.current && 
 //                 !subDropdownRef.current.contains(event.target as Node) &&
 //                 !subInputRef.current?.contains(event.target as Node)) {
 //                 setSubOpen(false);
 //             }
-            
+
 //             if (childOpen && childDropdownRef.current && 
 //                 !childDropdownRef.current.contains(event.target as Node) &&
 //                 !childInputRef.current?.contains(event.target as Node)) {
 //                 setChildOpen(false);
 //             }
-            
+
 //             if (deepChildOpen && deepChildDropdownRef.current && 
 //                 !deepChildDropdownRef.current.contains(event.target as Node) &&
 //                 !deepChildInputRef.current?.contains(event.target as Node)) {
@@ -578,7 +578,7 @@
 //         setMainSearch(cat.name);
 //         setMainOpen(false);
 //         setSelectedMainCategory(cat);
-        
+
 //         setFormData(prev => ({
 //             ...prev,
 //             mainCategoryId: cat._id,
@@ -587,7 +587,7 @@
 //             deepChildCategoryId: "",
 //             localId: ""
 //         }));
-        
+
 //         setSubCategories([]);
 //         setSubSearch("");
 //         setChildCategories([]);
@@ -880,7 +880,7 @@
 
 //         // Generate final local ID
 //         const finalLocalId = formData.localId || generateLocalId(formData.firstTitle);
-        
+
 //         const selectedDeep = deepChildCategories.find(d => d.documentId === formData.deepChildCategoryId);
 
 //         // Prepare data for API
@@ -890,14 +890,14 @@
 //             childCategoryId: formData.childCategoryId,
 //             deepChildCategoryId: formData.deepChildCategoryId,
 //             deepChildCategoryName: selectedDeep ? selectedDeep.firstTitle : "Unknown",
-            
+
 //             // Content
 //             firstTitle: formData.firstTitle,
 //             secondTitle: formData.secondTitle,
 //             description: formData.description,
 //             visible: isVisible,
 //             webviewUrl: formData.webviewUrl,
-            
+
 //             // Pricing
 //             originalPrice: formData.originalPrice,
 //             discountValue: formData.discountValue,
@@ -908,8 +908,8 @@
 //             maxTime: formData.maxTime,
 //             finalPrice: finalPrice.toFixed(2),
 //             totalPrice: totalPrice.toFixed(2),
-//             localId: finalLocalId,
-            
+//             subDeepKey: finalLocalId,
+
 //             // Visibility toggles
 //             firstTitleVisible: formData.firstTitleVisible,
 //             secondTitleVisible: formData.secondTitleVisible,
@@ -917,7 +917,7 @@
 //             webviewUrlVisible: formData.webviewUrlVisible,
 //             originalPriceVisible: formData.originalPriceVisible,
 //             deliveryTimeVisible: formData.deliveryTimeVisible,
-            
+
 //             // Media
 //             photo: formData.photo,
 //             video: formData.video,
@@ -929,8 +929,8 @@
 
 //         addSubDeepChildCategory(subDeepChildData);
 
-//         alert(`Sub Deep Child Category Added!\nLocal ID: ${finalLocalId}`);
-        
+//         alert(`Sub Deep Child Category Added!\nKey: ${finalLocalId}`);
+
 //         if (onSuccess) onSuccess();
 //     };
 
@@ -975,7 +975,7 @@
 //             {/* HIERARCHICAL SELECTION */}
 //             <div className="mb-6 space-y-6 rounded-lg border border-gray-300 bg-white p-4">
 //                 <h3 className="font-bold text-gray-900 border-b pb-2">Category Selection</h3>
-                
+
 //                 {/* MAIN CATEGORY */}
 //                 <div className="relative">
 //                     <label className="mb-2 block font-bold text-gray-900">Select Main Category *</label>
@@ -1225,7 +1225,7 @@
 //                         {/* CONTENT SECTION */}
 //                         <div className="space-y-4 rounded-lg border border-gray-300 bg-white p-4">
 //                             <h3 className="font-bold text-gray-900 border-b pb-2">Content Details</h3>
-                            
+
 //                             {/* First Headline */}
 //                             <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
 //                                 <div className="flex items-center justify-between mb-2">
@@ -1345,7 +1345,7 @@
 //                         {/* PRICING SECTION */}
 //                         <div className="space-y-4 rounded-lg border border-gray-300 bg-white p-4">
 //                             <h3 className="font-bold text-gray-900 border-b pb-2">Pricing Details</h3>
-                            
+
 //                             {/* Original Price */}
 //                             <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
 //                                 <div className="flex items-center justify-between mb-2">
@@ -1528,7 +1528,7 @@
 //                         {/* MEDIA UPLOADS */}
 //                         <div className="space-y-4 rounded-lg border-2 border-blue-900 bg-white p-4">
 //                             <h3 className="font-bold text-gray-900 border-b pb-2">Media Uploads</h3>
-                            
+
 //                             {/* Photo Upload */}
 //                             <div className="rounded-md border border-gray-300 p-4">
 //                                 <div className="flex items-center justify-between mb-3">
@@ -1683,7 +1683,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({ ini
     const [deepChildCategories, setDeepChildCategories] = useState<any[]>([]);
     const [deepChildSearch, setDeepChildSearch] = useState("");
     const [deepChildOpen, setDeepChildOpen] = useState(false);
-    
+
     // ✅ TRACK IF DEEP CHILD IS SELECTED
     const [isDeepChildSelected, setIsDeepChildSelected] = useState(false);
 
@@ -1699,41 +1699,41 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({ ini
 
     // ✅ FORM DATA WITH ALL FIELDS
     const [formData, setFormData] = useState({
-  mainCategoryId: "",
-  subCategoryId: "",
-  childCategoryId: "",
-  deepChildCategoryId: initialDeepChildCategoryId || "",
+        mainCategoryId: "",
+        subCategoryId: "",
+        childCategoryId: "",
+        deepChildCategoryId: initialDeepChildCategoryId || "",
 
-  firstTitle: "",
-  firstTitleVisible: true,
-  secondTitle: "",
-  secondTitleVisible: true,
-  description: "",
-  descriptionVisible: true,
+        firstTitle: "",
+        firstTitleVisible: true,
+        secondTitle: "",
+        secondTitleVisible: true,
+        description: "",
+        descriptionVisible: true,
 
-  webviewUrl: "",
-  webviewUrlVisible: true,
+        webviewUrl: "",
+        webviewUrlVisible: true,
 
-  originalPrice: "",
-  originalPriceVisible: true,
+        originalPrice: "",
+        originalPriceVisible: true,
 
-  discountType: "percentage",
-  discountValue: "",
+        discountType: "percentage",
+        discountValue: "",
 
-  gst: "0",
-  gstType: "inclusive",
+        gst: "0",
+        gstType: "inclusive",
 
-  // 🔥🔥🔥 FIXED
-  minTime: null as number | null,
-  maxTime: null as number | null,
+        // 🔥🔥🔥 FIXED
+        minTime: null as number | null,
+        maxTime: null as number | null,
 
-  photo: null as File | null,
-  photoVisible: true,
-  video: null as File | null,
-  videoVisible: true,
+        photo: null as File | null,
+        photoVisible: true,
+        video: null as File | null,
+        videoVisible: true,
 
-  localId: "",
-});
+        localId: "",
+    });
 
 
     // ✅ GST OPTIONS
@@ -1747,7 +1747,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({ ini
     const finalPrice = useMemo(() => {
         const original = parseFloat(formData.originalPrice) || 0;
         const discountVal = parseFloat(formData.discountValue) || 0;
-        
+
         if (formData.discountType === "percentage") {
             const discounted = original - (original * discountVal / 100);
             return Math.max(0, discounted);
@@ -1759,7 +1759,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({ ini
 
     const gstAmount = useMemo(() => {
         const gstRate = parseFloat(formData.gst) || 0;
-        const price = formData.gstType === "inclusive" ? finalPrice : finalPrice * (1 + gstRate/100);
+        const price = formData.gstType === "inclusive" ? finalPrice : finalPrice * (1 + gstRate / 100);
         return (price * gstRate) / (100 + gstRate);
     }, [finalPrice, formData.gst, formData.gstType]);
 
@@ -1775,25 +1775,25 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({ ini
     // ✅ CLICK OUTSIDE HANDLER
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (mainOpen && mainDropdownRef.current && 
+            if (mainOpen && mainDropdownRef.current &&
                 !mainDropdownRef.current.contains(event.target as Node) &&
                 !mainInputRef.current?.contains(event.target as Node)) {
                 setMainOpen(false);
             }
-            
-            if (subOpen && subDropdownRef.current && 
+
+            if (subOpen && subDropdownRef.current &&
                 !subDropdownRef.current.contains(event.target as Node) &&
                 !subInputRef.current?.contains(event.target as Node)) {
                 setSubOpen(false);
             }
-            
-            if (childOpen && childDropdownRef.current && 
+
+            if (childOpen && childDropdownRef.current &&
                 !childDropdownRef.current.contains(event.target as Node) &&
                 !childInputRef.current?.contains(event.target as Node)) {
                 setChildOpen(false);
             }
-            
-            if (deepChildOpen && deepChildDropdownRef.current && 
+
+            if (deepChildOpen && deepChildDropdownRef.current &&
                 !deepChildDropdownRef.current.contains(event.target as Node) &&
                 !deepChildInputRef.current?.contains(event.target as Node)) {
                 setDeepChildOpen(false);
@@ -1807,17 +1807,17 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({ ini
     // ✅ FILTERED LISTS
     const filteredMainCategories = useMemo(() => {
         const q = mainSearch.trim().toLowerCase();
-        const list = mainCategories.filter(cat => 
+        const list = mainCategories.filter(cat =>
             typeof cat.name === "string" && cat.name.trim() !== ""
         );
 
         if (!q) return list.sort((a, b) => a.name.localeCompare(b.name));
 
-        const startsWith = list.filter(cat => 
+        const startsWith = list.filter(cat =>
             cat.name.toLowerCase().startsWith(q)
         );
-        const contains = list.filter(cat => 
-            !cat.name.toLowerCase().startsWith(q) && 
+        const contains = list.filter(cat =>
+            !cat.name.toLowerCase().startsWith(q) &&
             cat.name.toLowerCase().includes(q)
         );
 
@@ -1856,7 +1856,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({ ini
         setMainSearch(cat.name);
         setMainOpen(false);
         setSelectedMainCategory(cat);
-        
+
         setFormData(prev => ({
             ...prev,
             mainCategoryId: cat._id,
@@ -1865,7 +1865,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({ ini
             deepChildCategoryId: "",
             localId: ""
         }));
-        
+
         setIsDeepChildSelected(false);
         setSubCategories([]);
         setSubSearch("");
@@ -1908,7 +1908,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({ ini
                 if (json.success && json.data) {
                     // ✅ FIXED: Handle both array and object responses
                     let list = [];
-                    
+
                     if (Array.isArray(json.data)) {
                         list = json.data.map((item: any) => ({
                             documentId: item._id || item.documentId,
@@ -1986,7 +1986,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({ ini
 
                 if (json.success && json.data) {
                     let list = [];
-                    
+
                     if (Array.isArray(json.data)) {
                         list = json.data.map((item: any) => ({
                             documentId: item._id || item.documentId,
@@ -2051,7 +2051,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({ ini
 
                 if (json.success && json.data) {
                     let list = [];
-                    
+
                     if (Array.isArray(json.data)) {
                         list = json.data.map((item: any) => ({
                             documentId: item._id || item.documentId,
@@ -2105,24 +2105,24 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({ ini
 
     // ✅ HANDLERS
     const handleChange = (
-  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-) => {
-  const { name, value } = e.target;
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    ) => {
+        const { name, value } = e.target;
 
-  // 🔥 MIN / MAX TIME
-  if (name === "minTime" || name === "maxTime") {
-    setFormData(prev => ({
-      ...prev,
-      [name]: value === "" ? null : Number(value),
-    }));
-    return;
-  }
+        // 🔥 MIN / MAX TIME
+        if (name === "minTime" || name === "maxTime") {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value === "" ? null : Number(value),
+            }));
+            return;
+        }
 
-  setFormData(prev => ({
-    ...prev,
-    [name]: value,
-  }));
-};
+        setFormData(prev => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
 
 
     const handleToggle = (field: string) => {
@@ -2147,315 +2147,319 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({ ini
         console.log("✅ SUB CATEGORY SELECTED:", sub);
         setSubSearch(sub.name);
         setSubOpen(false);
-        
+
         setFormData(prev => ({
             ...prev,
             subCategoryId: sub.documentId,
             childCategoryId: "",
             deepChildCategoryId: ""
         }));
-        
+
         setIsDeepChildSelected(false);
         setChildCategories([]);
         setDeepChildCategories([]);
     };
 
     const handleChildSelect = (child: any) => {
-  setChildSearch(child.name);
-  setChildOpen(false);
+        setChildSearch(child.name);
+        setChildOpen(false);
 
-  setFormData(prev => ({
-    ...prev,
-    childCategoryId: child.documentId, // ✅ ONLY ID
-    deepChildCategoryId: ""
-  }));
+        setFormData(prev => ({
+            ...prev,
+            childCategoryId: child.documentId, // ✅ ONLY ID
+            deepChildCategoryId: ""
+        }));
 
-  setIsDeepChildSelected(false);
-};
+        setIsDeepChildSelected(false);
+    };
 
 
     const handleDeepChildSelect = (deep: any) => {
         console.log("✅ DEEP CHILD CATEGORY SELECTED:", deep);
         setDeepChildSearch(deep.firstTitle);
         setDeepChildOpen(false);
-        
+
         setFormData(prev => ({
             ...prev,
             deepChildCategoryId: deep.documentId
         }));
-        
+
         setIsDeepChildSelected(true);
         console.log("🎯 Deep child selected, content fields should open now");
     };
-// Price 
-const calculatePriceAfterGst = () => {
-  const original = Number(formData.originalPrice) || 0;
-  const gst = Number(formData.gst) || 0;
+    // Price 
+    const calculatePriceAfterGst = () => {
+        const original = Number(formData.originalPrice) || 0;
+        const gst = Number(formData.gst) || 0;
 
-  if (original <= 0) return 0;
+        if (original <= 0) return 0;
 
-  // GST already included
-  if (formData.gstType === "inclusive") {
-    return +original.toFixed(2);
-  }
+        // GST already included
+        if (formData.gstType === "inclusive") {
+            return +original.toFixed(2);
+        }
 
-  // GST exclusive → add GST
-  const price = original + (original * gst) / 100;
-  return +price.toFixed(2);
-};
-const calculateCurrentPrice = (priceAfterGst: number) => {
-  let discount = Number(formData.discountValue) || 0;
+        // GST exclusive → add GST
+        const price = original + (original * gst) / 100;
+        return +price.toFixed(2);
+    };
+    const calculateCurrentPrice = (priceAfterGst: number) => {
+        let discount = Number(formData.discountValue) || 0;
 
-  if (priceAfterGst <= 0) return 0;
+        if (priceAfterGst <= 0) return 0;
 
-  // Percentage discount
-  if (formData.discountType === "percentage") {
-    discount = Math.min(discount, 100);
-    const price = priceAfterGst - (priceAfterGst * discount) / 100;
-    return Math.max(0, +price.toFixed(2));
-  }
+        // Percentage discount
+        if (formData.discountType === "percentage") {
+            discount = Math.min(discount, 100);
+            const price = priceAfterGst - (priceAfterGst * discount) / 100;
+            return Math.max(0, +price.toFixed(2));
+        }
 
-  // Fixed discount
-  const price = priceAfterGst - discount;
-  return Math.max(0, +price.toFixed(2));
-};
+        // Fixed discount
+        const price = priceAfterGst - discount;
+        return Math.max(0, +price.toFixed(2));
+    };
 
     // ✅ SAVE HANDLER
-//     const handleSave = () => {
-//         // Validation
-//         if (!formData.mainCategoryId) {
-//             alert("Select main category");
-//             return;
-//         }
+    //     const handleSave = () => {
+    //         // Validation
+    //         if (!formData.mainCategoryId) {
+    //             alert("Select main category");
+    //             return;
+    //         }
 
-//         if (selectedMainCategory?.hasSubCategory === true && !formData.subCategoryId) {
-//             alert("Select sub category");
-//             return;
-//         }
+    //         if (selectedMainCategory?.hasSubCategory === true && !formData.subCategoryId) {
+    //             alert("Select sub category");
+    //             return;
+    //         }
 
-//         if (!formData.childCategoryId) {
-//             alert("Select child category");
-//             return;
-//         }
+    //         if (!formData.childCategoryId) {
+    //             alert("Select child category");
+    //             return;
+    //         }
 
-//         if (!formData.deepChildCategoryId) {
-//             alert("Select deep child category");
-//             return;
-//         }
+    //         if (!formData.deepChildCategoryId) {
+    //             alert("Select deep child category");
+    //             return;
+    //         }
 
-//         if (!formData.firstTitle.trim() || !formData.secondTitle.trim() || !formData.description.trim()) {
-//             alert("Please fill in all required fields (First Headline, Second Headline, Description).");
-//             return;
-//         }
+    //         if (!formData.firstTitle.trim() || !formData.secondTitle.trim() || !formData.description.trim()) {
+    //             alert("Please fill in all required fields (First Headline, Second Headline, Description).");
+    //             return;
+    //         }
 
-//         if (!formData.originalPrice) {
-//             alert("Please enter Original Price");
-//             return;
-//         }
+    //         if (!formData.originalPrice) {
+    //             alert("Please enter Original Price");
+    //             return;
+    //         }
 
-//         // Generate final local ID if not already generated
-//        const finalLocalId = formData.localId || generateLocalId(formData.firstTitle);
+    //         // Generate final local ID if not already generated
+    //        const finalLocalId = formData.localId || generateLocalId(formData.firstTitle);
 
-// const selectedDeep = deepChildCategories.find(
-//   d => d.documentId === formData.deepChildCategoryId
-// );
+    // const selectedDeep = deepChildCategories.find(
+    //   d => d.documentId === formData.deepChildCategoryId
+    // );
 
-// const subDeepChildData = {
-//   // 🔑 REQUIRED IDS
-//   mainCategoryId: formData.mainCategoryId,
-//   subCategoryId: formData.subCategoryId || null,
-//   childCategoryId: formData.childCategoryId,
-//   deepChildCategoryId: formData.deepChildCategoryId,
+    // const subDeepChildData = {
+    //   // 🔑 REQUIRED IDS
+    //   mainCategoryId: formData.mainCategoryId,
+    //   subCategoryId: formData.subCategoryId || null,
+    //   childCategoryId: formData.childCategoryId,
+    //   deepChildCategoryId: formData.deepChildCategoryId,
 
-//   subDeepKey: finalLocalId, // ✅🔥 MUST (backend requires)
+    //   subDeepKey: finalLocalId, // ✅🔥 MUST (backend requires)
 
-//   deepChildCategoryName: selectedDeep
-//     ? selectedDeep.firstTitle
-//     : "Unknown",
+    //   deepChildCategoryName: selectedDeep
+    //     ? selectedDeep.firstTitle
+    //     : "Unknown",
 
-//   // 📝 CONTENT
-//   firstTitle: formData.firstTitle,
-//   secondTitle: formData.secondTitle,
-//   description: formData.description,
-//   visible: isVisible,
-//   webviewUrl: formData.webviewUrl,
+    //   // 📝 CONTENT
+    //   firstTitle: formData.firstTitle,
+    //   secondTitle: formData.secondTitle,
+    //   description: formData.description,
+    //   visible: isVisible,
+    //   webviewUrl: formData.webviewUrl,
 
-//   // 💰 PRICING
-//   originalPrice: formData.originalPrice,
-//   discountValue: formData.discountValue,
-//   discountType: formData.discountType,
-//   gst: formData.gst,
-//   gstType: formData.gstType,
-//   minTime: formData.minTime,
-//   maxTime: formData.maxTime,
-//   finalPrice: finalPrice.toFixed(2),
-//   totalPrice: totalPrice.toFixed(2),
-//   localId: finalLocalId,
+    //   // 💰 PRICING
+    //   originalPrice: formData.originalPrice,
+    //   discountValue: formData.discountValue,
+    //   discountType: formData.discountType,
+    //   gst: formData.gst,
+    //   gstType: formData.gstType,
+    //   minTime: formData.minTime,
+    //   maxTime: formData.maxTime,
+    //   finalPrice: finalPrice.toFixed(2),
+    //   totalPrice: totalPrice.toFixed(2),
+    //   localId: finalLocalId,
 
-//   // 👁️ VISIBILITY TOGGLES
-//   firstTitleVisible: formData.firstTitleVisible,
-//   secondTitleVisible: formData.secondTitleVisible,
-//   descriptionVisible: formData.descriptionVisible,
-//   webviewUrlVisible: formData.webviewUrlVisible,
-//   originalPriceVisible: formData.originalPriceVisible,
-//   deliveryTimeVisible: formData.deliveryTimeVisible,
+    //   // 👁️ VISIBILITY TOGGLES
+    //   firstTitleVisible: formData.firstTitleVisible,
+    //   secondTitleVisible: formData.secondTitleVisible,
+    //   descriptionVisible: formData.descriptionVisible,
+    //   webviewUrlVisible: formData.webviewUrlVisible,
+    //   originalPriceVisible: formData.originalPriceVisible,
+    //   deliveryTimeVisible: formData.deliveryTimeVisible,
 
-//   // 📷 MEDIA
-//   photo: formData.photo,
-//   video: formData.video,
-//   photoVisible: formData.photoVisible,
-//   videoVisible: formData.videoVisible,
-// };
+    //   // 📷 MEDIA
+    //   photo: formData.photo,
+    //   video: formData.video,
+    //   photoVisible: formData.photoVisible,
+    //   videoVisible: formData.videoVisible,
+    // };
 
 
-//         console.log("📦 Sending Sub Deep Child Data to MongoDB:", subDeepChildData);
+    //         console.log("📦 Sending Sub Deep Child Data to MongoDB:", subDeepChildData);
 
-//         addSubDeepChildCategory(subDeepChildData);
-//         alert(`Sub Deep Child Category Added!\nLocal ID: ${finalLocalId}`);
-        
-//         if (onSuccess) onSuccess();
-//     };
+    //         addSubDeepChildCategory(subDeepChildData);
+    //         alert(`Sub Deep Child Category Added!\nLocal ID: ${finalLocalId}`);
 
-// const handleSave = () => {
-//   if (!formData.mainCategoryId) return alert("Select main category");
-//   if (selectedMainCategory?.hasSubCategory && !formData.subCategoryId)
-//     return alert("Select sub category");
-//   if (!formData.childCategoryId) return alert("Select child category");
-//   if (!formData.deepChildCategoryId) return alert("Select deep child category");
-//   if (!formData.firstTitle.trim()) return alert("Enter first title");
-//   if (!formData.originalPrice) return alert("Enter original price");
+    //         if (onSuccess) onSuccess();
+    //     };
 
-//   const finalLocalId =
-//     formData.localId || generateLocalId(formData.firstTitle);
+    // const handleSave = () => {
+    //   if (!formData.mainCategoryId) return alert("Select main category");
+    //   if (selectedMainCategory?.hasSubCategory && !formData.subCategoryId)
+    //     return alert("Select sub category");
+    //   if (!formData.childCategoryId) return alert("Select child category");
+    //   if (!formData.deepChildCategoryId) return alert("Select deep child category");
+    //   if (!formData.firstTitle.trim()) return alert("Enter first title");
+    //   if (!formData.originalPrice) return alert("Enter original price");
 
-//   // 🔥 PRICE FLOW
-//   const priceAfterGst = calculatePriceAfterGst();
-//   const currentPrice = calculateCurrentPrice(priceAfterGst);
+    //   const finalLocalId =
+    //     formData.localId || generateLocalId(formData.firstTitle);
 
-//   const subDeepChildData = {
-//     // 🔑 IDS
-//     mainCategoryId: formData.mainCategoryId,
-//     subCategoryId: formData.subCategoryId || null,
-//     childCategoryId: formData.childCategoryId,
-//     deepChildCategoryId: formData.deepChildCategoryId,
-//     subDeepKey: finalLocalId,
+    //   // 🔥 PRICE FLOW
+    //   const priceAfterGst = calculatePriceAfterGst();
+    //   const currentPrice = calculateCurrentPrice(priceAfterGst);
 
-//     // 📝 CONTENT
-//     firstTitle: formData.firstTitle,
-//     secondTitle: formData.secondTitle,
-//     description: formData.description,
-//     subDeepCategoryVisible: isVisible,
-//     webviewUrl: formData.webviewUrl,
+    //   const subDeepChildData = {
+    //     // 🔑 IDS
+    //     mainCategoryId: formData.mainCategoryId,
+    //     subCategoryId: formData.subCategoryId || null,
+    //     childCategoryId: formData.childCategoryId,
+    //     deepChildCategoryId: formData.deepChildCategoryId,
+    //     subDeepKey: finalLocalId,
 
-//     // 💰 RAW PRICING
-//     originalPrice: Number(formData.originalPrice),
-//     discountType: formData.discountType,
-//     discountValue: Number(formData.discountValue),
-//     gst: Number(formData.gst),
-//     gstType: formData.gstType,
+    //     // 📝 CONTENT
+    //     firstTitle: formData.firstTitle,
+    //     secondTitle: formData.secondTitle,
+    //     description: formData.description,
+    //     subDeepCategoryVisible: isVisible,
+    //     webviewUrl: formData.webviewUrl,
 
-//     // 🔥 CALCULATED (NO UI FIELD)
-//     priceAfterGst,          // ✅ ORIGINAL + GST
-//     currentPrice,           // ✅ AFTER DISCOUNT
-//     currentPriceVisible: true,
+    //     // 💰 RAW PRICING
+    //     originalPrice: Number(formData.originalPrice),
+    //     discountType: formData.discountType,
+    //     discountValue: Number(formData.discountValue),
+    //     gst: Number(formData.gst),
+    //     gstType: formData.gstType,
 
-//     // 👁️ VISIBILITY
-//     firstTitleVisible: formData.firstTitleVisible,
-//     secondTitleVisible: formData.secondTitleVisible,
-//     descriptionVisible: formData.descriptionVisible,
-//     webviewUrlVisible: formData.webviewUrlVisible,
-//     originalPriceVisible: formData.originalPriceVisible,
-//     minTimeVisible: true,
-//     maxTimeVisible: true,
+    //     // 🔥 CALCULATED (NO UI FIELD)
+    //     priceAfterGst,          // ✅ ORIGINAL + GST
+    //     currentPrice,           // ✅ AFTER DISCOUNT
+    //     currentPriceVisible: true,
 
-//     // 📷 MEDIA
-//     photoVisible: formData.photoVisible,
-//     videoVisible: formData.videoVisible,
+    //     // 👁️ VISIBILITY
+    //     firstTitleVisible: formData.firstTitleVisible,
+    //     secondTitleVisible: formData.secondTitleVisible,
+    //     descriptionVisible: formData.descriptionVisible,
+    //     webviewUrlVisible: formData.webviewUrlVisible,
+    //     originalPriceVisible: formData.originalPriceVisible,
+    //     minTimeVisible: true,
+    //     maxTimeVisible: true,
 
-//     // 🆔 MONGO IDS
-//     documentId: finalLocalId,
-//     localId: finalLocalId,
-//   };
+    //     // 📷 MEDIA
+    //     photoVisible: formData.photoVisible,
+    //     videoVisible: formData.videoVisible,
 
-//   console.log("📦 FINAL DATA GOING TO MONGO:", subDeepChildData);
-//   addSubDeepChildCategory(subDeepChildData);
-//   alert(`Sub Deep Child Category Added!\nLocal ID: ${finalLocalId}`);
-// };
-const handleSave = () => {
-  if (!formData.mainCategoryId) return alert("Select main category");
-  if (selectedMainCategory?.hasSubCategory && !formData.subCategoryId)
-    return alert("Select sub category");
-  if (!formData.childCategoryId) return alert("Select child category");
-  if (!formData.deepChildCategoryId) return alert("Select deep child category");
-  if (!formData.firstTitle.trim()) return alert("Enter first title");
-  if (!formData.originalPrice) return alert("Enter original price");
+    //     // 🆔 MONGO IDS
+    //     documentId: finalLocalId,
+    //     localId: finalLocalId,
+    //   };
 
-  const finalLocalId =
-    formData.localId || generateLocalId(formData.firstTitle);
+    //   console.log("📦 FINAL DATA GOING TO MONGO:", subDeepChildData);
+    //   addSubDeepChildCategory(subDeepChildData);
+    //   alert(`Sub Deep Child Category Added!\nLocal ID: ${finalLocalId}`);
+    // };
+    const handleSave = () => {
+        if (!formData.mainCategoryId) return alert("Select main category");
+        if (selectedMainCategory?.hasSubCategory && !formData.subCategoryId)
+            return alert("Select sub category");
+        if (!formData.childCategoryId) return alert("Select child category");
+        if (!formData.deepChildCategoryId) return alert("Select deep child category");
+        if (!formData.firstTitle.trim()) return alert("Enter first title");
+        if (!formData.originalPrice) return alert("Enter original price");
 
-  const priceAfterGst = calculatePriceAfterGst();
-  const currentPrice = calculateCurrentPrice(priceAfterGst);
+        const finalLocalId =
+            formData.localId || generateLocalId(formData.firstTitle);
 
-  // 🔥🔥🔥 TIME CONVERSION
-  const minTimeValue =
-    formData.minTime !== null ? Number(formData.minTime) : null;
-  const maxTimeValue =
-    formData.maxTime !== null ? Number(formData.maxTime) : null;
+        const priceAfterGst = calculatePriceAfterGst();
+        const currentPrice = calculateCurrentPrice(priceAfterGst);
 
-  const subDeepChildData = {
-    // 🔑 IDS
-    mainCategoryId: formData.mainCategoryId,
-    subCategoryId: formData.subCategoryId || null,
-    childCategoryId: formData.childCategoryId,
-    deepChildCategoryId: formData.deepChildCategoryId,
-    subDeepKey: finalLocalId,
+        // 🔥🔥🔥 TIME CONVERSION
+        const minTimeValue =
+            formData.minTime !== null ? Number(formData.minTime) : null;
+        const maxTimeValue =
+            formData.maxTime !== null ? Number(formData.maxTime) : null;
 
-    // 📝 CONTENT
-    firstTitle: formData.firstTitle,
-    secondTitle: formData.secondTitle,
-    description: formData.description,
-    subDeepCategoryVisible: true,
-    webviewUrl: formData.webviewUrl,
+        const selectedDeep = deepChildCategories.find(d => d.documentId === formData.deepChildCategoryId);
 
-    // ⏰🔥 DELIVERY TIME
-    minTime: minTimeValue,
-    maxTime: maxTimeValue,
-    minTimeVisible: true,
-    maxTimeVisible: true,
+        const subDeepChildData = {
+            // 🔑 IDS
+            mainCategoryId: formData.mainCategoryId,
+            subCategoryId: formData.subCategoryId || null,
+            childCategoryId: formData.childCategoryId,
+            deepChildCategoryId: formData.deepChildCategoryId,
+            deepChildCategoryName: selectedDeep ? selectedDeep.firstTitle : "Deep Category", // Added missing field
+            subDeepKey: finalLocalId,
 
-    // 💰 PRICING
-    originalPrice: Number(formData.originalPrice),
-    discountType: formData.discountType,
-    discountValue: Number(formData.discountValue),
-    gst: Number(formData.gst),
-    gstType: formData.gstType,
+            // 📝 CONTENT
+            firstTitle: formData.firstTitle,
+            secondTitle: formData.secondTitle,
+            description: formData.description,
+            subDeepCategoryVisible: true,
+            visible: isVisible, // Ensure main toggle is respected
+            webviewUrl: formData.webviewUrl,
 
-    priceAfterGst,
-    currentPrice,
-    currentPriceVisible: true,
+            // ⏰🔥 DELIVERY TIME
+            minTime: minTimeValue,
+            maxTime: maxTimeValue,
+            minTimeVisible: formData.deliveryTimeVisible, // Map deliveryTimeVisible to min/max
+            maxTimeVisible: formData.deliveryTimeVisible,
 
-    // 👁️ VISIBILITY
-    firstTitleVisible: formData.firstTitleVisible,
-    secondTitleVisible: formData.secondTitleVisible,
-    descriptionVisible: formData.descriptionVisible,
-    webviewUrlVisible: formData.webviewUrlVisible,
-    originalPriceVisible: formData.originalPriceVisible,
+            // 💰 PRICING
+            originalPrice: Number(formData.originalPrice),
+            discountType: formData.discountType,
+            discountValue: Number(formData.discountValue),
+            gst: Number(formData.gst),
+            gstType: formData.gstType,
 
-    // 📷 MEDIA
-    photoVisible: formData.photoVisible,
-    videoVisible: formData.videoVisible,
+            priceAfterGst,
+            currentPrice,
+            currentPriceVisible: true,
 
-    // 🆔 IDS
-    documentId: finalLocalId,
-    localId: finalLocalId,
-  };
+            // 👁️ VISIBILITY
+            firstTitleVisible: formData.firstTitleVisible,
+            secondTitleVisible: formData.secondTitleVisible,
+            descriptionVisible: formData.descriptionVisible,
+            webviewUrlVisible: formData.webviewUrlVisible,
+            originalPriceVisible: formData.originalPriceVisible,
 
-  console.log("📦 FINAL DATA:", subDeepChildData);
-  console.log("⏰ TIME:", subDeepChildData.minTime, subDeepChildData.maxTime);
+            // 📷 MEDIA
+            photoVisible: formData.photoVisible,
+            videoVisible: formData.videoVisible,
 
-  addSubDeepChildCategory(subDeepChildData);
-  alert("✅ Sub Deep Child Category Added");
-};
+            // 🆔 IDS
+            documentId: finalLocalId,
+            localId: finalLocalId,
+        };
+
+        console.log("📦 FINAL DATA:", subDeepChildData);
+        console.log("⏰ TIME:", subDeepChildData.minTime, subDeepChildData.maxTime);
+
+        addSubDeepChildCategory(subDeepChildData);
+        alert("✅ Sub Deep Child Category Added");
+    };
 
 
 
@@ -2500,7 +2504,7 @@ const handleSave = () => {
             {/* HIERARCHICAL SELECTION */}
             <div className="mb-6 space-y-6 rounded-lg border border-gray-300 bg-white p-4">
                 <h3 className="font-bold text-gray-900 border-b pb-2">Category Selection</h3>
-                
+
                 {/* MAIN CATEGORY */}
                 <div className="relative">
                     <label className="mb-2 block font-bold text-gray-900">Select Main Category *</label>
@@ -2539,9 +2543,8 @@ const handleSave = () => {
                                     >
                                         <div className="flex items-center justify-between">
                                             <span className="font-medium">{cat.name}</span>
-                                            <span className={`text-xs px-2 py-1 rounded ${
-                                                cat.hasSubCategory === true ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                                            }`}>
+                                            <span className={`text-xs px-2 py-1 rounded ${cat.hasSubCategory === true ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                                }`}>
                                                 {cat.hasSubCategory === true ? "Has Subcategory" : "No Subcategory"}
                                             </span>
                                         </div>
@@ -2748,22 +2751,20 @@ const handleSave = () => {
                         {/* CONTENT SECTION */}
                         <div className="space-y-4 rounded-lg border border-gray-300 bg-white p-4">
                             <h3 className="font-bold text-gray-900 border-b pb-2">Content Details</h3>
-                            
+
                             {/* First Headline */}
                             <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <label className="block font-semibold text-gray-900">First Headline *</label>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-medium text-gray-700">Visibility</span>
-                                        <button 
-                                            onClick={() => handleToggle('firstTitleVisible')} 
-                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${
-                                                formData.firstTitleVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
-                                            }`}
+                                        <button
+                                            onClick={() => handleToggle('firstTitleVisible')}
+                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${formData.firstTitleVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
+                                                }`}
                                         >
-                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${
-                                                formData.firstTitleVisible ? 'translate-x-5' : 'translate-x-0'
-                                            }`}></div>
+                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${formData.firstTitleVisible ? 'translate-x-5' : 'translate-x-0'
+                                                }`}></div>
                                         </button>
                                     </div>
                                 </div>
@@ -2784,15 +2785,13 @@ const handleSave = () => {
                                     <label className="block font-semibold text-gray-900">Second Headline *</label>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-medium text-gray-700">Visibility</span>
-                                        <button 
-                                            onClick={() => handleToggle('secondTitleVisible')} 
-                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${
-                                                formData.secondTitleVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
-                                            }`}
+                                        <button
+                                            onClick={() => handleToggle('secondTitleVisible')}
+                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${formData.secondTitleVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
+                                                }`}
                                         >
-                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${
-                                                formData.secondTitleVisible ? 'translate-x-5' : 'translate-x-0'
-                                            }`}></div>
+                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${formData.secondTitleVisible ? 'translate-x-5' : 'translate-x-0'
+                                                }`}></div>
                                         </button>
                                     </div>
                                 </div>
@@ -2813,15 +2812,13 @@ const handleSave = () => {
                                     <label className="block font-semibold text-gray-900">Description *</label>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-medium text-gray-700">Visibility</span>
-                                        <button 
-                                            onClick={() => handleToggle('descriptionVisible')} 
-                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${
-                                                formData.descriptionVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
-                                            }`}
+                                        <button
+                                            onClick={() => handleToggle('descriptionVisible')}
+                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${formData.descriptionVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
+                                                }`}
                                         >
-                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${
-                                                formData.descriptionVisible ? 'translate-x-5' : 'translate-x-0'
-                                            }`}></div>
+                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${formData.descriptionVisible ? 'translate-x-5' : 'translate-x-0'
+                                                }`}></div>
                                         </button>
                                     </div>
                                 </div>
@@ -2842,15 +2839,13 @@ const handleSave = () => {
                                     <label className="block font-semibold text-gray-900">Webview URL</label>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-medium text-gray-700">Visibility</span>
-                                        <button 
-                                            onClick={() => handleToggle('webviewUrlVisible')} 
-                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${
-                                                formData.webviewUrlVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
-                                            }`}
+                                        <button
+                                            onClick={() => handleToggle('webviewUrlVisible')}
+                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${formData.webviewUrlVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
+                                                }`}
                                         >
-                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${
-                                                formData.webviewUrlVisible ? 'translate-x-5' : 'translate-x-0'
-                                            }`}></div>
+                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${formData.webviewUrlVisible ? 'translate-x-5' : 'translate-x-0'
+                                                }`}></div>
                                         </button>
                                     </div>
                                 </div>
@@ -2868,22 +2863,20 @@ const handleSave = () => {
                         {/* PRICING SECTION */}
                         <div className="space-y-4 rounded-lg border border-gray-300 bg-white p-4">
                             <h3 className="font-bold text-gray-900 border-b pb-2">Pricing Details</h3>
-                            
+
                             {/* Original Price */}
                             <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <label className="block font-semibold text-gray-900">Original Price *</label>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-medium text-gray-700">Visibility</span>
-                                        <button 
-                                            onClick={() => handleToggle('originalPriceVisible')} 
-                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${
-                                                formData.originalPriceVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
-                                            }`}
+                                        <button
+                                            onClick={() => handleToggle('originalPriceVisible')}
+                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${formData.originalPriceVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
+                                                }`}
                                         >
-                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${
-                                                formData.originalPriceVisible ? 'translate-x-5' : 'translate-x-0'
-                                            }`}></div>
+                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${formData.originalPriceVisible ? 'translate-x-5' : 'translate-x-0'
+                                                }`}></div>
                                         </button>
                                     </div>
                                 </div>
@@ -2975,8 +2968,8 @@ const handleSave = () => {
                                     <div className="flex justify-between">
                                         <span className="text-gray-700">Discount:</span>
                                         <span className="font-semibold text-red-600">
-                                            {formData.discountType === 'percentage' 
-                                                ? `${formData.discountValue || '0'}%` 
+                                            {formData.discountType === 'percentage'
+                                                ? `${formData.discountValue || '0'}%`
                                                 : `₹${parseFloat(formData.discountValue || '0').toFixed(2)}`}
                                         </span>
                                     </div>
@@ -3002,15 +2995,13 @@ const handleSave = () => {
                                 <h3 className="font-bold text-gray-900">Delivery Time</h3>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs font-medium text-gray-700">Visibility</span>
-                                    <button 
-                                        onClick={() => handleToggle('deliveryTimeVisible')} 
-                                        className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${
-                                            formData.deliveryTimeVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
-                                        }`}
+                                    <button
+                                        onClick={() => handleToggle('deliveryTimeVisible')}
+                                        className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${formData.deliveryTimeVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
+                                            }`}
                                     >
-                                        <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${
-                                            formData.deliveryTimeVisible ? 'translate-x-5' : 'translate-x-0'
-                                        }`}></div>
+                                        <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${formData.deliveryTimeVisible ? 'translate-x-5' : 'translate-x-0'
+                                            }`}></div>
                                     </button>
                                 </div>
                             </div>
@@ -3051,7 +3042,7 @@ const handleSave = () => {
                         {/* MEDIA UPLOADS */}
                         <div className="space-y-4 rounded-lg border-2 border-blue-900 bg-white p-4">
                             <h3 className="font-bold text-gray-900 border-b pb-2">Media Uploads</h3>
-                            
+
                             {/* Photo Upload */}
                             <div className="rounded-md border border-gray-300 p-4">
                                 <div className="flex items-center justify-between mb-3">
@@ -3061,15 +3052,13 @@ const handleSave = () => {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-medium text-gray-700">Visibility</span>
-                                        <button 
-                                            onClick={() => handleToggle('photoVisible')} 
-                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${
-                                                formData.photoVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
-                                            }`}
+                                        <button
+                                            onClick={() => handleToggle('photoVisible')}
+                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${formData.photoVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
+                                                }`}
                                         >
-                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${
-                                                formData.photoVisible ? 'translate-x-5' : 'translate-x-0'
-                                            }`}></div>
+                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${formData.photoVisible ? 'translate-x-5' : 'translate-x-0'
+                                                }`}></div>
                                         </button>
                                     </div>
                                 </div>
@@ -3077,11 +3066,11 @@ const handleSave = () => {
                                     <label className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded cursor-pointer transition-colors">
                                         <Upload size={16} />
                                         <span>{formData.photo ? formData.photo.name : "Choose Photo"}</span>
-                                        <input 
-                                            type="file" 
-                                            className="hidden" 
-                                            accept="image/*" 
-                                            onChange={(e) => handleFileChange(e, 'photo')} 
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={(e) => handleFileChange(e, 'photo')}
                                         />
                                     </label>
                                     {formData.photo && (
@@ -3098,15 +3087,13 @@ const handleSave = () => {
                                     <label className="block font-medium text-gray-900">Video Upload</label>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-medium text-gray-700">Visibility</span>
-                                        <button 
-                                            onClick={() => handleToggle('videoVisible')} 
-                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${
-                                                formData.videoVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
-                                            }`}
+                                        <button
+                                            onClick={() => handleToggle('videoVisible')}
+                                            className={`w-10 h-5 rounded-full flex items-center justify-start p-1 transition-colors duration-200 ${formData.videoVisible ? 'bg-blue-600 justify-end' : 'bg-gray-400 justify-start'
+                                                }`}
                                         >
-                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${
-                                                formData.videoVisible ? 'translate-x-5' : 'translate-x-0'
-                                            }`}></div>
+                                            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${formData.videoVisible ? 'translate-x-5' : 'translate-x-0'
+                                                }`}></div>
                                         </button>
                                     </div>
                                 </div>
@@ -3114,11 +3101,11 @@ const handleSave = () => {
                                     <label className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded cursor-pointer transition-colors">
                                         <Upload size={16} />
                                         <span>{formData.video ? formData.video.name : "Choose Video"}</span>
-                                        <input 
-                                            type="file" 
-                                            className="hidden" 
-                                            accept="video/*" 
-                                            onChange={(e) => handleFileChange(e, 'video')} 
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            accept="video/*"
+                                            onChange={(e) => handleFileChange(e, 'video')}
                                         />
                                     </label>
                                     {formData.video && (
