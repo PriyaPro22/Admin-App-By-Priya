@@ -36,7 +36,11 @@ const InventoryDashboard = () => {
             // Closing form
             setActiveForm(null);
             // If we have selected IDs, restore the view
-            if (selectedSubCategoryId) setActiveView('childList');
+            if (formName === 'subDeep' && selectedDeepChildCategoryId && selectedMainCategoryId && selectedChildCategoryId) {
+                fetchSubDeepChildCategories(selectedMainCategoryId, selectedChildCategoryId, selectedDeepChildCategoryId, selectedSubCategoryId);
+                setActiveView('subDeepList');
+            }
+            else if (selectedSubCategoryId) setActiveView('childList');
             else if (selectedMainCategoryId) setActiveView('subList');
             else setActiveView(null);
         } else {
@@ -158,7 +162,12 @@ const InventoryDashboard = () => {
             setSelectedDeepChildCategoryId(null);
             setSelectedDeepChildCategoryName(null);
         } else if (activeView === 'childList') {
-            setActiveView('subList');
+            // Check if we came from Sub Category or Main Category
+            if (selectedSubCategoryId) {
+                setActiveView('subList');
+            } else {
+                setActiveView('mainList');
+            }
             setSelectedChildCategoryId(null);
             setSelectedChildCategoryName(null);
         } else if (activeView === 'subList') {

@@ -1246,6 +1246,17 @@ const CategoryList: React.FC<CategoryListProps> = ({
 
 
 
+  const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({});
+
+  // Reset expanded items when type changes
+  React.useEffect(() => {
+    setExpandedItems({});
+  }, [type]);
+
+  const toggleExpand = (id: string) => {
+    setExpandedItems((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const list = dataMap[type] || [];
 
   if (!list.length) {
@@ -1760,13 +1771,6 @@ const CategoryList: React.FC<CategoryListProps> = ({
       DEEP CHILD CATEGORY DESIGN
   =============================== */
   if (type === "deep") {
-    // Local state to track expanded items
-    const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({});
-
-    const toggleExpand = (id: string) => {
-      setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
-    };
-
     return (
       <div className="space-y-6">
         {list.map((item: any, index: number) => {
@@ -1992,88 +1996,314 @@ const CategoryList: React.FC<CategoryListProps> = ({
   /* ===============================
       SUB DEEP CHILD CATEGORY DESIGN
   =============================== */
-  if (type === "subDeep") {
-    // We duplicate the logic because the structure is identical as requested
-    const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({});
+  // if (type === "subDeep") {
+  //   // We duplicate the logic because the structure is identical as requested
+  //   const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({});
 
-    const toggleExpand = (id: string) => {
-      setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
-    };
+  //   const toggleExpand = (id: string) => {
+  //     setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
+  //   };
+
+  //   // Helper for ReadOnly Field Display - Defined outside map for performance
+  //   const InfoField = ({ value, label, visibilityField, visibilityValue, prefix = "", onToggle }: any) => (
+  //     <div className="relative flex items-center justify-between rounded-lg border border-purple-800 bg-white px-3 py-2">
+  //       <span className="text-sm font-semibold text-gray-700 truncate w-full">
+  //         {prefix} {value || "N/A"}
+  //       </span>
+  //       {visibilityField && (
+  //         <div className="ml-2 flex flex-col items-center">
+  //           <span className="text-[8px] font-bold text-gray-400 mb-0.5">Visibility</span>
+  //           <div onClick={(e) => e.stopPropagation()}>
+  //             <Toggle
+  //               checked={visibilityValue}
+  //               onChange={onToggle}
+  //             />
+  //           </div>
+  //         </div>
+  //       )}
+  //     </div>
+  //   );
+
+  //   return (
+  //     <div className="space-y-6">
+  //       {list.map((item: any, index: number) => {
+  //         // Mapping fields might vary slightly if names differ, but based on context update they should be same
+  //         const isVisible = item?.subDeepCategoryVisible ?? item?.visible ?? false;
+  //         // Ensure robust ID
+  //         const id = item?.documentId || item?._id || item?.id || item?.subDeepKey || `subdeep-${index}`;
+  //         const isExpanded = expandedItems[id] || false;
+
+  //         return (
+  //           <div
+  //             key={id}
+  //             onClick={() => {
+  //               // Navigate on general card click
+  //               onItemClick?.(item);
+  //             }}
+  //             className="rounded-lg bg-gray-100 p-2 shadow-sm border border-gray-300 cursor-pointer hover:border-purple-400 transition-all"
+  //           >
+  //             {/* HEADER ROW */}
+  //             <div className="flex items-center justify-between bg-white rounded-md p-2 border border-gray-200 mb-3">
+  //               <div className="flex items-center gap-3">
+  //                 <div className="flex h-8 w-8 items-center justify-center rounded border border-purple-900 bg-white text-purple-900 font-bold">
+  //                   {index + 1}
+  //                 </div>
+  //                 <span className="text-sm font-bold text-purple-950">Sub Deep Category Visible</span>
+  //               </div>
+
+  //               <div className="flex items-center gap-4">
+  //                 <div onClick={(e) => e.stopPropagation()}>
+  //                   <Toggle
+  //                     checked={isVisible}
+  //                     onChange={() => onToggleVisibility?.(item, "subDeepCategoryVisible")}
+  //                   />
+  //                 </div>
+  //                 <button
+  //                   onClick={(e) => {
+  //                     e.stopPropagation();
+  //                     toggleExpand(id);
+  //                   }}
+  //                   className="text-red-600 font-bold text-sm hover:underline"
+  //                 >
+  //                   {isExpanded ? "View Less" : "View More"}
+  //                 </button>
+  //               </div>
+  //             </div>
+
+  //             {/* ACTION BUTTONS ROW */}
+  //             <div className="flex justify-between gap-4 mb-3">
+  //               <button
+  //                 onClick={(e) => {
+  //                   e.stopPropagation();
+  //                   onEditClick?.(item);
+  //                 }}
+  //                 className="flex-1 rounded-md bg-white border border-gray-200 py-2 text-green-600 font-bold text-sm shadow-sm hover:bg-green-50"
+  //               >
+  //                 Edit Category
+  //               </button>
+  //               <button
+  //                 onClick={(e) => {
+  //                   e.stopPropagation();
+  //                   onDeleteClick?.(item);
+  //                 }}
+  //                 className="flex-1 rounded-md bg-white border border-gray-200 py-2 text-red-600 font-bold text-sm shadow-sm hover:bg-red-50"
+  //               >
+  //                 Delete Category
+  //               </button>
+  //             </div>
+
+  //             {/* DATA SUMMARY BOX */}
+  //             <div className="bg-white rounded-md border border-gray-300 p-3 space-y-2">
+  //               <div className="rounded border border-purple-900 px-2 py-1 text-sm font-semibold text-gray-700 italic">
+  //                 First Title: {item.firstTitle}
+  //               </div>
+  //               <div className="rounded border border-purple-900 px-2 py-1 text-sm font-semibold text-gray-700 italic">
+  //                 Second Title: {item.secondTitle}
+  //               </div>
+  //               <div className="rounded border border-purple-900 px-2 py-1 text-sm font-semibold text-gray-700 italic">
+  //                 Description: {item.description}
+  //               </div>
+  //             </div>
+
+  //             {/* === DETAILED EXPANDED VIEW === */}
+  //             {isExpanded && (
+  //               <div onClick={(e) => e.stopPropagation()} className="mt-4 pt-4 border-t border-gray-200 space-y-3 cursor-default">
+  //                 {/* Webview URL */}
+  //                 <InfoField
+  //                   value={item.webviewUrl}
+  //                   visibilityField="webviewUrlVisible"
+  //                   visibilityValue={item.webviewUrlVisible}
+  //                   onToggle={() => onToggleVisibility?.(item, "webviewUrlVisible")}
+  //                 />
+
+  //                 {/* Original Price */}
+  //                 <InfoField
+  //                   value={item.originalPrice ? item.originalPrice.toFixed(2) : "0.00"}
+  //                   prefix="Original Price: ₹"
+  //                   visibilityField="originalPriceVisible"
+  //                   visibilityValue={item.originalPriceVisible}
+  //                   onToggle={() => onToggleVisibility?.(item, "originalPriceVisible")}
+  //                 />
+
+  //                 {/* GST SECTION */}
+  //                 <div className="flex gap-2">
+  //                   <div className="flex-1 rounded border border-purple-900 bg-white px-2 py-1 text-sm text-gray-700">
+  //                     Gst Percent: {item.gst}%
+  //                   </div>
+  //                   <div className="flex-1 rounded border border-purple-900 bg-white px-2 py-1 text-sm text-gray-700">
+  //                     Gst Type: {item.gstType}
+  //                   </div>
+  //                 </div>
+
+  //                 {/* Price After GST */}
+  //                 <div className="rounded border border-purple-900 bg-white px-2 py-2 text-sm text-gray-700 font-semibold">
+  //                   Price After GST: ₹{item.priceAfterGst}
+  //                 </div>
+
+  //                 {/* Discount Section */}
+  //                 <div className="flex gap-2">
+  //                   <div className="flex-1 rounded border border-purple-900 bg-white px-2 py-1 text-sm text-gray-700">
+  //                     Discount Value: {item.discountValue}
+  //                   </div>
+  //                   <div className="flex-1 rounded border border-purple-900 bg-white px-2 py-1 text-sm text-gray-700">
+  //                     Discount Type: {item.discountType}
+  //                   </div>
+  //                 </div>
+
+  //                 {/* Current Price */}
+  //                 <InfoField
+  //                   value={item.currentPrice}
+  //                   prefix="Current Price: ₹"
+  //                   visibilityField="currentPriceVisible"
+  //                   visibilityValue={item.currentPriceVisible}
+  //                   onToggle={() => onToggleVisibility?.(item, "currentPriceVisible")}
+  //                 />
+
+  //                 {/* Time Section */}
+  //                 <InfoField
+  //                   value={item.minTime}
+  //                   prefix="Min Time:"
+  //                   visibilityField="minTimeVisible"
+  //                   visibilityValue={item.minTimeVisible}
+  //                   onToggle={() => onToggleVisibility?.(item, "minTimeVisible")}
+  //                 />
+  //                 <InfoField
+  //                   value={item.maxTime}
+  //                   prefix="Max Time:"
+  //                   visibilityField="maxTimeVisible"
+  //                   visibilityValue={item.maxTimeVisible}
+  //                   onToggle={() => onToggleVisibility?.(item, "maxTimeVisible")}
+  //                 />
+
+  //                 {/* === IMAGE VISIBILITY SECTION === */}
+  //                 <div className="mt-4 bg-white rounded-xl p-4 border border-gray-200">
+  //                   <div className="flex justify-between items-start">
+  //                     <div className="space-y-4 w-1/2">
+  //                       <div className="flex items-center justify-between rounded border border-purple-900 p-2">
+  //                         <span className="text-sm font-bold">First Title Visibility</span>
+  //                         <Toggle checked={item.firstTitleVisible} onChange={() => onToggleVisibility?.(item, "firstTitleVisible")} />
+  //                       </div>
+  //                       <div className="flex items-center justify-between rounded border border-purple-900 p-2">
+  //                         <span className="text-sm font-bold">Second Title Visibility</span>
+  //                         <Toggle checked={item.secondTitleVisible} onChange={() => onToggleVisibility?.(item, "secondTitleVisible")} />
+  //                       </div>
+  //                       <div className="flex items-center justify-between rounded border border-purple-900 p-2">
+  //                         <span className="text-sm font-bold">Description Visibility</span>
+  //                         <Toggle checked={item.descriptionVisible} onChange={() => onToggleVisibility?.(item, "descriptionVisible")} />
+  //                       </div>
+  //                     </div>
+
+  //                     {/* Visualizer Placeholder */}
+  //                     <div className="w-1/2 flex flex-col items-center">
+  //                       <span className="text-xs mb-1">Image Visible</span>
+  //                       <Toggle checked={item.photoVisible} onChange={() => onToggleVisibility?.(item, "photoVisible")} />
+
+  //                       <div className="mt-2 h-24 w-24 bg-black rounded-lg overflow-hidden flex items-center justify-center relative">
+  //                         <img
+  //                           src="https://static.vecteezy.com/system/resources/previews/000/583/678/original/vector-sound-wave-background.jpg"
+  //                           alt="Visualizer"
+  //                           className="opacity-50 object-cover h-full w-full"
+  //                         />
+  //                       </div>
+  //                     </div>
+  //                   </div>
+  //                 </div>
+
+  //               </div>
+  //             )}
+  //           </div>
+  //         );
+  //       })}
+  //     </div>
+  //   );
+  // }
+  if (type === "subDeep") {
+
+
+    if (!list || list.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-xl py-16 text-gray-500 bg-gray-50">
+          <Folder className="h-12 w-12 mb-2 text-purple-300" />
+          <span className="text-sm font-semibold">No Sub Deep Categories Found</span>
+          <span className="text-xs mt-1 text-gray-400">Add your first Sub Deep Category</span>
+        </div>
+      );
+    }
+
+    const InfoField = ({
+      value,
+      prefix = "",
+      visibilityField,
+      visibilityValue,
+      item
+    }: any) => (
+      <div className="flex items-center justify-between rounded-lg border border-purple-800 bg-white px-3 py-2">
+        <span className="text-sm font-semibold text-gray-700 truncate">
+          {prefix} {value || "N/A"}
+        </span>
+        {visibilityField && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <Toggle
+              checked={visibilityValue}
+              onChange={() => onToggleVisibility?.(item, visibilityField)}
+            />
+          </div>
+        )}
+      </div>
+    );
 
     return (
       <div className="space-y-6">
-        {list.map((item: any, index: number) => {
-          // Mapping fields might vary slightly if names differ, but based on context update they should be same
+        {list.slice(0, 1).map((item: any, index: number) => {
           const isVisible = item?.subDeepCategoryVisible ?? item?.visible ?? false;
-          // Ensure robust ID
-          const id = item?.documentId || item?._id || item?.id || item?.subDeepKey || `subdeep-${index}`;
-          const isExpanded = expandedItems[id] || false;
 
-          // Re-define helper if not available in scope
-          const InfoField = ({ value, label, visibilityField, visibilityValue, prefix = "" }: any) => (
-            <div className="relative flex items-center justify-between rounded-lg border border-purple-800 bg-white px-3 py-2">
-              <span className="text-sm font-semibold text-gray-700 truncate w-full">
-                {prefix} {value || "N/A"}
-              </span>
-              {visibilityField && (
-                <div className="ml-2 flex flex-col items-center">
-                  <span className="text-[8px] font-bold text-gray-400 mb-0.5">Visibility</span>
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <Toggle
-                      checked={visibilityValue}
-                      onChange={() => onToggleVisibility?.(item, visibilityField)}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          );
+          const id =
+            item?.documentId ||
+            item?._id ||
+            item?.id ||
+            item?.subDeepKey ||
+            `subdeep-${index}`;
+
+          // Removed expandedItems logic
 
           return (
             <div
               key={id}
-              onClick={() => {
-                // Navigate on general card click
-                onItemClick?.(item);
-              }}
-              className="rounded-lg bg-gray-100 p-2 shadow-sm border border-gray-300 cursor-pointer hover:border-purple-400 transition-all"
+              onClick={() => onItemClick?.(item)}
+              className="rounded-lg bg-gray-100 p-2 border border-gray-300 hover:border-purple-400 cursor-pointer transition-all"
             >
-              {/* HEADER ROW */}
-              <div className="flex items-center justify-between bg-white rounded-md p-2 border border-gray-200 mb-3">
+              {/* HEADER */}
+              <div className="flex items-center justify-between bg-white rounded-md p-2 border mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded border border-purple-900 bg-white text-purple-900 font-bold">
+                  <div className="h-8 w-8 flex items-center justify-center rounded border border-purple-900 text-purple-900 font-bold">
                     {index + 1}
                   </div>
-                  <span className="text-sm font-bold text-purple-950">Sub Deep Category Visible</span>
+                  <span className="text-sm font-bold text-purple-950">
+                    Sub Deep Category Visible
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-4">
                   <div onClick={(e) => e.stopPropagation()}>
                     <Toggle
                       checked={isVisible}
-                      onChange={() => onToggleVisibility?.(item, "subDeepCategoryVisible")}
+                      onChange={() =>
+                        onToggleVisibility?.(item, "subDeepCategoryVisible")
+                      }
                     />
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleExpand(id);
-                    }}
-                    className="text-red-600 font-bold text-sm hover:underline"
-                  >
-                    {isExpanded ? "View Less" : "View More"}
-                  </button>
+                  {/* View More button removed */}
                 </div>
               </div>
 
-              {/* ACTION BUTTONS ROW */}
-              <div className="flex justify-between gap-4 mb-3">
+              {/* ACTIONS */}
+              <div className="flex gap-4 mb-3">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onEditClick?.(item);
                   }}
-                  className="flex-1 rounded-md bg-white border border-gray-200 py-2 text-green-600 font-bold text-sm shadow-sm hover:bg-green-50"
+                  className="flex-1 bg-white border py-2 text-green-600 font-bold rounded-md shadow-sm hover:bg-green-50 transition"
                 >
                   Edit Category
                 </button>
@@ -2082,126 +2312,126 @@ const CategoryList: React.FC<CategoryListProps> = ({
                     e.stopPropagation();
                     onDeleteClick?.(item);
                   }}
-                  className="flex-1 rounded-md bg-white border border-gray-200 py-2 text-red-600 font-bold text-sm shadow-sm hover:bg-red-50"
+                  className="flex-1 bg-white border py-2 text-red-600 font-bold rounded-md shadow-sm hover:bg-red-50 transition"
                 >
                   Delete Category
                 </button>
               </div>
 
-              {/* DATA SUMMARY BOX */}
-              <div className="bg-white rounded-md border border-gray-300 p-3 space-y-2">
-                <div className="rounded border border-purple-900 px-2 py-1 text-sm font-semibold text-gray-700 italic">
+              {/* SUMMARY */}
+              <div className="bg-white rounded-md border p-3 space-y-2">
+                <div className="border border-purple-900 rounded px-2 py-1 text-sm italic">
                   First Title: {item.firstTitle}
                 </div>
-                <div className="rounded border border-purple-900 px-2 py-1 text-sm font-semibold text-gray-700 italic">
+                <div className="border border-purple-900 rounded px-2 py-1 text-sm italic">
                   Second Title: {item.secondTitle}
                 </div>
-                <div className="rounded border border-purple-900 px-2 py-1 text-sm font-semibold text-gray-700 italic">
+                <div className="border border-purple-900 rounded px-2 py-1 text-sm italic">
                   Description: {item.description}
                 </div>
               </div>
 
-              {/* === DETAILED EXPANDED VIEW === */}
-              {isExpanded && (
-                <div onClick={(e) => e.stopPropagation()} className="mt-4 pt-4 border-t border-gray-200 space-y-3 cursor-default">
-                  {/* Webview URL */}
-                  <InfoField
-                    value={item.webviewUrl}
-                    visibilityField="webviewUrlVisible"
-                    visibilityValue={item.webviewUrlVisible}
-                  />
+              {/* FULL DETAILS (Always Visible) */}
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="mt-4 pt-4 border-t space-y-3 cursor-default"
+              >
+                <InfoField
+                  value={item.webviewUrl}
+                  visibilityField="webviewUrlVisible"
+                  visibilityValue={item.webviewUrlVisible}
+                  item={item}
+                />
 
-                  {/* Original Price */}
-                  <InfoField
-                    value={item.originalPrice ? item.originalPrice.toFixed(2) : "0.00"}
-                    prefix="Original Price: ₹"
-                    visibilityField="originalPriceVisible"
-                    visibilityValue={item.originalPriceVisible}
-                  />
+                <InfoField
+                  value={item.originalPrice ? Number(item.originalPrice).toFixed(2) : "0.00"}
+                  prefix="Original Price ₹"
+                  visibilityField="originalPriceVisible"
+                  visibilityValue={item.originalPriceVisible}
+                  item={item}
+                />
 
-                  {/* GST SECTION */}
-                  <div className="flex gap-2">
-                    <div className="flex-1 rounded border border-purple-900 bg-white px-2 py-1 text-sm text-gray-700">
-                      Gst Percent: {item.gst}%
-                    </div>
-                    <div className="flex-1 rounded border border-purple-900 bg-white px-2 py-1 text-sm text-gray-700">
-                      Gst Type: {item.gstType}
-                    </div>
+                {/* GST SECTION */}
+                <div className="flex gap-2">
+                  <div className="flex-1 border border-purple-900 rounded px-2 py-1 text-sm bg-white">
+                    GST %: {item.gst}
                   </div>
-
-                  {/* Price After GST */}
-                  <div className="rounded border border-purple-900 bg-white px-2 py-2 text-sm text-gray-700 font-semibold">
-                    Price After GST: ₹{item.priceAfterGst}
+                  <div className="flex-1 border border-purple-900 rounded px-2 py-1 text-sm bg-white">
+                    GST Type: {item.gstType}
                   </div>
+                </div>
 
-                  {/* Discount Section */}
-                  <div className="flex gap-2">
-                    <div className="flex-1 rounded border border-purple-900 bg-white px-2 py-1 text-sm text-gray-700">
-                      Discount Value: {item.discountValue}
-                    </div>
-                    <div className="flex-1 rounded border border-purple-900 bg-white px-2 py-1 text-sm text-gray-700">
-                      Discount Type: {item.discountType}
-                    </div>
-                  </div>
+                <div className="border border-purple-900 rounded px-2 py-1 text-sm font-semibold bg-white">
+                  Price After GST: ₹{item.priceAfterGst}
+                </div>
 
-                  {/* Current Price */}
-                  <InfoField
-                    value={item.currentPrice}
-                    prefix="Current Price: ₹"
-                    visibilityField="currentPriceVisible"
-                    visibilityValue={item.currentPriceVisible}
-                  />
+                <InfoField
+                  value={item.currentPrice ? Number(item.currentPrice).toFixed(2) : "0.00"}
+                  prefix="Current Price ₹"
+                  visibilityField="currentPriceVisible"
+                  visibilityValue={item.currentPriceVisible}
+                  item={item}
+                />
 
-                  {/* Time Section */}
-                  <InfoField
-                    value={item.minTime}
-                    prefix="Min Time:"
-                    visibilityField="minTimeVisible"
-                    visibilityValue={item.minTimeVisible}
-                  />
-                  <InfoField
-                    value={item.maxTime}
-                    prefix="Max Time:"
-                    visibilityField="maxTimeVisible"
-                    visibilityValue={item.maxTimeVisible}
-                  />
+                <InfoField
+                  value={item.minTime}
+                  prefix="Min Time"
+                  visibilityField="minTimeVisible"
+                  visibilityValue={item.minTimeVisible}
+                  item={item}
+                />
 
-                  {/* === IMAGE VISIBILITY SECTION === */}
-                  <div className="mt-4 bg-white rounded-xl p-4 border border-gray-200">
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-4 w-1/2">
-                        <div className="flex items-center justify-between rounded border border-purple-900 p-2">
-                          <span className="text-sm font-bold">First Title Visibility</span>
+                <InfoField
+                  value={item.maxTime}
+                  prefix="Max Time"
+                  visibilityField="maxTimeVisible"
+                  visibilityValue={item.maxTimeVisible}
+                  item={item}
+                />
+
+                {/* === IMAGE VISIBILITY SECTION === */}
+                <div className="mt-4 bg-white rounded-xl p-4 border border-gray-200">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-4 w-1/2">
+                      <div className="flex items-center justify-between rounded border border-purple-900 p-2">
+                        <span className="text-sm font-bold">First Title Visibility</span>
+                        <div onClick={(e) => e.stopPropagation()}>
                           <Toggle checked={item.firstTitleVisible} onChange={() => onToggleVisibility?.(item, "firstTitleVisible")} />
                         </div>
-                        <div className="flex items-center justify-between rounded border border-purple-900 p-2">
-                          <span className="text-sm font-bold">Second Title Visibility</span>
+                      </div>
+                      <div className="flex items-center justify-between rounded border border-purple-900 p-2">
+                        <span className="text-sm font-bold">Second Title Visibility</span>
+                        <div onClick={(e) => e.stopPropagation()}>
                           <Toggle checked={item.secondTitleVisible} onChange={() => onToggleVisibility?.(item, "secondTitleVisible")} />
                         </div>
-                        <div className="flex items-center justify-between rounded border border-purple-900 p-2">
-                          <span className="text-sm font-bold">Description Visibility</span>
+                      </div>
+                      <div className="flex items-center justify-between rounded border border-purple-900 p-2">
+                        <span className="text-sm font-bold">Description Visibility</span>
+                        <div onClick={(e) => e.stopPropagation()}>
                           <Toggle checked={item.descriptionVisible} onChange={() => onToggleVisibility?.(item, "descriptionVisible")} />
                         </div>
                       </div>
+                    </div>
 
-                      {/* Visualizer Placeholder */}
-                      <div className="w-1/2 flex flex-col items-center">
-                        <span className="text-xs mb-1">Image Visible</span>
+                    {/* Visualizer Placeholder */}
+                    <div className="w-1/2 flex flex-col items-center">
+                      <span className="text-xs mb-1">Image Visible</span>
+                      <div onClick={(e) => e.stopPropagation()}>
                         <Toggle checked={item.photoVisible} onChange={() => onToggleVisibility?.(item, "photoVisible")} />
+                      </div>
 
-                        <div className="mt-2 h-24 w-24 bg-black rounded-lg overflow-hidden flex items-center justify-center relative">
-                          <img
-                            src="https://static.vecteezy.com/system/resources/previews/000/583/678/original/vector-sound-wave-background.jpg"
-                            alt="Visualizer"
-                            className="opacity-50 object-cover h-full w-full"
-                          />
-                        </div>
+                      <div className="mt-2 h-24 w-24 bg-black rounded-lg overflow-hidden flex items-center justify-center relative">
+                        <img
+                          src="https://static.vecteezy.com/system/resources/previews/000/583/678/original/vector-sound-wave-background.jpg"
+                          alt="Visualizer"
+                          className="opacity-50 object-cover h-full w-full"
+                        />
                       </div>
                     </div>
                   </div>
-
                 </div>
-              )}
+
+              </div>
             </div>
           );
         })}

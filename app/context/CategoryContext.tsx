@@ -480,17 +480,23 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
 
       // 🔥 WITH SUB CATEGORY
       if (subId) {
-        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/sub/${subId}/child/${childKey}/deep/${deepKey}/sub`;
+        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/sub/${subId}/child/${encodeURIComponent(childKey)}/deep/${encodeURIComponent(deepKey)}`;
       }
       // 🔥 WITHOUT SUB CATEGORY
       else {
-        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/child-key/${childKey}/deep/${deepKey}/sub`;
+        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/child/${encodeURIComponent(childKey)}/deep/${encodeURIComponent(deepKey)}`;
       }
 
       console.log("🚀 FETCH SUB-DEEP URL:", url);
 
       const res = await api.get(url);
-      const rawData = res.data?.data || {};
+
+      // ✅ ROBUST DATA EXTRACTION
+      let rawData = res.data?.data;
+      if (!rawData && res.data?.result) rawData = res.data.result;
+      if (!rawData) rawData = {};
+
+      console.log("🔥 SUB-DEEP RAW DATA:", rawData);
 
       const list = (Array.isArray(rawData)
         ? rawData
@@ -1164,7 +1170,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
     if (subCategoryId) {
       url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepKey}`;
     } else {
-      url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child-key/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepKey}`;
+      url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepKey}`;
     }
 
     return axios.post(
@@ -1174,7 +1180,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
         firstTitle: data.firstTitle,
         secondTitle: data.secondTitle,
         description: data.description,
-        visible: data.subDeepCategoryVisible,
+        visible: data.subDeepCategoryVisible ?? data.visible,
         webviewUrl: data.webviewUrl,
 
         // ⏰🔥 DELIVERY TIME (MAIN FIX)
@@ -1571,7 +1577,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       if (subCategoryId) {
         url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepId}`;
       } else {
-        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child-key/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepId}`;
+        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepId}`;
       }
 
       console.log(`🚀 Updating Sub-Deep Field [${field}] to [${newVal}]`, url);
