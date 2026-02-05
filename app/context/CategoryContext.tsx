@@ -3,9 +3,14 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import axios from 'axios';
 import { api } from '../utils/api';
+import { generateCategoryId } from '../utils/generateCategoryId';
 
 
-const BASE_URL = "https://api.bijliwalaaya.in/api/product-listing";
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_DOMAIN
+  ? `${process.env.NEXT_PUBLIC_API_DOMAIN}/api/product-listing`
+  : BASE_URL + "";
+const API_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN || "super_secure_token";
 // Define Types
 // export interface MainCategory {
 //   _id: string;                 
@@ -27,6 +32,7 @@ export interface MainCategory {
   parentId?: string | null;
 
   imageUri?: string | null;
+  imageFile?: File | null;
 }
 
 // Sub Category Interface
@@ -36,6 +42,7 @@ export interface SubCategory {
   mainCategoryId: string;
   visible: boolean;
   isSubCategoryVisible: boolean;
+  isSubCategoryNameVisible: boolean; // Added this field
   isSubCategoryImageVisible: boolean;
   imageUri?: string | null;
   hasChild?: boolean;
@@ -47,6 +54,7 @@ export interface ChildCategory {
   documentId: string;
   name: string;
   subCategoryId?: string;
+  mainCategoryId?: string; // ✅ Added mainCategoryId
   imageUri?: string | null;
   isChildCategoryVisible?: boolean;
   visible?: boolean;
@@ -165,9 +173,17 @@ interface CategoryContextType {
 
   fetchSubDeepChildCategories: (mainId: string, childId: string, deepId: string, subId?: string | null) => void;
 
+  updateMainCategory: (item: any) => Promise<void>;
+  updateSubCategory: (item: any) => Promise<void>;
+  updateChildCategory: (item: any) => Promise<void>;
+  updateChildCategoryWithSub: (item: any) => Promise<void>;
+  updateDeepChildCategory: (item: any) => Promise<void>;
+  updateDeepChildCategoryWithSub: (item: any) => Promise<void>;
+  updateSubDeepChildCategory: (item: any) => Promise<void>;
+
   addMainCategory: (category: Omit<MainCategory, 'id'>) => Promise<void>;
   addSubCategory: (category: Omit<SubCategory, 'id'>) => Promise<void>;
-  addChildCategory: (category: Omit<ChildCategory, 'id'>) => Promise<void>;
+  addChildCategory: (category: Omit<ChildCategory, 'id' | 'documentId'>) => Promise<void>;
   addDeepChildCategory: (category: Omit<DeepChildCategory, 'id'>) => Promise<void>;
   addSubDeepChildCategory: (category: Omit<SubDeepChildCategory, 'id'>) => void;
 
@@ -178,18 +194,30 @@ interface CategoryContextType {
   deleteSubDeepChildCategory: (id: string) => void;
 
   toggleMainVisibility: (id: string) => Promise<void>;
+  toggleMainNameVisibility: (id: string) => Promise<void>;
   toggleMainImageVisibility: (id: string) => Promise<void>;
   toggleMainIsSub: (id: string) => Promise<void>;
   toggleSubVisibility: (id: string) => Promise<void>;
+  toggleSubNameVisibility: (id: string) => Promise<void>; // Added this
   toggleSubImageVisibility: (id: string) => Promise<void>;
   toggleSubHasSubCategory: (id: string) => Promise<void>;
 
   toggleChildVisibility: (id: string) => Promise<void>;
   toggleDeepChildVisibility: (id: string, field?: string) => Promise<void>;
   toggleSubDeepChildVisibility: (id: string, field?: string) => void;
+  isLoadingSubDeep: boolean;
 }
 
 const CategoryContext = createContext<CategoryContextType | undefined>(undefined);
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+  return {
+    "x-api-token": API_TOKEN,
+    Authorization: token ? `Bearer ${token}` : "",
+    "Content-Type": "multipart/form-data", // Important for FormData
+  };
+};
 
 export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   const [mainCategories, setMainCategories] = useState<MainCategory[]>([]);
@@ -197,6 +225,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   const [childCategories, setChildCategories] = useState<ChildCategory[]>([]);
   const [deepChildCategories, setDeepChildCategories] = useState<DeepChildCategory[]>([]);
   const [subDeepChildCategories, setSubDeepChildCategories] = useState<SubDeepChildCategory[]>([]); // Local state for SubDeep
+  const [isLoadingSubDeep, setIsLoadingSubDeep] = useState<boolean>(false);
 
 
   // FETCH MAIN DATA ON MOUNT
@@ -207,10 +236,10 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   const fetchMainCategories = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("https://api.bijliwalaaya.in/api/product-listing/main", {
+      const response = await axios.get(BASE_URL + "/main", {
         headers: {
           "Content-Type": "application/json",
-          "x-api-token": "super_secure_token",
+          "x-api-token": API_TOKEN,
           Authorization: token ? `Bearer ${token}` : "",
         },
       });
@@ -255,6 +284,54 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // const updateMainCategory = async (item: any) => {
+  //   try {
+  //     const token = localStorage.getItem("token");
+
+  //     // ✅ SAME FIELDS JO FETCH ME USE HO RAHE HAIN
+  //     const payload = {
+  //       name: item.name,
+  //       imageUri: item.imageUri || null,
+
+  //       // visibility fields
+  //       isMainCategoryVisible: item.isMainCategoryVisible,
+  //       isMainCategoryNameVisible: item.isMainCategoryNameVisible,
+  //       isMainCategoryImageVisible: item.isMainCategoryImageVisible,
+
+  //       // sub-category flag
+  //       hasSubCategory: item.hasSubCategory,
+
+  //       // optional
+  //       parentId: item.parentId || null,
+  //     };
+
+  //     console.log("📦 MAIN UPDATE PAYLOAD:", payload);
+
+  //     await axios.put(
+  //       `${BASE_URL}/main/${item._id}`,
+  //       payload,
+  //       {
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //           "x-api-token": API_TOKEN,
+  //           Authorization: token ? `Bearer ${token}` : "",
+  //         },
+  //       }
+  //     );
+
+  //     // 🔥 REFRESH UI FROM MONGO
+  //     await fetchMainCategories();
+
+  //     console.log("✅ Main category updated successfully");
+
+  //   } catch (error: any) {
+  //     console.error(
+  //       "❌ Failed to update main category:",
+  //       error?.response?.status,
+  //       error?.response?.data || error.message
+  //     );
+  //   }
+  // };
 
 
 
@@ -262,16 +339,215 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   // =======================
   // 🔥 FETCH SUB CATEGORIES (FINAL & CORRECT)
   // =======================
+
+  const updateMainCategory = async (item: any) => {
+    const token = localStorage.getItem("token");
+
+    const formData = new FormData();
+    formData.append("name", item.name);
+
+    // Boolean fields need string conversion for FormData
+    formData.append("isMainCategoryVisible", String(item.isMainCategoryVisible));
+    formData.append("isMainCategoryNameVisible", String(item.isMainCategoryNameVisible));
+    formData.append("isMainCategoryImageVisible", String(item.isMainCategoryImageVisible));
+    formData.append("hasSubCategory", String(item.hasSubCategory));
+
+    if (item.parentId) {
+      formData.append("parentId", item.parentId);
+    }
+
+    // Only append image if it's a new file (File object)
+    if (item.imageFile instanceof File) {
+      formData.append("imageUri", item.imageFile);
+    }
+
+    try {
+      await axios.put(
+        `${BASE_URL}/main/${item._id}`,
+        formData,
+        {
+          headers: {
+            "x-api-token": API_TOKEN,
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        }
+      );
+
+      await fetchMainCategories();
+    } catch (error: any) {
+      console.error(
+        "❌ Failed to update main category:",
+        error?.response?.status,
+        error?.response?.data || error.message
+      );
+      throw error; // Propagate error so form knows it failed
+    }
+  };
+  const updateSubCategory = async (item: any) => {
+    const formData = new FormData();
+
+    formData.append("name", item.name);
+    formData.append("mainCategory", item.mainCategoryId);
+
+    formData.append("isSubCategoryVisible", String(item.isSubCategoryVisible));
+    formData.append("isSubCategoryNameVisible", String(item.isSubCategoryNameVisible));
+    formData.append("isSubCategoryImageVisible", String(item.isSubCategoryImageVisible));
+
+    if (item.imageFile instanceof File) {
+      formData.append("imageUri", item.imageFile);
+    }
+
+    try {
+      await axios.put(
+        `${BASE_URL}/main/${item.mainCategoryId}/sub/${item.documentId}`,
+        formData,
+        { headers: getAuthHeaders() }
+      );
+    } catch (err) {
+      console.error("❌ Failed to update sub category", err);
+      throw err;
+    }
+  };
+  const updateChildCategory = async (item: any) => {
+    const formData = new FormData();
+
+    formData.append("name", item.name);
+    formData.append("visibility", String(item.visible));
+
+    if (item.imageFile instanceof File) {
+      formData.append("imageUri", item.imageFile);
+    }
+
+    try {
+      await axios.put(
+        `${BASE_URL}/main/${item.mainCategoryId}/child/${item.documentId}`,
+        formData,
+        { headers: getAuthHeaders() }
+      );
+    } catch (err) {
+      console.error("❌ Failed to update child category", err);
+      throw err;
+    }
+  };
+  const updateChildCategoryWithSub = async (item: any) => {
+    const formData = new FormData();
+
+    formData.append("name", item.name);
+    formData.append("visibility", String(item.visible));
+
+    if (item.imageFile instanceof File) {
+      formData.append("imageUri", item.imageFile);
+    }
+
+    try {
+      await axios.put(
+        `${BASE_URL}/main/${item.mainCategoryId}/sub/${item.subCategoryId}/child/${item.documentId}`,
+        formData,
+        { headers: getAuthHeaders() }
+      );
+    } catch (err) {
+      console.error("❌ Failed to update child category (sub)", err);
+      throw err;
+    }
+  };
+  const updateDeepChildCategory = async (item: any) => {
+    const formData = new FormData();
+
+    formData.append("documentId", item.documentId);
+    formData.append("firstTitle", item.firstTitle);
+    formData.append("secondTitle", item.secondTitle);
+    formData.append("description", item.description);
+
+    formData.append("deepCategoryVisible", String(item.deepCategoryVisible));
+
+    formData.append("firstTitleVisible", String(item.firstTitleVisible));
+    formData.append("secondTitleVisible", String(item.secondTitleVisible));
+    formData.append("descriptionVisible", String(item.descriptionVisible));
+
+    formData.append("originalPrice", String(item.originalPrice ?? ""));
+    formData.append("currentPrice", String(item.currentPrice ?? ""));
+    formData.append("priceAfterGst", String(item.priceAfterGst ?? ""));
+
+    if (item.imageFile instanceof File) {
+      formData.append("imageUri", item.imageFile);
+    }
+
+    try {
+      await axios.put(
+        `${BASE_URL}/main/${item.mainCategoryId}/child/${item.childCategoryId}/deep/${item.documentId}`,
+        formData,
+        { headers: getAuthHeaders() }
+      );
+    } catch (err) {
+      console.error("❌ Failed to update deep child", err);
+      throw err;
+    }
+  };
+  const updateDeepChildCategoryWithSub = async (item: any) => {
+    const formData = new FormData();
+
+    formData.append("documentId", item.documentId);
+    formData.append("firstTitle", item.firstTitle);
+    formData.append("secondTitle", item.secondTitle);
+    formData.append("description", item.description);
+
+    formData.append("deepCategoryVisible", String(item.deepCategoryVisible));
+
+    if (item.imageFile instanceof File) {
+      formData.append("imageUri", item.imageFile);
+    }
+
+    try {
+      await axios.put(
+        `${BASE_URL}/main/${item.mainCategoryId}/sub/${item.subCategoryId}/child/${item.childCategoryId}/deep/${item.documentId}`,
+        formData,
+        { headers: getAuthHeaders() }
+      );
+    } catch (err) {
+      console.error("❌ Failed to update deep child (sub)", err);
+      throw err;
+    }
+  };
+  const updateSubDeepChildCategory = async (item: any) => {
+    const formData = new FormData();
+
+    formData.append("documentId", item.documentId);
+    formData.append("firstTitle", item.firstTitle);
+    formData.append("secondTitle", item.secondTitle);
+    formData.append("description", item.description);
+
+    formData.append("subDeepCategoryVisible", String(item.subDeepCategoryVisible));
+
+    if (item.imageFile instanceof File) {
+      formData.append("imageUri", item.imageFile);
+    }
+
+    const baseUrl = item.subCategoryId
+      ? `${BASE_URL}/main/${item.mainCategoryId}/sub/${item.subCategoryId}/child/${item.childCategoryId}/deep/${item.deepChildCategoryId}/sub/${item.documentId}`
+      : `${BASE_URL}/main/${item.mainCategoryId}/child/${item.childCategoryId}/deep/${item.deepChildCategoryId}/sub/${item.documentId}`;
+
+    try {
+      await axios.put(baseUrl, formData, {
+        headers: getAuthHeaders(),
+      });
+    } catch (err) {
+      console.error("❌ Failed to update sub-deep child", err);
+      throw err;
+    }
+  };
+
+
+
   const fetchSubCategories = async (mainId: string) => {
     try {
       const token = localStorage.getItem("token");
 
       const res = await axios.get(
-        `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/sub`,
+        `${BASE_URL}/main/${mainId}/sub`,
         {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
-            "x-api-token": "super_secure_token",
+            "x-api-token": API_TOKEN,
           },
         }
       );
@@ -299,8 +575,8 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
           hasSubCategory: true,
           mainCategoryId: mainId,
           parentName: parentName, // Add explicit parent name
-          parentName: parentName,
           isSubCategoryVisible: item.isSubCategoryVisible ?? item.visible ?? true,
+          isSubCategoryNameVisible: item.isSubCategoryNameVisible ?? true, // Default to true
           isSubCategoryImageVisible: item.isSubCategoryImageVisible ?? true,
         }));
       } else {
@@ -316,6 +592,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
           rawChild: value,
           parentName: parentName,
           isSubCategoryVisible: value.isSubCategoryVisible ?? value.visible ?? true,
+          isSubCategoryNameVisible: value.isSubCategoryNameVisible ?? true, // Default to true
           isSubCategoryImageVisible: value.isSubCategoryImageVisible ?? true,
         }));
       }
@@ -358,15 +635,15 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       const token = localStorage.getItem("token");
 
       const url = subId
-        ? `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/sub/${subId}/child`
-        : `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/child`;
+        ? `${BASE_URL}/main/${mainId}/sub/${subId}/child`
+        : `${BASE_URL}/main/${mainId}/child`;
 
       console.log("🚀 CHILD CATEGORY URL:", url);
 
       const response = await axios.get(url, {
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
-          "x-api-token": "super_secure_token",
+          "x-api-token": API_TOKEN,
           "Content-Type": "application/json",
         },
       });
@@ -395,12 +672,20 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // ✅ OBJECT → ARRAY CONVERSION (IMPORTANT FIX)
+      // ✅ OBJECT → ARRAY CONVERSION (IMPORTANT FIX)
       const list = Array.isArray(rawData)
-        ? rawData.map((item: any) => ({ ...item, parentName }))
+        ? rawData.map((item: any) => ({
+          ...item,
+          parentName,
+          mainCategoryId: mainId,
+          subCategoryId: subId
+        }))
         : Object.entries(rawData).map(([id, value]: any) => ({
           documentId: id,
           ...value,
-          parentName
+          parentName,
+          mainCategoryId: mainId,
+          subCategoryId: subId
         }));
 
       console.log("✅ FINAL CHILD CATEGORY LIST:", list);
@@ -426,23 +711,28 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   ) => {
     setDeepChildCategories([]);
     try {
-      if (!mainId || !childId) return;
+      if (!mainId || !childId) {
+        console.error("❌ Missing IDs for Deep Fetch:", { mainId, childId });
+        return;
+      }
 
       let url = "";
 
       // 🔥 CASE 1: WITH SUB CATEGORY
       if (subId) {
-        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/sub/${subId}/child/${childId}/deep`;
+        url = `${BASE_URL}/main/${mainId}/sub/${subId}/child/${childId}/deep`;
       }
       // 🔥 CASE 2: WITHOUT SUB CATEGORY
       else {
-        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/child/${childId}/deep`;
+        url = `${BASE_URL}/main/${mainId}/child/${childId}/deep`;
       }
 
       console.log("🚀 FETCH DEEP URL:", url);
 
       const res = await api.get(url);
+      console.log("🔥 FULL API RESPONSE:", res); // Debug full response
       const rawData = res.data?.data || {};
+      console.log("🔥 RAW DATA FROM API:", rawData); // Debug raw data
 
       // 🔥 OBJECT → ARRAY FIX & INJECT PARENT IDs
       const list = (Array.isArray(rawData)
@@ -457,7 +747,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
           subCategoryId: subId
         }));
 
-      console.log("✅ FINAL DEEP CHILD LIST:", list);
+      console.log("✅ FINAL DEEP CHILD LIST (Set to State):", list);
 
       setDeepChildCategories(list);
     } catch (error: any) {
@@ -465,100 +755,195 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       setDeepChildCategories([]);
     }
   };
-  // subDeepChildCategories
+  /* ===============================
+      FETCH SUB DEEP CHILD CATEGORIES (FIXED)
+  =============================== */
+
   const fetchSubDeepChildCategories = async (
     mainId: string,
     childKey: string,
     deepKey: string,
     subId?: string | null
   ) => {
-    setSubDeepChildCategories([]);
     try {
-      if (!mainId || !childKey || !deepKey) return;
+      if (!mainId || !childKey || !deepKey) {
+        console.error("❌ Missing keys for Sub Deep Fetch:", { mainId, childKey, deepKey });
+        return [];
+      }
 
+      setIsLoadingSubDeep(true); // START LOADING
       let url = "";
 
-      // 🔥 WITH SUB CATEGORY
-      if (subId) {
-        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/sub/${subId}/child/${encodeURIComponent(childKey)}/deep/${encodeURIComponent(deepKey)}`;
-      }
-      // 🔥 WITHOUT SUB CATEGORY
-      else {
-        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/child/${encodeURIComponent(childKey)}/deep/${encodeURIComponent(deepKey)}`;
+      // Ensure subId is a valid non-empty string
+      if (subId && typeof subId === 'string' && subId.trim() !== "") {
+        url = `${BASE_URL}/main/${mainId}/sub/${subId}/child/${childKey}/deep/${deepKey}/sub`;
+      } else {
+        url = `${BASE_URL}/main/${mainId}/child-key/${childKey}/deep/${deepKey}/sub`;
       }
 
       console.log("🚀 FETCH SUB-DEEP URL:", url);
 
       const res = await api.get(url);
 
-      // ✅ ROBUST DATA EXTRACTION
-      let rawData = res.data?.data;
-      if (!rawData && res.data?.result) rawData = res.data.result;
-      if (!rawData) rawData = {};
+      // Detailed Debugging
+      console.log("🧪 SUB-DEEP RESPONSE STATUS:", res.status);
+      try {
+        console.log("🧪 SUB-DEEP RESPONSE BODY:", JSON.stringify(res.data, null, 2));
+      } catch (e) { console.log("🧪 SUB-DEEP RESPONSE BODY (Unstringifyable):", res.data); }
 
-      console.log("🔥 SUB-DEEP RAW DATA:", rawData);
 
-      const list = (Array.isArray(rawData)
-        ? rawData
-        : Object.entries(rawData).map(([id, value]: any) => ({
-          subDeepKey: id,
-          documentId: id, // Consistent naming
-          id: id,
-          ...value,
-        }))).map((item: any) => ({
-          ...item,
-          mainCategoryId: mainId,
-          childCategoryId: childKey,
-          deepChildCategoryId: deepKey,
-          subCategoryId: subId
-        }));
+      // Helper to find the payload
+      const findPayload = (obj: any): any => {
+        if (!obj) return [];
 
-      console.log("✅ FINAL SUB-DEEP LIST:", list);
+        // 1. Direct Array
+        if (Array.isArray(obj)) return obj;
+
+        // 2. Known Wrapper Keys (Prioritized)
+        // Check for plural/singular specific keys
+        if (obj.subDeepChildCategories && typeof obj.subDeepChildCategories === 'object') {
+          return findPayload(obj.subDeepChildCategories); // Recurse to handle if it's an array or map
+        }
+        if (obj.subDeepChildCategory && typeof obj.subDeepChildCategory === 'object') {
+          return findPayload(obj.subDeepChildCategory);
+        }
+
+        // 3. Generic Data Keys (Only if they contain substantial data)
+        if (obj.data && typeof obj.data === 'object' && Object.keys(obj.data).length > 0) {
+          return findPayload(obj.data);
+        }
+        if (obj.result && typeof obj.result === 'object' && Object.keys(obj.result).length > 0) {
+          return findPayload(obj.result);
+        }
+
+        // 4. Fallback: Assume the object itself is the map if it has keys that aren't metadata
+        const keys = Object.keys(obj);
+        const isMetadata = (k: string) => ["success", "message", "status", "count", "docId"].includes(k);
+        const hasDataKeys = keys.some(k => !isMetadata(k));
+
+        if (hasDataKeys) {
+          // Return object without metadata
+          const { success, message, status, count, docId, ...rest } = obj;
+          return rest;
+        }
+
+        return [];
+      };
+
+      let rawData = findPayload(res.data);
+      console.log("🧪 EXTRACTED RAW DATA:", { type: Array.isArray(rawData) ? 'Array' : typeof rawData, keys: Object.keys(rawData || {}) });
+
+      // Final processing
+      let list: any[] = [];
+
+      // Helper to flatten item data
+      const flattenItem = (item: any) => {
+        if (!item) return {};
+        // Prioritize detailedData, then data, then the item itself
+        const core = item.detailedData || item.data || item;
+        // Ensure we keep the ID and external keys if core was nested
+        return { ...item, ...core };
+      };
+
+      if (Array.isArray(rawData)) {
+        list = rawData.map((rawItem: any) => {
+          const item = flattenItem(rawItem);
+          return {
+            ...item,
+            id: item.documentId || item._id || item.id,
+            subDeepKey: item.documentId || item._id || item.id,
+            mainCategoryId: mainId,
+            childCategoryId: childKey,
+            deepChildCategoryId: deepKey,
+            subCategoryId: subId || null,
+            subDeepCategoryVisible: item.subDeepCategoryVisible ?? item.visible ?? false
+          }
+        });
+      } else if (typeof rawData === 'object' && rawData !== null) {
+        list = Object.entries(rawData).map(([key, value]: any) => {
+          if (typeof value !== 'object' || value === null) return null;
+          const item = flattenItem(value);
+          return {
+            id: key,
+            documentId: key,
+            subDeepKey: key,
+            ...item,
+            mainCategoryId: mainId,
+            childCategoryId: childKey,
+            deepChildCategoryId: deepKey,
+            subCategoryId: subId || null,
+            subDeepCategoryVisible: item.subDeepCategoryVisible ?? item.visible ?? false
+          };
+        }).filter(item => item !== null);
+      }
+
+      console.log(`✅ FINAL SUB-DEEP LIST (${list.length} Items):`, list);
+
       setSubDeepChildCategories(list);
+      setIsLoadingSubDeep(false); // STOP LOADING
       return list;
-    } catch (error) {
-      console.error("❌ Error fetching sub deep child:", error);
+
+    } catch (error: any) {
+      console.error("❌ Error fetching sub deep child:", error?.message || error);
+      setSubDeepChildCategories([]);
+      setIsLoadingSubDeep(false); // STOP LOADING
       return [];
     }
   };
 
 
-  // ACTIONS
-  const addMainCategory = async (category: {
-    _id: string;              // 🔥 REQUIRED
-    name: string;
-    visible: boolean;
-    imageVisibility: boolean;
-    isSubCategory: boolean;
-    parentId?: string | null;
-    imageUri?: string | null;
-  }) => {
+
+
+  const addMainCategory = async (category: any) => {
     try {
-      const token = localStorage.getItem("token");
+      // Check if duplicate exists (safely) : Trim ensures "Name " == "Name"
+      const normalize = (str: string) => (str || "").trim().toLowerCase();
+      if (mainCategories.some(c => normalize(c.name) === normalize(category.name))) {
+        alert("Main Category with this name already exists!");
+        return; // Stop execution
+      }
 
-      const payload = {
-        _id: category._id, // ✅ THIS IS THE FIX
-        docuemntId: category._id,
-        hasSubCategory: category.isSubCategory,
-        imageUri: category.imageUri || null,
-        isMainCategoryImageVisible: category.imageVisibility,
-        isMainCategoryNameVisible: true,
-        isMainCategoryVisible: category.visible,
+      // 🔒 OPTIMISTIC UPDATE
+      const tempId = `temp-${Date.now()}`;
+      const tempItem: any = {
+        _id: tempId,
+        id: tempId,
         name: category.name,
-        parentId: category.parentId,
-
+        hasSubCategory: category.hasSubCategory,
+        isMainCategoryVisible: category.isMainCategoryVisible,
+        imageUri: category.imageFile ? "uploading..." : null,
       };
 
-      console.log("🚀 FINAL PAYLOAD:", payload);
+      setMainCategories(prev => [...prev, tempItem]);
+
+      const token = localStorage.getItem("token");
+
+      const formData = new FormData();
+
+      formData.append("_id", category._id);
+      formData.append("documentId", category._id);
+      formData.append("name", category.name);
+      formData.append("parentId", category.parentId || "");
+      formData.append("hasSubCategory", String(category.hasSubCategory));
+      formData.append("isMainCategoryVisible", String(category.isMainCategoryVisible));
+      formData.append("isMainCategoryNameVisible", String(category.isMainCategoryNameVisible ?? true));
+      formData.append(
+        "isMainCategoryImageVisible",
+        String(category.isMainCategoryImageVisible)
+      );
+
+      if (category.imageFile) {
+        formData.append("imageUri", category.imageFile); // 🔥 multer field
+      }
 
       const res = await axios.post(
-        "https://api.bijliwalaaya.in/api/product-listing/main",
-        payload,
+        BASE_URL + "/main",
+        formData,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
-            "x-api-token": "super_secure_token",
-            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+            "x-api-token": API_TOKEN,
+            // ❌ Content-Type MAT LIKHO
           },
         }
       );
@@ -566,64 +951,70 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       await fetchMainCategories();
       return res.data;
     } catch (error: any) {
-      console.error("API Error:", error.response?.data || error.message);
-      throw new Error(
-        error.response?.data?.message || "Failed to save main category"
-      );
-    }
-  };
-  const addSubCategory = async (category: {
-    _id: string;              // subCategoryId
-    name: string;
-    mainCategoryId: string;   // mainCategoryId
-    visible: boolean;
-    imageUri?: string | null;
-  }) => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const payloadSubcat = {
-        documentId: category._id,
-        name: category.name,
-
-        mainCategory: category.mainCategoryId, // ✅ VERY IMPORTANT
-
-        isSubCategoryVisible: category.visible,
-        isSubCategoryNameVisible: true,
-        isSubCategoryImageVisible: true,
-
-        imageUri: category.imageUri || null,
-      };
-
-
-      // 🔥 DEBUG (VERY IMPORTANT)
-      console.log(
-        "🚀 FINAL URL:",
-        `https://api.bijliwalaaya.in/api/product-listing/main/${payloadSubcat.mainCategory}/sub/${payloadSubcat.documentId}`
-      );
-      console.log("📦 PAYLOAD:", payloadSubcat);
-
-      const res = await axios.post(
-        `https://api.bijliwalaaya.in/api/product-listing/main/${payloadSubcat.mainCategory}/sub/${payloadSubcat.documentId}`,
-        payloadSubcat,
-        {
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
-            "x-api-token": "super_secure_token",
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      return res.data;
-    } catch (error: any) {
       console.error(
-        "❌ SubCategory Error:",
-        error.response?.data || error.message
+        "❌ ADD MAIN CATEGORY ERROR:",
+        error?.response?.status,
+        error?.response?.data || error.message
       );
-      throw new Error("Failed to save sub category");
+      // 🔙 Revert on error - remove safe check as tempId is unique
+      setMainCategories(prev => prev.filter(item => !(item._id || "").startsWith("temp-")));
+      throw error;
     }
   };
+
+
+  // const addSubCategory = async (category: {
+  //   _id: string;              // subCategoryId
+  //   name: string;
+  //   mainCategoryId: string;   // mainCategoryId
+  //   visible: boolean;
+  //   imageUri?: string | null;
+  // }) => {
+  //   try {
+  //     const token = localStorage.getItem("token");
+
+  //     const payloadSubcat = {
+  //       documentId: category._id,
+  //       name: category.name,
+
+  //       mainCategory: category.mainCategoryId, // ✅ VERY IMPORTANT
+
+  //       isSubCategoryVisible: category.visible,
+  //       isSubCategoryNameVisible: true,
+  //       isSubCategoryImageVisible: true,
+
+  //       imageUri: category.imageUri || null,
+  //     };
+
+
+  //     // 🔥 DEBUG (VERY IMPORTANT)
+  //     console.log(
+  //       "🚀 FINAL URL:",
+  //       `${BASE_URL}/main/${payloadSubcat.mainCategory}/sub/${payloadSubcat.documentId}`
+  //     );
+  //     console.log("📦 PAYLOAD:", payloadSubcat);
+
+  //     const res = await axios.post(
+  //       `${BASE_URL}/main/${payloadSubcat.mainCategory}/sub/${payloadSubcat.documentId}`,
+  //       payloadSubcat,
+  //       {
+  //         headers: {
+  //           Authorization: token ? `Bearer ${token}` : "",
+  //           "x-api-token": API_TOKEN,
+  //           "Content-Type": "application/json",
+  //         },
+  //       }
+  //     );
+
+  //     return res.data;
+  //   } catch (error: any) {
+  //     console.error(
+  //       "❌ SubCategory Error:",
+  //       error.response?.data || error.message
+  //     );
+  //     throw new Error("Failed to save sub category");
+  //   }
+  // };
   // const addChildCategory = async (category: {
   //   name: string;
   //   mainCategoryId: string;
@@ -637,8 +1028,8 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   //     const childId = category.name; 
 
   //     const url = category.subCategoryId
-  //       ? `https://api.bijliwalaaya.in/api/product-listing/main/${category.mainCategoryId}/sub/${category.subCategoryId}/child/${childId}`
-  //       : `https://api.bijliwalaaya.in/api/product-listing/main/${category.mainCategoryId}/child/${childId}`;
+  //       ? `${BASE_URL}/main/${category.mainCategoryId}/sub/${category.subCategoryId}/child/${childId}`
+  //       : `${BASE_URL}/main/${category.mainCategoryId}/child/${childId}`;
 
   //     const payload = {
   //       name: category.name,
@@ -651,7 +1042,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   //     await axios.post(url, payload, {
   //       headers: {
   //         Authorization: token ? `Bearer ${token}` : "",
-  //         "x-api-token": "super_secure_token",
+  //         "x-api-token": API_TOKEN,
   //         "Content-Type": "application/json",
   //       },
   //     });
@@ -677,11 +1068,11 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
 
   //   // ✅ WITH SUB CATEGORY
   //   if (subCategoryId) {
-  //     url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepId}`;
+  //     url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepId}`;
   //   }
   //   // ✅ WITHOUT SUB CATEGORY
   //   else {
-  //     url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepId}`;
+  //     url = `${BASE_URL}/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepId}`;
   //   }
 
   //   console.log("🌐 FINAL POST URL:", url);
@@ -719,18 +1110,100 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   //     {
   //       headers: {
   //         Authorization: token ? `Bearer ${token}` : "",
-  //         "x-api-token": "super_secure_token",
+  //         "x-api-token": API_TOKEN,
   //         "Content-Type": "application/json",
   //       },
   //     }
   //   );
   // };
+
+
+
+  const addSubCategory = async (category: Omit<SubCategory, 'documentId' | 'isSubCategoryVisible' | 'isSubCategoryNameVisible' | 'isSubCategoryImageVisible'> & { imageFile?: File | null; _id?: string }) => {
+    // Check if duplicate exists (safely) within the SAME Main Category
+    const normalize = (str: string) => (str || "").trim().toLowerCase();
+
+    // We check if name matches AND mainCategoryId matches
+    // Since 'subCategories' usually contains the list for the ACTIVE main category, 
+    // we should validly check against it.
+    // However, to be absolutely safe against state having mixed items:
+    const isDuplicate = subCategories.some(c =>
+      normalize(c.name) === normalize(category.name) &&
+      (c.mainCategoryId === category.mainCategoryId || (c as any).mainCategory === category.mainCategoryId)
+    );
+
+    if (isDuplicate) {
+      alert("Sub Category with this name already exists in this Main Category!");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    const formData = new FormData();
+
+    // Generate ID if not provided
+    const docId = category._id || generateCategoryId(category.name);
+
+    formData.append("documentId", docId);
+    formData.append("name", category.name);
+    formData.append("mainCategory", category.mainCategoryId);
+    formData.append("isSubCategoryVisible", String(category.visible));
+    formData.append("isSubCategoryNameVisible", "true");
+    formData.append("isSubCategoryImageVisible", "true");
+
+    // ✅ multer expects "image"
+    if (category.imageFile) {
+      formData.append("imageUri", category.imageFile); // 🔥 THIS WILL APPEAR NOW
+    }
+
+    console.log("📦 FORM DATA:", [...formData.entries()]);
+    console.log("🚀 SUB CATEGORY API CALL:", {
+      mainCategoryId: category.mainCategoryId,
+      documentId: docId,
+      apiUrl: `${BASE_URL}/main/${category.mainCategoryId}/sub/${docId}`
+    });
+
+    const res = await axios.post(
+      `${BASE_URL}/main/${category.mainCategoryId}/sub/${docId}`,
+      formData,
+      {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "x-api-token": API_TOKEN,
+        },
+      }
+    );
+
+    await fetchSubCategories(category.mainCategoryId);
+    return res.data;
+  };
+
   const addChildCategory = async (category: {
     name: string;
     mainCategoryId: string;
     subCategoryId?: string | null;
     visible: boolean;
   }) => {
+    // Check if duplicate exists (safely)
+    const normalize = (str: string) => (str || "").trim().toLowerCase();
+    if (childCategories.some(c => normalize(c.name) === normalize(category.name))) {
+      alert("Child Category with this name already exists!");
+      return;
+    }
+
+    // 🔒 OPTIMISTIC UPDATE
+    const tempId = `temp-${Date.now()}`;
+    const tempItem: any = {
+      _id: tempId,
+      documentId: tempId,
+      name: category.name,
+      visible: category.visible,
+      subCategoryId: category.subCategoryId,
+      mainCategoryId: category.mainCategoryId,
+      isChildCategoryVisible: true
+    };
+
+    setChildCategories(prev => [...prev, tempItem]);
+
     try {
       const token = localStorage.getItem("token");
 
@@ -738,8 +1211,8 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       const childId = encodeURIComponent(category.name);
 
       const url = category.subCategoryId
-        ? `https://api.bijliwalaaya.in/api/product-listing/main/${category.mainCategoryId}/sub/${category.subCategoryId}/child/${childId}`
-        : `https://api.bijliwalaaya.in/api/product-listing/main/${category.mainCategoryId}/child/${childId}`;
+        ? `${BASE_URL}/main/${category.mainCategoryId}/sub/${category.subCategoryId}/child/${childId}`
+        : `${BASE_URL}/main/${category.mainCategoryId}/child/${childId}`;
 
       // ✅ FIXED PAYLOAD
       const payload = {
@@ -753,11 +1226,16 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       await axios.post(url, payload, {
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
-          "x-api-token": "super_secure_token",
+          "x-api-token": API_TOKEN,
           "Content-Type": "application/json",
         },
       });
+
+      await fetchChildCategories(category.mainCategoryId, category.subCategoryId);
     } catch (error: any) {
+      // 🔙 REVERT
+      setChildCategories(prev => prev.filter(item => item.documentId !== tempId));
+
       console.error("❌ Failed to add child category:", error?.response?.data || error);
       throw new Error("Failed to add child category");
     }
@@ -787,11 +1265,11 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
 
   //   // ✅ WITH SUB CATEGORY
   //   if (subCategoryId) {
-  //     url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
+  //     url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
   //   } 
   //   // ✅ WITHOUT SUB CATEGORY
   //   else {
-  //     url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
+  //     url = `${BASE_URL}/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
   //   }
 
   //   console.log("🌐 FINAL POST URL:", url);
@@ -838,7 +1316,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   //     {
   //       headers: {
   //         Authorization: token ? `Bearer ${token}` : "",
-  //         "x-api-token": "super_secure_token",
+  //         "x-api-token": API_TOKEN,
   //         "Content-Type": "application/json",
   //       },
   //     }
@@ -870,11 +1348,11 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
 
   //   // ✅ WITH SUB CATEGORY
   //   if (subCategoryId) {
-  //     url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepKey}`;
+  //     url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepKey}`;
   //   }
   //   // ✅ WITHOUT SUB CATEGORY
   //   else {
-  //     url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child-key/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepKey}`;
+  //     url = `${BASE_URL}/main/${mainCategoryId}/child-key/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepKey}`;
   //   }
 
   //   console.log("🌐 SUB-DEEP POST URL:", url);
@@ -921,7 +1399,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   //     {
   //       headers: {
   //         Authorization: token ? `Bearer ${token}` : "",
-  //         "x-api-token": "super_secure_token",
+  //         "x-api-token": API_TOKEN,
   //         "Content-Type": "application/json",
   //       },
   //     }
@@ -945,9 +1423,9 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   //   let url = "";
 
   //   if (subCategoryId) {
-  //     url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
+  //     url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
   //   } else {
-  //     url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
+  //     url = `${BASE_URL}/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
   //   }
 
   //   // ✅ ✅ ✅ FINAL PAYLOAD (YAHIN ADD KARNA HAI)
@@ -990,7 +1468,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   //   return axios.post(url, payload, {
   //     headers: {
   //       Authorization: token ? `Bearer ${token}` : "",
-  //       "x-api-token": "super_secure_token",
+  //       "x-api-token": API_TOKEN,
   //       "Content-Type": "application/json",
   //     },
   //   });
@@ -1011,12 +1489,19 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    // Check for duplicate
+    // Assuming deepChildId is the "name" or key we want to be unique in this list
+    if (deepChildCategories.some(c => (c.id || c.documentId || "").toLowerCase() === deepChildId.toLowerCase())) {
+      alert("Deep Child Category with this name/ID already exists!");
+      return;
+    }
+
     let url = "";
 
     if (subCategoryId) {
-      url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
+      url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
     } else {
-      url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
+      url = `${BASE_URL}/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
     }
 
     // ✅ FINAL PAYLOAD (AS YOU WANT)
@@ -1064,7 +1549,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
     return axios.post(url, payload, {
       headers: {
         Authorization: token ? `Bearer ${token}` : "",
-        "x-api-token": "super_secure_token",
+        "x-api-token": API_TOKEN,
         "Content-Type": "application/json",
       },
     });
@@ -1095,11 +1580,11 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
 
   //   // ✅ WITH SUB CATEGORY
   //   if (subCategoryId) {
-  //     url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepKey}`;
+  //     url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepKey}`;
   //   }
   //   // ✅ WITHOUT SUB CATEGORY
   //   else {
-  //     url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child-key/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepKey}`;
+  //     url = `${BASE_URL}/main/${mainCategoryId}/child-key/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepKey}`;
   //   }
 
   //   console.log("🌐 SUB-DEEP POST URL:", url);
@@ -1147,7 +1632,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   //     {
   //       headers: {
   //         Authorization: token ? `Bearer ${token}` : "",
-  //         "x-api-token": "super_secure_token",
+  //         "x-api-token": API_TOKEN,
   //         "Content-Type": "application/json",
   //       },
   //     }
@@ -1165,15 +1650,23 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       subDeepKey,
     } = data;
 
+    // Check for duplicate
+    if (subDeepChildCategories.some(c => (c.id || c.subDeepKey || "").toLowerCase() === subDeepKey.toLowerCase())) {
+      alert("Sub Deep Child Category with this name/ID already exists!");
+      return;
+    }
+
     let url = "";
 
     if (subCategoryId) {
-      url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepKey}`;
+      // ✅ User confirmed: Use 'child' for sub-category path
+      url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${encodeURIComponent(childCategoryId)}/deep/${encodeURIComponent(deepChildCategoryId)}/sub/${encodeURIComponent(subDeepKey)}`;
     } else {
-      url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepKey}`;
+      // ✅ User confirmed: Use 'child-key' for direct path
+      url = `${BASE_URL}/main/${mainCategoryId}/child-key/${encodeURIComponent(childCategoryId)}/deep/${encodeURIComponent(deepChildCategoryId)}/sub/${encodeURIComponent(subDeepKey)}`;
     }
 
-    return axios.post(
+    await axios.post(
       url,
       {
         // 📝 CONTENT
@@ -1218,11 +1711,20 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       {
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
-          "x-api-token": "super_secure_token",
+          "x-api-token": API_TOKEN,
           "Content-Type": "application/json",
         },
       }
     );
+
+    // 🔥 REFRESH LIST
+    await fetchSubDeepChildCategories(
+      mainCategoryId,
+      childCategoryId,
+      deepChildCategoryId,
+      subCategoryId
+    );
+
   };
 
 
@@ -1258,21 +1760,17 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       const child = childCategories.find(c => (c.documentId || (c as any)._id || (c as any).id) === id);
       if (!child) return;
 
-      // Try to find sub - if not found, it might be a direct child of main? 
-      // Current context assumes hierarchical structure for deletion, need to be careful.
-      // For now, finding sub is safest if we follow the full path.
-      // If we don't have subId, maybe we can delete directly if backend supports it or if we stored parentId.
+      // Extract IDs from the child object (injected during fetch)
+      const { mainCategoryId, subCategoryId } = child as any;
 
-      const sub = subCategories.find(s => (s.documentId || (s as any)._id || (s as any).id) === child.subCategoryId);
-      // NOTE: strict dependency on sub might be issue if we navigated directly. 
-      // But for now, let's assume we have it or modify backend to simple delete.
-
-      if (sub) {
-        await api.delete(`/main/${sub.mainCategoryId}/sub/${sub.documentId}/child/${id}`);
+      if (subCategoryId) {
+        // Case 1: With Subcategory
+        console.log(`🗑️ Deleting Child (with sub): Main=${mainCategoryId}, Sub=${subCategoryId}, Child=${id}`);
+        await api.delete(`/main/${mainCategoryId}/sub/${subCategoryId}/child/${id}`);
       } else {
-        // Fallback: maybe direct child of main? user needs to fix this if architecture supports it
-        console.warn("Parent SubCategory not found for deletion, trying direct?");
-        // await api.delete(...) // Risk.
+        // Case 2: Direct Child
+        console.log(`🗑️ Deleting Child (direct): Main=${mainCategoryId}, Child=${id}`);
+        await api.delete(`/main/${mainCategoryId}/child/${id}`);
       }
 
       setChildCategories((prev) => prev.filter((cat) => (cat.documentId || (cat as any)._id || (cat as any).id) !== id));
@@ -1287,41 +1785,152 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       const deep = deepChildCategories.find(d => (d.id || (d as any)._id || (d as any).documentId) === id);
       if (!deep) return;
 
+      const { mainCategoryId, subCategoryId, childCategoryId } = deep as any;
+
+      if (subCategoryId) {
+        await api.delete(`/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${id}`);
+      } else {
+        await api.delete(`/main/${mainCategoryId}/child/${childCategoryId}/deep/${id}`);
+      }
+
       setDeepChildCategories((prev) => prev.filter((cat) => (cat.id || (cat as any)._id || (cat as any).documentId) !== id));
-      // Add API call if needed
     } catch (e) {
-      console.error(e);
+      console.error("Failed to delete deep child category", e);
+      alert("Failed to delete Deep Child Category");
     }
   };
 
-  // SubDeepChildCategory deletion (local only)
-  const deleteSubDeepChildCategory = (id: string) => {
-    setSubDeepChildCategories((prev) => prev.filter((cat) => (cat.id || (cat as any)._id) !== id));
+  // SubDeepChildCategory deletion
+  const deleteSubDeepChildCategory = async (id: string) => {
+    try {
+      const subDeep = subDeepChildCategories.find(s => (s.id || (s as any)._id || (s as any).documentId || (s as any).subDeepKey) === id);
+      if (!subDeep) return;
+
+      const { mainCategoryId, subCategoryId, childCategoryId, deepChildCategoryId } = subDeep as any;
+
+      if (subCategoryId) {
+        await api.delete(`/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${id}`);
+      } else {
+        await api.delete(`/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${id}`);
+      }
+
+      setSubDeepChildCategories((prev) => prev.filter((cat) => (cat.id || (cat as any)._id || (cat as any).subDeepKey) !== id));
+    } catch (e) {
+      console.error("Failed to delete sub deep child category", e);
+      alert("Failed to delete Sub Deep Child Category");
+    }
   };
 
   // TOGGLE VISIBILITY
+  // const toggleMainVisibility = async (id: string) => {
+  //   const cat = mainCategories.find(c => c._id === id);
+  //   if (!cat) return;
+
+  //   // Toggle
+  //   const newVal = !cat.isMainCategoryVisible;
+  //   // We use isMainCategoryVisible based on interface, but previously used visible. 
+  //   // Let's normalize update.
+
+  //   const updated = { ...cat, isMainCategoryVisible: newVal, visible: newVal };
+
+  //   // Optimistic update
+  //   setMainCategories(prev => prev.map(c => c._id === id ? updated : c));
+  //   try {
+  //     await api.put(`/main/${id}`, updated);
+  //   } catch (e) {
+  //     console.error("Failed to toggle main visibility", e);
+  //     // Revert on failure
+  //     setMainCategories(prev => prev.map(c => c._id === id ? cat : c));
+  //     alert("Failed to update visibility");
+  //   }
+  // };
   const toggleMainVisibility = async (id: string) => {
     const cat = mainCategories.find(c => c._id === id);
     if (!cat) return;
 
-    // Toggle
     const newVal = !cat.isMainCategoryVisible;
-    // We use isMainCategoryVisible based on interface, but previously used visible. 
-    // Let's normalize update.
 
-    const updated = { ...cat, isMainCategoryVisible: newVal, visible: newVal };
+    // ✅ Optimistic UI
+    setMainCategories(prev =>
+      prev.map(c =>
+        c._id === id ? { ...c, isMainCategoryVisible: newVal } : c
+      )
+    );
 
-    // Optimistic update
-    setMainCategories(prev => prev.map(c => c._id === id ? updated : c));
     try {
-      await api.put(`/main/${id}`, updated);
-    } catch (e) {
-      console.error("Failed to toggle main visibility", e);
-      // Revert on failure
-      setMainCategories(prev => prev.map(c => c._id === id ? cat : c));
-      alert("Failed to update visibility");
+      const token = localStorage.getItem("token");
+
+      await axios.put(
+        `${BASE_URL}/main/${id}`,
+        { isMainCategoryVisible: newVal }, // 🔥 ONLY THIS FIELD
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-token": API_TOKEN,
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        }
+      );
+    } catch (err) {
+      console.error("❌ toggleMainVisibility failed", err);
+
+      // 🔁 revert UI
+      setMainCategories(prev =>
+        prev.map(c => (c._id === id ? cat : c))
+      );
     }
   };
+
+  const toggleMainNameVisibility = async (id: string) => {
+    const cat = mainCategories.find(c => c._id === id);
+    if (!cat) return;
+
+    const newVal = !cat.isMainCategoryNameVisible;
+
+    // ✅ Optimistic UI
+    setMainCategories(prev =>
+      prev.map(c =>
+        c._id === id ? { ...c, isMainCategoryNameVisible: newVal } : c
+      )
+    );
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const payload = {
+        name: cat.name,
+        imageUri: cat.imageUri || null,
+
+        isMainCategoryVisible: cat.isMainCategoryVisible,
+        isMainCategoryNameVisible: newVal,          // 🔥 ONLY CHANGE
+        isMainCategoryImageVisible: cat.isMainCategoryImageVisible,
+
+        hasSubCategory: cat.hasSubCategory,
+        parentId: cat.parentId || null,
+      };
+
+      await axios.put(
+        `${BASE_URL}/main/${id}`,
+        payload,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-token": API_TOKEN,
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        }
+      );
+    } catch (err) {
+      console.error("❌ toggleMainNameVisibility failed", err);
+
+      // 🔁 revert UI
+      setMainCategories(prev =>
+        prev.map(c => (c._id === id ? cat : c))
+      );
+    }
+  };
+
+
 
   const toggleMainIsSub = async (id: string) => {
     const cat = mainCategories.find(c => c._id === id);
@@ -1373,16 +1982,97 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
     setSubCategories(prev => prev.map(c => (c.documentId || (c as any)._id) === id ? updated : c));
 
     try {
-      await api.put(`/main/${cat.mainCategoryId}/sub/${id}`, {
-        ...updated,
-        // Ensure backend fields are correct
+      // ✅ Construct Clean Payload matching addSubCategory structure
+      const payload = {
+        name: cat.name,
+        mainCategory: cat.mainCategoryId, // Ensure this matches addSubCategory param
         isSubCategoryVisible: newVal,
-        visible: newVal
-      });
+        visible: newVal, // ✅ Add visible alias to ensure backend sync
+        isSubCategoryNameVisible: cat.isSubCategoryNameVisible ?? true, // Maintain state
+        isSubCategoryImageVisible: cat.isSubCategoryImageVisible,
+        hasSubCategory: cat.hasSubCategory,
+        imageUri: cat.imageUri || null,
+      };
+
+      console.log("🚀 Toggle Sub Visibility Payload:", payload);
+
+      await api.put(`/main/${cat.mainCategoryId}/sub/${id}`, payload);
     } catch (e) {
       console.error("Failed to toggle sub visibility", e);
       // Revert
       setSubCategories(prev => prev.map(c => (c.documentId || (c as any)._id) === id ? cat : c));
+    }
+  };
+
+  // const toggleSubNameVisibility = async (id: string) => {
+  //   const cat = subCategories.find(c => (c.documentId || (c as any)._id) === id);
+  //   if (!cat) return;
+
+  //   const newVal = !cat.isSubCategoryNameVisible;
+  //   const updated = {
+  //     ...cat,
+  //     isSubCategoryNameVisible: newVal
+  //   };
+
+  //   setSubCategories(prev => prev.map(c => (c.documentId || (c as any)._id) === id ? updated : c));
+
+  //   try {
+  //     // ✅ Construct Clean Payload matching addSubCategory structure
+  //     const payload = {
+  //       name: cat.name,
+  //       mainCategory: cat.mainCategoryId, // Ensure this matches addSubCategory param
+  //       isSubCategoryVisible: newVal, // ✅ Sync with Name Visibility
+  //       isSubCategoryNameVisible: newVal, // ✅ Toggle this
+  //       isSubCategoryImageVisible: cat.isSubCategoryImageVisible,
+  //       hasSubCategory: cat.hasSubCategory,
+  //       imageUri: cat.imageUri || null,
+  //     };
+
+  //     console.log("🚀 Toggle Sub Name Visibility Payload:", payload);
+
+  //     await api.put(`/main/${cat.mainCategoryId}/sub/${id}`, payload);
+  //   } catch (e) {
+  //     console.error("Failed to toggle sub name visibility", e);
+  //     // Revert
+  //     setSubCategories(prev => prev.map(c => (c.documentId || (c as any)._id) === id ? cat : c));
+  //   }
+  // };
+  const toggleSubNameVisibility = async (id: string) => {
+    const cat = subCategories.find(c => c.documentId === id);
+    if (!cat) return;
+
+    const newVal = !cat.isSubCategoryNameVisible;
+
+    const updated = {
+      ...cat,
+      isSubCategoryNameVisible: newVal
+    };
+
+    // Optimistic UI
+    setSubCategories(prev =>
+      prev.map(c => c.documentId === id ? updated : c)
+    );
+
+    try {
+      const payload = {
+        name: cat.name,
+        mainCategory: cat.mainCategoryId,
+
+        // 🔒 KEEP EXISTING VALUES
+        isSubCategoryVisible: cat.isSubCategoryVisible,
+        visible: cat.isSubCategoryVisible, // ✅ Ensure visible is passed
+        isSubCategoryNameVisible: newVal,
+        isSubCategoryImageVisible: cat.isSubCategoryImageVisible,
+
+        hasSubCategory: cat.hasSubCategory,
+        imageUri: cat.imageUri || null,
+      };
+
+      await api.put(`/main/${cat.mainCategoryId}/sub/${id}`, payload);
+    } catch (e) {
+      setSubCategories(prev =>
+        prev.map(c => c.documentId === id ? cat : c)
+      );
     }
   };
 
@@ -1399,7 +2089,21 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
     setSubCategories(prev => prev.map(c => (c.documentId || (c as any)._id) === id ? updated : c));
 
     try {
-      await api.put(`/main/${cat.mainCategoryId}/sub/${id}`, updated);
+      // ✅ Construct Clean Payload
+      const payload = {
+        name: cat.name,
+        mainCategory: cat.mainCategoryId,
+        isSubCategoryVisible: cat.isSubCategoryVisible, // Keep existing
+        visible: cat.isSubCategoryVisible, // ✅ Ensure visible is passed
+        isSubCategoryNameVisible: cat.isSubCategoryNameVisible ?? true, // Maintain state
+        isSubCategoryImageVisible: newVal,              // ✅ Toggle this
+        hasSubCategory: cat.hasSubCategory,
+        imageUri: cat.imageUri || null,
+      };
+
+      console.log("🚀 Toggle Sub Image Visibility Payload:", payload);
+
+      await api.put(`/main/${cat.mainCategoryId}/sub/${id}`, payload);
     } catch (e) {
       console.error("Failed to toggle sub image visibility", e);
       setSubCategories(prev => prev.map(c => (c.documentId || (c as any)._id) === id ? cat : c));
@@ -1419,7 +2123,21 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
     setSubCategories(prev => prev.map(c => (c.documentId || (c as any)._id) === id ? updated : c));
 
     try {
-      await api.put(`/main/${cat.mainCategoryId}/sub/${id}`, updated);
+      // ✅ Construct Clean Payload
+      const payload = {
+        name: cat.name,
+        mainCategory: cat.mainCategoryId,
+        isSubCategoryVisible: cat.isSubCategoryVisible,
+        visible: cat.isSubCategoryVisible, // ✅ Ensure visible is passed
+        isSubCategoryNameVisible: cat.isSubCategoryNameVisible ?? true, // Maintain state
+        isSubCategoryImageVisible: cat.isSubCategoryImageVisible,
+        hasSubCategory: newVal, // ✅ Toggle this
+        imageUri: cat.imageUri || null,
+      };
+
+      console.log("🚀 Toggle Sub Has SubCategory Payload:", payload);
+
+      await api.put(`/main/${cat.mainCategoryId}/sub/${id}`, payload);
     } catch (e) {
       console.error("Failed to toggle sub hasSubCategory", e);
       setSubCategories(prev => prev.map(c => (c.documentId || (c as any)._id) === id ? cat : c));
@@ -1460,13 +2178,10 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (url) {
-        // Send ALL variations to ensure backend updates the right one
+        // Send CLEAN payload as requested (Name + Visibility only)
         const payload = {
-          ...cat,
-          visible: newVal,
-          visibility: newVal, // ✅ Lowercase 'visibility' matches your DB screenshot
-          Visibility: newVal,
-          isChildCategoryVisible: newVal
+          name: cat.name,
+          visibility: newVal
         };
 
         console.log("🚀 Toggling Child Visibility:", url, payload);
@@ -1487,20 +2202,34 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
     const cat = deepChildCategories.find(c => (c.id || (c as any).documentId) === id);
     if (!cat) return;
 
-    // Determine current value safety
-    const currentVal = (cat as any)[field] ?? false;
+    // ✅ Map UI fields to Backend fields
+    let backendField = field;
+    if (field === "childCatVideosVisible") backendField = "videoVisible"; // Map video toggle
+    if (field === "visible") backendField = "deepCategoryVisible";
+
+    // ✅ Determine New Value
+    // Check both keys to be safe
+    const currentVal = (cat as any)[field] ?? (cat as any)[backendField] ?? false;
     const newVal = !currentVal;
 
-    const updated = { ...cat, [field]: newVal };
+    // ✅ Create Updated Local Object
+    const updated = {
+      ...cat,
+      [field]: newVal,
+      [backendField]: newVal
+    };
 
-    // Toggle main visibility alias if needed
-    if (field === "deepCategoryVisible") {
+    // Sync aliases
+    if (backendField === "deepCategoryVisible") {
       updated.visible = newVal;
+      updated.deepCategoryVisible = newVal;
+    }
+    if (backendField === "videoVisible") {
+      updated.childCatVideosVisible = newVal;
+      updated.videoVisible = newVal;
     }
 
-    setDeepChildCategories(prev => prev.map(c => (c.id || (c as any).documentId) === id ? updated : c));
-
-    // Optimistic UI
+    // ✅ Optimistic UI Update
     setDeepChildCategories(prev => prev.map(c => (c.id || (c as any).documentId) === id ? updated : c));
 
     try {
@@ -1508,8 +2237,6 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       const mainCategoryId = cat.mainCategoryId;
       const childCategoryId = cat.childCategoryId;
       const subCategoryId = cat.subCategoryId;
-
-      // Ensure specific ID is used for URL
       const deepId = cat.id || (cat as any).documentId;
 
       if (!mainCategoryId || !childCategoryId) {
@@ -1519,46 +2246,92 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
 
       let url = "";
       if (subCategoryId) {
-        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepId}`;
+        url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepId}`;
       } else {
-        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepId}`;
+        url = `${BASE_URL}/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepId}`;
       }
 
-      console.log(`🚀 Updating Deep Child Field [${field}] to [${newVal}]`, url);
+      // ✅ Construct Clean Payload with ALL Visibility Flags
+      // This ensures we don't accidentally unset other flags or send incomplete data
+      const payload = {
+        ...cat, // Start with existing data
 
-      await axios.put(url, updated, {
+        // Explicitly set the field we are changing
+        [backendField]: newVal,
+
+        // Ensure specific fields are present (fallback to existing or logic)
+        deepCategoryVisible: backendField === "deepCategoryVisible" ? newVal : (cat.deepCategoryVisible ?? cat.visible ?? true),
+        visible: backendField === "deepCategoryVisible" ? newVal : (cat.visible ?? cat.deepCategoryVisible ?? true),
+
+        firstTitleVisible: backendField === "firstTitleVisible" ? newVal : (cat.firstTitleVisible ?? true),
+        secondTitleVisible: backendField === "secondTitleVisible" ? newVal : (cat.secondTitleVisible ?? true),
+        descriptionVisible: backendField === "descriptionVisible" ? newVal : (cat.descriptionVisible ?? true),
+
+        webviewUrlVisible: backendField === "webviewUrlVisible" ? newVal : (cat.webviewUrlVisible ?? true),
+        originalPriceVisible: backendField === "originalPriceVisible" ? newVal : (cat.originalPriceVisible ?? true),
+        currentPriceVisible: backendField === "currentPriceVisible" ? newVal : (cat.currentPriceVisible ?? true),
+
+        minTimeVisible: backendField === "minTimeVisible" ? newVal : (cat.minTimeVisible ?? true),
+        maxTimeVisible: backendField === "maxTimeVisible" ? newVal : (cat.maxTimeVisible ?? true),
+
+        photoVisible: backendField === "photoVisible" ? newVal : (cat.photoVisible ?? true),
+
+        // Handle Video Mapping Correctly
+        videoVisible: backendField === "videoVisible" ? newVal : (cat.videoVisible ?? cat.childCatVideosVisible ?? true),
+        childCatVideosVisible: backendField === "videoVisible" ? newVal : (cat.childCatVideosVisible ?? cat.videoVisible ?? true),
+      };
+
+      console.log(`🚀 Updating Deep Child Field [${backendField}] to [${newVal}]`, url, payload);
+
+      await axios.put(url, payload, {
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
-          "x-api-token": "super_secure_token",
+          "x-api-token": API_TOKEN,
           "Content-Type": "application/json",
         }
       });
 
     } catch (e: any) {
       console.error("Failed to update deep child category", e.response?.data || e);
-      // Revert if needed, or just alert
-      // setDeepChildCategories(prev => prev.map(c => (c.id || (c as any).documentId) === id ? cat : c));
+      // Revert if needed
+      setDeepChildCategories(prev => prev.map(c => (c.id || (c as any).documentId) === id ? cat : c));
     }
   };
 
   const toggleSubDeepChildVisibility = async (id: string, field: string = "visible") => {
-
     // Find item
     const cat = subDeepChildCategories.find((cat) => (cat.id || (cat as any).subDeepKey || (cat as any).documentId) === id);
     if (!cat) return;
 
-    // Determine values
-    const currentVal = (cat as any)[field] ?? false;
+    // ✅ Map UI fields to Backend fields
+    let backendField = field;
+    if (field === "childCatVideosVisible") backendField = "videoVisible";
+    if (field === "visible") backendField = "subDeepCategoryVisible";
+
+    // Determine current value
+    const currentVal = (cat as any)[backendField] ?? (cat as any)[field] ?? (cat as any).visible ?? false;
     const newVal = !currentVal;
 
-    const updated = { ...cat, [field]: newVal };
-    if (field === "subDeepCategoryVisible") {
+    // Local Update Object
+    const updated = {
+      ...cat,
+      [field]: newVal,
+      [backendField]: newVal
+    };
+
+    // Sync aliases
+    if (backendField === "subDeepCategoryVisible") {
       updated.visible = newVal;
+      updated.subDeepCategoryVisible = newVal;
+    }
+    if (backendField === "videoVisible") {
+      updated.childCatVideosVisible = newVal;
+      updated.videoVisible = newVal;
     }
 
     // Optimistic Update
     setSubDeepChildCategories((prev) =>
-      prev.map((c) => (c.id === id || (c as any).subDeepKey === id) ? updated : c)
+      prev.map((c) => (c.id === id || (c as any).subDeepKey === id || (c as any).documentId === id) ? updated : c)
     );
 
     // Persist to Backend
@@ -1574,23 +2347,79 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
 
       let url = "";
 
+      // 🔥 Fix: Use /child-key/ when subCategoryId is missing, matching addSubDeepChildCategory
       if (subCategoryId) {
-        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepId}`;
+        url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${encodeURIComponent(childCategoryId)}/deep/${encodeURIComponent(deepChildCategoryId)}/sub/${encodeURIComponent(subDeepId)}`;
       } else {
-        url = `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildCategoryId}/sub/${subDeepId}`;
+        url = `${BASE_URL}/main/${mainCategoryId}/child-key/${encodeURIComponent(childCategoryId)}/deep/${encodeURIComponent(deepChildCategoryId)}/sub/${encodeURIComponent(subDeepId)}`;
       }
 
-      console.log(`🚀 Updating Sub-Deep Field [${field}] to [${newVal}]`, url);
+      // ✅ Construct Clean JSON Payload (No ...cat spread to avoid garbage)
+      const source = {
+        ...cat,
+        [backendField]: newVal,
+        subDeepCategoryVisible: backendField === "subDeepCategoryVisible" ? newVal : (cat.subDeepCategoryVisible ?? cat.visible ?? true),
+        visible: backendField === "subDeepCategoryVisible" ? newVal : (cat.visible ?? cat.subDeepCategoryVisible ?? true),
+        videoVisible: backendField === "videoVisible" ? newVal : (cat.videoVisible ?? cat.childCatVideosVisible ?? true),
+        childCatVideosVisible: backendField === "videoVisible" ? newVal : (cat.childCatVideosVisible ?? cat.videoVisible ?? true),
+      };
 
-      await axios.put(url, updated, {
+      const payload = {
+        // Core Identity
+        documentId: subDeepId,
+
+        // Content
+        firstTitle: source.firstTitle,
+        secondTitle: source.secondTitle,
+        description: source.description,
+        webviewUrl: source.webviewUrl,
+
+        // Visibility Sync
+        subDeepCategoryVisible: source.subDeepCategoryVisible,
+        visible: source.visible,
+
+        // Pricing (Pass through existing)
+        originalPrice: source.originalPrice,
+        discountType: source.discountType,
+        discountValue: source.discountValue,
+        gst: source.gst,
+        gstType: source.gstType,
+        // Ensure calculated prices are passed if they exist
+        priceAfterGst: source.priceAfterGst,
+        currentPrice: source.currentPrice,
+        currentPriceVisible: true,
+
+        // Time
+        minTime: source.minTime,
+        maxTime: source.maxTime,
+
+        // Visibility Flags
+        firstTitleVisible: source.firstTitleVisible ?? true,
+        secondTitleVisible: source.secondTitleVisible ?? true,
+        descriptionVisible: source.descriptionVisible ?? true,
+        webviewUrlVisible: source.webviewUrlVisible ?? true,
+        originalPriceVisible: source.originalPriceVisible ?? true,
+        minTimeVisible: source.minTimeVisible ?? true,
+        maxTimeVisible: source.maxTimeVisible ?? true,
+
+        // Media Flags
+        photoVisible: source.photoVisible ?? true,
+        videoVisible: source.videoVisible, // from source (synced)
+      };
+
+      console.log(`🚀 Updating Sub-Deep Field [${backendField}] to [${newVal}] via JSON Clean Payload`, url, payload);
+
+      await axios.put(url, payload, {
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
-          "x-api-token": "super_secure_token",
+          "x-api-token": API_TOKEN,
           "Content-Type": "application/json",
         }
       });
     } catch (e: any) {
       console.error("Failed to update sub-deep child category", e.response?.data || e);
+      // Revert
+      setSubDeepChildCategories(prev => prev.map(c => (c.id === id || (c as any).subDeepKey === id || (c as any).documentId === id) ? cat : c));
     }
   };
 
@@ -1615,16 +2444,25 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
         deleteDeepChildCategory,
         deleteSubDeepChildCategory, // Ensure this is here
         toggleMainVisibility,
+        toggleMainNameVisibility,
         toggleMainImageVisibility,
-        toggleMainIsSub,
-        toggleMainIsSub,
+        toggleMainIsSub,   // ✅ only once
         toggleSubVisibility,
+        toggleSubNameVisibility, // ✅ Expose this function
         toggleSubImageVisibility,
         toggleSubHasSubCategory,
         toggleChildVisibility,
         toggleDeepChildVisibility,
         toggleSubDeepChildVisibility,
+        isLoadingSubDeep,
         fetchSubCategories,
+        updateMainCategory,
+        updateSubCategory,
+        updateChildCategory,
+        updateChildCategoryWithSub,
+        updateDeepChildCategory,
+        updateDeepChildCategoryWithSub,
+        updateSubDeepChildCategory,
         fetchChildCategories,
         fetchDeepChildCategories
       }}

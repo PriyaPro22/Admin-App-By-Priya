@@ -1,36 +1,138 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎯 PriyaPro Admin App
 
-## Getting Started
+**Complete Category Management System for E-Commerce Platform**
 
-First, run the development server:
+---
 
-```bash
+## ✨ Features
+
+### Category Management (5 Levels)
+- **Main Category** - Top-level categories
+- **Sub Category** - Categories under main
+- **Child Category** - Service types (Repair, Services, Installation)
+- **Deep Child Category** - Detailed service offerings
+- **SubDeep Child Category** - Most granular level
+
+### Core Functionality
+✅ **CRUD Operations** - Create, Read, Update, Delete for all levels  
+✅ **Hierarchical Navigation** - Navigate through category tree  
+✅ **Visibility Controls** - Field-level visibility toggles  
+✅ **Media Management** - Image and video upload support  
+✅ **Price Management** - Original price, discount, GST calculations  
+✅ **Search & Filter** - Quick category search  
+✅ **Edit Mode** - Full editing support across all levels  
+
+---
+
+## 🚀 Quick Start
+
+### Development Mode
+```powershell
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Production Build
+```powershell
+npm run build
+npm start
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Access:** `http://localhost:3000`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 📚 Documentation
 
-To learn more about Next.js, take a look at the following resources:
+Detailed documentation available in:
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Complete deployment instructions
+- **[TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md)** - Quality assurance checklist
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🛠️ Tech Stack
 
-## Deploy on Vercel
+- **Framework**: Next.js 14
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Icons**: Lucide React
+- **State Management**: React Context API
+- **HTTP Client**: Fetch API
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📁 Project Structure
+
+```
+app/
+├── components/
+│   ├── forms/              # All category forms
+│   ├── CategoryList.tsx    # List view component
+│   └── InventoryDashboard.tsx  # Main dashboard
+├── context/
+│   └── CategoryContext.tsx # Global state management
+└── utils/
+    └── generateCategoryId.ts  # ID generation utility
+```
+
+---
+
+## 🔧 Configuration
+
+### API Endpoints
+Base URL: `https://api.bijliwalaaya.in/api/product-listing/`
+
+### Authentication
+- Bearer token from localStorage
+- Custom header: `x-api-token`
+
+---
+
+## 📝 Recent Updates
+
+### February 3, 2026
+- ✅ Added edit functionality for Child Categories
+- ✅ Enhanced SubDeep Category editing
+- ✅ Fixed all TypeScript errors
+- ✅ Improved error handling
+- ✅ Production-ready build
+- ✅ Complete documentation
+
+---
+
+## 🐛 Known Issues
+
+None - All critical issues resolved!
+
+---
+
+## 👨‍💻 Development
+
+### Available Scripts
+```powershell
+npm run dev      # Development server
+npm run build    # Production build
+npm start        # Start production server
+npm run lint     # Run linter
+```
+
+---
+
+## 📞 Support
+
+For issues or questions:
+1. Check **DEPLOYMENT_GUIDE.md**
+2. Review error logs in browser console
+3. Contact development team
+
+---
+
+## 📄 License
+
+Proprietary - PriyaPro Admin System
+
+---
+
+**Status:** ✅ Production Ready  
+**Version:** 1.0.0  
+**Last Updated:** February 3, 2026

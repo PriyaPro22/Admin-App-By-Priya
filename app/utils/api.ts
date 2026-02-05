@@ -48,12 +48,12 @@
 import axios from 'axios';
 
 // API base configuration
-const API_BASE_URL = 'https://api.bijliwalaaya.in/api/product-listing';
-const API_TOKEN = 'super_secure_token'; // Replace with actual token
+export const BASE_URL = process.env.NEXT_PUBLIC_API_DOMAIN ? `${process.env.NEXT_PUBLIC_API_DOMAIN}/api/product-listing` : 'https://api.bijliwalaaya.in/api/product-listing';
+export const API_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN || 'super_secure_token';
 
 // Create axios instance with default config
 export const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
     'x-api-token': API_TOKEN,
