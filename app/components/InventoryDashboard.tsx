@@ -205,18 +205,40 @@ const InventoryDashboard = () => {
     const [targetCategoryName, setTargetCategoryName] = useState("");
     const [isManualCategoryInput, setIsManualCategoryInput] = useState(false);
 
-    const handleVideoSubmit = async (e?: React.FormEvent) => {
-        if (e) e.preventDefault();
+    const handleVideoSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
 
         if (!selectedMainCategoryId) {
             alert("Main Category missing");
             return;
         }
 
-        console.log("🚀 SUBMITTING VIDEOS. Pending Count:", pendingVideos.length);
+        // Gather all videos to process
+        let finalVideosToProcess = [...pendingVideos];
+
+        // ✅ AUTO-ADD: If there's a link in the input box but not yet added to list, add it now
+        if (videoLinkInput.trim()) {
+            const newId = Math.random().toString(36).substr(2, 9);
+            finalVideosToProcess.push({
+                id: newId,
+                file: null,
+                title: "Video Link",
+                visible: true,
+                url: videoLinkInput.trim(),
+                previewUrl: videoLinkInput.trim()
+            });
+            setVideoLinkInput(""); // Clear the input
+        }
+
+        if (finalVideosToProcess.length === 0) {
+            alert("Please select a video file or add a video link first.");
+            return;
+        }
+
+        console.log("🚀 SUBMITTING VIDEOS. Total Count:", finalVideosToProcess.length);
 
         try {
-            for (const vid of pendingVideos) {
+            for (const vid of finalVideosToProcess) {
                 // If it's a file, we send the file. If it's a URL (like YouTube), we send the url string.
                 if (!vid.url && !vid.file) continue;
 
@@ -226,7 +248,7 @@ const InventoryDashboard = () => {
                     selectedMainCategoryId,
                     "videos",
                     {
-                        videoTitle: vid.title || "Untitled Video",
+                        videoTitle: videoGroupTitle.trim() || vid.title || "Untitled Video",
                         url: vid.file ? undefined : vid.url, // Don't send local blob URL if it's a file
                         file: vid.file || undefined,
                         visibility: vid.visible ?? true
@@ -241,8 +263,9 @@ const InventoryDashboard = () => {
                 setVideos(Object.values(media.videos || {}).filter(v => typeof v === "object"));
             }
 
-            alert("✅ Videos added successfully! Check DB for 'url' key.");
+            alert("✅ Videos added successfully!");
             setPendingVideos([]);
+            setVideoGroupTitle(""); // ✅ Clear section title
             setShowVideoModal(false);
         } catch (err) {
             console.error("❌ Video submission failed:", err);
@@ -607,7 +630,7 @@ const InventoryDashboard = () => {
                     selectedMainCategoryId,
                     "images",
                     {
-                        imageTitle: img.title || "",
+                        imageTitle: imageGroupTitle.trim() || img.title || "",
                         url: img.url,
                         file: img.file,
                         visibility: img.visible ?? true
@@ -630,6 +653,7 @@ const InventoryDashboard = () => {
 
             alert("✅ Images added successfully with POST!");
             setPendingImages([]);
+            setImageGroupTitle(""); // ✅ Clear section title
             setShowImageModal(false);
 
         } catch (err) {
@@ -1476,7 +1500,7 @@ const InventoryDashboard = () => {
                                                 value={videoLinkInput}
                                                 onChange={(e) => setVideoLinkInput(e.target.value)}
                                                 placeholder="Paste video URL"
-                                                className="flex-1 border rounded-l p-2 text-sm focus:outline-none focus:border-blue-500"
+                                                className="flex-1 border rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter') {
                                                         e.preventDefault();
@@ -1488,14 +1512,33 @@ const InventoryDashboard = () => {
                                                                 title: "Video Link",
                                                                 visible: true,
                                                                 url: videoLinkInput.trim(),
-                                                                previewUrl: videoLinkInput.trim() // ✅ Set preview
+                                                                previewUrl: videoLinkInput.trim()
                                                             }]);
                                                             setVideoLinkInput("");
                                                         }
                                                     }
                                                 }}
                                             />
-                                            {/* Preview Button Removed */}
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (videoLinkInput.trim()) {
+                                                        const newId = Math.random().toString(36).substr(2, 9);
+                                                        setPendingVideos(prev => [...prev, {
+                                                            id: newId,
+                                                            file: null,
+                                                            title: "Video Link",
+                                                            visible: true,
+                                                            url: videoLinkInput.trim(),
+                                                            previewUrl: videoLinkInput.trim()
+                                                        }]);
+                                                        setVideoLinkInput("");
+                                                    }
+                                                }}
+                                                className="bg-blue-600 text-white px-4 rounded-lg hover:bg-blue-700 transition-colors shadow-sm active:scale-95"
+                                            >
+                                                <Plus size={20} />
+                                            </button>
                                         </div>
                                         {/* Live Link Preview Container */}
                                         {videoLinkInput && (
@@ -1682,8 +1725,8 @@ const InventoryDashboard = () => {
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setPreviewVideoUrl(null)}>
                     <div
                         className={`relative bg-black rounded-lg overflow-hidden shadow-2xl flex flex-col ${(previewVideoUrl.includes("youtube.com") || previewVideoUrl.includes("youtu.be"))
-                                ? "w-full max-w-4xl aspect-video"
-                                : "w-auto h-auto max-w-[90vw] max-h-[90vh]"
+                            ? "w-full max-w-4xl aspect-video"
+                            : "w-auto h-auto max-w-[90vw] max-h-[90vh]"
                             }`}
                         onClick={e => e.stopPropagation()}
                     >
