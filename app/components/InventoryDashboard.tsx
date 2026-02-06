@@ -2,14 +2,17 @@
 
 import React, { useState, useEffect } from "react";
 
-import { Plus, List, ArrowLeft, Trash2, Edit2, Search } from 'lucide-react';
+import { Trash2, Edit, Plus, GripVertical, Check, X, ChevronDown, ChevronRight, Search, ArrowLeft, MoreVertical, Eye, EyeOff } from "lucide-react";
 import MainCategoryForm from "./forms/MainCategoryForm";
 import SubCategoryForm from "./forms/SubCategoryForm";
 import ChildCategoryForm from "./forms/ChildCategoryForm";
 import DeepChildCategoryForm from "./forms/DeepChildCategoryForm";
 import SubDeepChildCategoryForm from "./forms/SubDeepChildCategoryForm";
+
 import { useCategory, CategoryProvider } from "../context/CategoryContext";
 import CategoryList from "./CategoryList";
+
+
 
 const InventoryDashboard = () => {
     const [activeForm, setActiveForm] = useState<string | null>(null);
@@ -40,15 +43,18 @@ const InventoryDashboard = () => {
 
 
     // Mock Video State (Should eventually be in context or fetched)
-    // Mock Video State (Should eventually be in context or fetched)
-    const [videos, setVideos] = useState<string[]>(["Screen Recording...", "Ac jet service.mp4"]);
+    const [videos, setVideos] = useState<PendingVideo[]>([]);
 
     // ✅ PENDING VIDEO UPLOAD STATE
     interface PendingVideo {
         id: string;
-        file: File;
+        file: File | null; // Null if URL
         title: string;
         visible: boolean;
+        url?: string; // Added URL support
+        previewUrl?: string; // ✅ For previewing files/links
+        thumbnail?: File | null;
+        thumbnailUrl?: string;
     }
     const [pendingVideos, setPendingVideos] = useState<PendingVideo[]>([]);
     const [pendingImages, setPendingImages] = useState<PendingVideo[]>([]); // Reusing PendingVideo interface as it's just ID/File/Title/Visible
@@ -66,59 +72,107 @@ const InventoryDashboard = () => {
     const [linkGroupTitleVisible, setLinkGroupTitleVisible] = useState(true);
     const [newLinkVisible, setNewLinkVisible] = useState(true); // For the Add Link modal
 
+    // ✅ Video Preview State
+    const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
+    const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null); // ✅ Image Preview State
+
     // ✅ Updated Images State to store full object
     const [images, setImages] = useState<PendingVideo[]>([]);
+    const [videoLinkInput, setVideoLinkInput] = useState("");
 
     // ✅ Updated Links State to include visibility
     const [links, setLinks] = useState<{ title: string, url: string, visible: boolean }[]>([]);
 
+    // ✅ Smart Video Select: Merges with thumbnail-only entries if available
     const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const newFiles = Array.from(e.target.files);
-            const newPending: PendingVideo[] = newFiles.map(file => ({
-                id: Math.random().toString(36).substr(2, 9),
-                file,
-                title: file.name.replace(/\.[^/.]+$/, ""), // Default title from filename
-                visible: true
-            }));
 
-            // Limit to 5 or append? User said "ek bar me 5 bhi store kr skte h". 
-            // We'll append but likely backend has limits. For UI, let's just append.
-            setPendingVideos(prev => [...prev, ...newPending]);
+            setPendingVideos(prev => {
+                const newPending = [...prev];
+                const availableThumbnailIndices = newPending
+                    .map((v, i) => (!v.file && !v.url ? i : -1))
+                    .filter(i => i !== -1);
+
+                let usedIndices = 0;
+
+                newFiles.forEach((file) => {
+                    const previewUrl = URL.createObjectURL(file);
+
+                    if (usedIndices < availableThumbnailIndices.length) {
+                        // Merge with existing thumbnail-only entry
+                        const index = availableThumbnailIndices[usedIndices];
+                        newPending[index] = {
+                            ...newPending[index],
+                            file,
+                            previewUrl,
+                            // Keep existing title if it's not default/empty, else use filename
+                            title: newPending[index].title || file.name.replace(/\.[^/.]+$/, "")
+                        };
+                        usedIndices++;
+                    } else {
+                        // Create new entry
+                        newPending.push({
+                            id: Math.random().toString(36).substr(2, 9),
+                            file,
+                            title: file.name.replace(/\.[^/.]+$/, ""),
+                            visible: true,
+                            previewUrl
+                        });
+                    }
+                });
+                return newPending;
+            });
+            // Reset input
+            e.target.value = "";
         }
     };
 
-    const removePendingVideo = (id: string) => {
-        setPendingVideos(prev => prev.filter(v => v.id !== id));
+    // ✅ Smart Thumbnail Select: Merges with video-only entries if available
+    const handleVideoThumbnailSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const newFiles = Array.from(e.target.files);
+
+            setPendingVideos(prev => {
+                const newPending = [...prev];
+                const availableVideoIndices = newPending
+                    .map((v, i) => (!v.thumbnail && !v.thumbnailUrl ? i : -1))
+                    .filter(i => i !== -1);
+
+                let usedIndices = 0;
+
+                newFiles.forEach((file) => {
+                    const thumbnailUrl = URL.createObjectURL(file);
+
+                    if (usedIndices < availableVideoIndices.length) {
+                        // Merge with existing video-only entry
+                        const index = availableVideoIndices[usedIndices];
+                        newPending[index] = {
+                            ...newPending[index],
+                            thumbnail: file,
+                            thumbnailUrl
+                        };
+                        usedIndices++;
+                    } else {
+                        // Create new entry
+                        newPending.push({
+                            id: Math.random().toString(36).substr(2, 9),
+                            file: null,
+                            thumbnail: file,
+                            thumbnailUrl,
+                            title: file.name.replace(/\.[^/.]+$/, ""),
+                            visible: true
+                        });
+                    }
+                });
+                return newPending;
+            });
+            // Reset input
+            e.target.value = "";
+        }
     };
 
-    const updatePendingVideo = (id: string, field: 'title' | 'visible', value: any) => {
-        setPendingVideos(prev => prev.map(v =>
-            v.id === id ? { ...v, [field]: value } : v
-        ));
-    };
-
-    const handleVideoSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        // Here we would normally upload the files. 
-        // We now have videoGroupTitle, videoGroupTitleVisible, and pendingVideos
-
-        const newVideoNames = pendingVideos.map(v => v.title);
-        setVideos(prev => [...prev, ...newVideoNames]);
-
-        console.log("📤 Uploading Videos:", {
-            groupTitle: videoGroupTitle,
-            groupTitleVisible: videoGroupTitleVisible,
-            videos: pendingVideos
-        });
-
-        setShowVideoModal(false);
-        setPendingVideos([]); // Reset
-        setVideoGroupTitle(""); // Reset
-        setVideoGroupTitleVisible(true); // Reset
-    };
-
-    // ✅ IMAGE HANDLERS
+    // ✅ Image Select for "Add Image" Modal
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const newFiles = Array.from(e.target.files);
@@ -126,15 +180,80 @@ const InventoryDashboard = () => {
                 id: Math.random().toString(36).substr(2, 9),
                 file,
                 title: file.name.replace(/\.[^/.]+$/, ""),
-                visible: true
+                visible: true,
+                previewUrl: URL.createObjectURL(file) // ✅ Generate preview
             }));
             setPendingImages(prev => [...prev, ...newPending]);
+            e.target.value = "";
         }
-    }
+    };
 
     const removePendingImage = (id: string) => {
-        setPendingImages(prev => prev.filter(v => v.id !== id));
+        setPendingImages(prev => prev.filter(img => img.id !== id));
     };
+
+    const removePendingVideo = (id: string) => {
+        setPendingVideos(prev => prev.filter(v => v.id !== id));
+    };
+
+    const updatePendingVideo = (id: string, field: 'title' | 'visible' | 'url', value: any) => {
+        setPendingVideos(prev => prev.map(v =>
+            v.id === id ? { ...v, [field]: value } : v
+        ));
+    };
+
+    const [targetCategoryName, setTargetCategoryName] = useState("");
+    const [isManualCategoryInput, setIsManualCategoryInput] = useState(false);
+
+    const handleVideoSubmit = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+
+        if (!selectedMainCategoryId) {
+            alert("Main Category missing");
+            return;
+        }
+
+        console.log("🚀 SUBMITTING VIDEOS. Pending Count:", pendingVideos.length);
+
+        try {
+            for (const vid of pendingVideos) {
+                // If it's a file, we send the file. If it's a URL (like YouTube), we send the url string.
+                if (!vid.url && !vid.file) continue;
+
+                console.log("📤 Sending Video:", vid.title || "Untitled Video");
+
+                await addChildCategoryMedia(
+                    selectedMainCategoryId,
+                    "videos",
+                    {
+                        videoTitle: vid.title || "Untitled Video",
+                        url: vid.file ? undefined : vid.url, // Don't send local blob URL if it's a file
+                        file: vid.file || undefined,
+                        visibility: vid.visible ?? true
+                    },
+                    selectedSubCategoryId || undefined
+                );
+            }
+
+            // Refresh UI
+            const media = await fetchChildCategoryMedia(selectedMainCategoryId, selectedSubCategoryId || undefined);
+            if (media) {
+                setVideos(Object.values(media.videos || {}).filter(v => typeof v === "object"));
+            }
+
+            alert("✅ Videos added successfully! Check DB for 'url' key.");
+            setPendingVideos([]);
+            setShowVideoModal(false);
+        } catch (err) {
+            console.error("❌ Video submission failed:", err);
+            alert("❌ Video save failed.");
+        }
+    };
+
+
+
+    // ✅ IMAGE HANDLERS
+
 
     // ✅ Reusable Toggle for Modals
     const OrangeToggle = ({ checked, onChange }: { checked: boolean; onChange?: () => void }) => (
@@ -192,18 +311,26 @@ const InventoryDashboard = () => {
     }
 
     const {
+        // fetch
         fetchMainCategories,
         fetchSubCategories,
         fetchChildCategories,
         fetchDeepChildCategories,
         fetchSubDeepChildCategories,
+
+        // add
         addChildCategory,
         addDeepChildCategory,
+        addChildCategoryMedia,
+
+        // delete
         deleteMainCategory,
         deleteSubCategory,
         deleteChildCategory,
         deleteDeepChildCategory,
         deleteSubDeepChildCategory,
+
+        // toggle
         toggleMainVisibility,
         toggleMainNameVisibility,
         toggleMainIsSub,
@@ -215,12 +342,35 @@ const InventoryDashboard = () => {
         toggleChildVisibility,
         toggleDeepChildVisibility,
         toggleSubDeepChildVisibility,
+
+        // data
         mainCategories,
         subCategories,
         childCategories,
         deepChildCategories,
-        subDeepChildCategories
+        subDeepChildCategories,
+
+        // 🔥 MEDIA (YE IMPORTANT HAI)
+        fetchChildCategoryMedia,
+        childCategoriesV2
+
     } = useCategory();
+
+
+    // ✅ FIX: Sanitize URLs to replace legacy 'serverapi' with current API domain if needed
+    const sanitizeUrl = (url: string) => {
+        if (!url) return "";
+        // Replace legacy domain
+        let finalUrl = url.replace("serverapi.bijliwalaaya.in", "api.bijliwalaaya.in");
+
+        // If relative path (starts with uploads/), prepend domain
+        if (!finalUrl.startsWith("http")) {
+            // Remove leading slash if present to avoid double slash
+            const cleanPath = finalUrl.startsWith("/") ? finalUrl.slice(1) : finalUrl;
+            finalUrl = `https://api.bijliwalaaya.in/${cleanPath}`;
+        }
+        return finalUrl;
+    };
 
     const mergedChildList = React.useMemo(() => {
         // Only merge for child list view
@@ -273,38 +423,26 @@ const InventoryDashboard = () => {
         }
         setActiveView('childList');
     };
-
     const handleChildCategoryClick = async (item: any) => {
-        if (item.isMissing) {
-            // Auto-create category before navigation
-            await addChildCategory({
-                name: item.name,
-                mainCategoryId: selectedMainCategoryId || "",
-                subCategoryId: selectedSubCategoryId || undefined,
-                visible: true
-            });
-            // Ideally we need the new ID to navigate. 
-            // Since we don't have it easily without refetch, we might just fetch and stay?
-            // Or assume the user will click again?
-            // For now, let's create and refresh.
-            if (selectedMainCategoryId) fetchChildCategories(selectedMainCategoryId, selectedSubCategoryId);
-            return;
-        }
+        setSelectedChildCategoryId(item._id || item.id);
+        setSelectedChildCategoryName(item.name);
 
-        const id = item.documentId || item._id || item.id;
-        setSelectedChildCategoryId(id);
-        setSelectedChildCategoryName(item.firstTitle || item.name);
+        if (!selectedMainCategoryId) return;
 
-        if (selectedMainCategoryId) {
-            // Correctly fetch Deep Child Categories (Level 4) instead of SubDeep
-            fetchDeepChildCategories(
-                selectedMainCategoryId,
-                id, // childId
-                selectedSubCategoryId
-            );
-        }
-        setActiveView('deepList');
+        const media = await fetchChildCategoryMedia(selectedMainCategoryId);
+
+        setImages(
+            Object.values(media?.images || {}).filter(i => typeof i === "object")
+        );
+
+        setVideos(
+            Object.values(media?.videos || {}).filter(v => typeof v === "object")
+        );
+
+        setActiveView("deepList");
     };
+
+
 
     const handleDeepChildCategoryClick = (item: any) => {
         const id = item.documentId || item.id || item._id;
@@ -436,6 +574,11 @@ const InventoryDashboard = () => {
     };
 
     const handleAddVideo = () => {
+        if (selectedChildCategoryName) {
+            setTargetCategoryName(selectedChildCategoryName);
+        }
+        setVideoLinkInput(""); // ✅ Reset Link Input
+        setPendingVideos([]); // ✅ Reset Pending Videos
         setShowVideoModal(true);
     };
 
@@ -445,50 +588,166 @@ const InventoryDashboard = () => {
     const [showImageModal, setShowImageModal] = useState(false);
     const [showLinkModal, setShowLinkModal] = useState(false);
 
-    const handleImageSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleImageSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Prepare images with Group Title if provided
-        const finalImages = pendingImages.map((img, idx) => ({
-            ...img,
-            title: imageGroupTitle
-                ? (pendingImages.length > 1 ? `${imageGroupTitle} ${idx + 1}` : imageGroupTitle)
-                : img.title
-        }));
+        if (!selectedMainCategoryId) {
+            alert("Main Category missing");
+            return;
+        }
 
-        // Append new images to existing list
-        setImages(prev => [...prev, ...finalImages]);
+        console.log("🚀 SUBMITTING PENDING IMAGES FOR ID:", selectedMainCategoryId);
 
-        console.log("📤 Uploading Images:", {
-            groupTitle: imageGroupTitle,
-            groupTitleVisible: imageGroupTitleVisible,
-            images: pendingImages
-        });
+        try {
+            for (const img of pendingImages) {
+                if (!img.url && !img.file) continue;
 
-        setPendingImages([]);
-        setImageGroupTitle("");
-        setImageGroupTitleVisible(true);
-        setShowImageModal(false);
+                console.log("📤 POSTing Image:", img.title || "Untitled");
+                await addChildCategoryMedia(
+                    selectedMainCategoryId,
+                    "images",
+                    {
+                        imageTitle: img.title || "",
+                        url: img.url,
+                        file: img.file,
+                        visibility: img.visible ?? true
+                    },
+                    selectedSubCategoryId || undefined
+                );
+            }
+
+            // Refresh media after all uploads
+            const media = await fetchChildCategoryMedia(
+                selectedMainCategoryId,
+                selectedSubCategoryId || undefined
+            );
+
+            if (media) {
+                setImages(
+                    Object.values(media.images || {}).filter(i => typeof i === "object")
+                );
+            }
+
+            alert("✅ Images added successfully with POST!");
+            setPendingImages([]);
+            setShowImageModal(false);
+
+        } catch (err) {
+            console.error("❌ Image submission failed:", err);
+            alert("❌ Failed to add images. Check console.");
+        }
     };
 
-    const handleLinkSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleLinkSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        // ❌ LINKS API NOT SUPPORTED - Only images and videos are supported by childCatMedia API
+        alert("⚠️ Links functionality is not supported by the media API. Only images and videos are supported.");
+        setShowLinkModal(false);
+
+        /* DISABLED - Links not supported in media API
         const formData = new FormData(e.currentTarget);
         const title = formData.get('linkTitle') as string;
         const url = formData.get('linkUrl') as string;
 
-        if (title && url) {
-            setLinks([...links, { title, url, visible: newLinkVisible }]);
+        if (!selectedMainCategoryId) {
+            alert("Main Category is not selected");
+            return;
         }
+        const targetName = selectedChildCategoryName;
 
-        console.log("🔗 Adding Link:", {
-            groupTitle: linkGroupTitle,
-            groupTitleVisible: linkGroupTitleVisible,
-            link: { title, url, visible: newLinkVisible }
-        });
 
-        setNewLinkVisible(true); // Reset to true
-        setShowLinkModal(false);
+        try {
+            // 1. Fetch Existing
+            const existing = await fetchChildCategoryV2(selectedMainCategoryId, targetName, selectedSubCategoryId || undefined);
+            const currentLinks = existing?.links?.items || existing?.links || {};
+            const safeCurrentLinks: any = {};
+            Object.keys(currentLinks).forEach(k => {
+                if (typeof currentLinks[k] === 'object' && currentLinks[k] !== null) safeCurrentLinks[k] = currentLinks[k];
+            });
+
+
+            // 2. Prepare New
+            const newLinksObj: any = {};
+            const startIndex = Object.keys(safeCurrentLinks).length;
+
+            newLinksObj[startIndex] = {
+                linkTitle: title,
+                url: url,
+                visibility: newLinkVisible
+            };
+
+            // 3. Merge
+            const mergedLinks = {
+                name: "links",
+                visibility: linkGroupTitleVisible,
+                ...safeCurrentLinks,
+                ...newLinksObj
+            };
+
+            // 4. Payload
+            const payload: any = {
+                name: targetName,
+                visibility: existing?.visibility ?? true,
+                links: mergedLinks
+            };
+
+            if (existing?.images) payload.images = existing.images;
+            if (existing?.videos) payload.videos = existing.videos;
+
+            const apiFormData = new FormData();
+            // Helper to build FormData
+            const buildFormData = (formData: FormData, data: any, parentKey?: string) => {
+                if (data === undefined) return;
+                if (data && typeof data === 'object' && !(data instanceof Date) && !(data instanceof File) && !(data instanceof Blob)) {
+                    Object.keys(data).forEach(key => {
+                        buildFormData(formData, data[key], parentKey ? `${parentKey}[${key}]` : key);
+                    });
+                } else {
+                    const value = data == null ? '' : data;
+                    formData.append(parentKey || '', value);
+                }
+            };
+            buildFormData(apiFormData, payload);
+
+            // 5. Save
+            for (const vid of videosToProcess) {
+                if (!vid.url) continue;
+
+                await addChildCategoryMedia(
+                    selectedMainCategoryId,
+                    "videos",
+                    {
+                        videoTitle: vid.title,
+                        url: vid.url,
+                        visibility: vid.visible
+                    },
+                    selectedSubCategoryId || undefined
+                );
+            }
+
+
+            // ✅ REFRESH LOCAL LINKS STATE
+            const updatedData = await fetchChildCategoryV2(selectedMainCategoryId, targetName, selectedSubCategoryId || undefined);
+            if (updatedData) {
+                const newLinks = Object.values(updatedData.links).filter((x: any) => typeof x === 'object').map((lnk: any) => ({
+                    title: lnk.linkTitle || "Link",
+                    url: lnk.url,
+                    visible: lnk.visibility ?? true
+                }));
+                // @ts-ignore
+                setLinks(newLinks);
+            }
+
+            alert("Link Added Successfully!");
+            setNewLinkVisible(true);
+            setShowLinkModal(false);
+            setTargetCategoryName("");
+
+        } catch (error) {
+            console.error("Failed to add link", error);
+            alert("Failed to add link.");
+        }
+        */
     };
 
     // Helpers for toggle
@@ -566,6 +825,7 @@ const InventoryDashboard = () => {
                                 <button onClick={() => toggleForm('subDeep')} className={`w-full py-3 rounded-lg text-white font-bold text-lg shadow-md transition-all ${activeForm === 'subDeep' ? 'bg-purple-600' : 'bg-gray-400 hover:bg-gray-500'}`}>Manage Sub Deep child category</button>
                                 {activeForm === 'subDeep' && <div className="mt-4"><SubDeepChildCategoryForm initialDeepChildCategoryId={undefined} onSuccess={() => { }} /></div>}
                             </div>
+
                         </div>
                     </section>
                 </>
@@ -698,17 +958,15 @@ const InventoryDashboard = () => {
                                 Add Category
                             </button>
                             <button
-                                onClick={() => setShowImageModal(true)}
+                                onClick={() => {
+                                    if (selectedChildCategoryName) setTargetCategoryName(selectedChildCategoryName);
+                                    setShowImageModal(true);
+                                }}
                                 className="bg-[#E0E0E0] text-[#D00000] font-bold py-3 rounded-xl shadow-sm hover:bg-gray-300 transition-colors text-sm"
                             >
                                 Add Image
                             </button>
-                            <button
-                                onClick={() => setShowLinkModal(true)}
-                                className="bg-[#E0E0E0] text-[#D00000] font-bold py-3 rounded-xl shadow-sm hover:bg-gray-300 transition-colors text-sm"
-                            >
-                                Add Links
-                            </button>
+
                         </div>
 
                         {/* Videos Label Button: Outlined Blue */}
@@ -731,7 +989,16 @@ const InventoryDashboard = () => {
                     <div className="flex gap-4 overflow-x-auto px-2 pb-4 mt-2">
                         {videos.map((vid, idx) => (
                             <div key={idx} className="min-w-[140px] h-[200px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative flex flex-col flex-shrink-0">
-                                <div className="flex-1 w-full bg-white relative p-2">
+                                <div className="flex-1 w-full bg-white relative p-2 flex items-center justify-center">
+                                    {/* Placeholder/Actual Video */}
+                                    {vid.url ? (
+                                        <div className="w-full h-full flex flex-col justify-center items-center">
+                                            <div className="text-4xl">🎥</div>
+                                            <a href={vid.url} target="_blank" rel="noreferrer text-xs" className="mt-2 text-blue-600 underline text-xs">Open</a>
+                                        </div>
+                                    ) : (
+                                        <div className="text-4xl text-gray-200">▶️</div>
+                                    )}
                                     <button className="absolute top-2 right-2 h-7 w-7 bg-white flex items-center justify-center border-2 border-blue-900 rounded-[4px] z-10"
                                         onClick={() => {
                                             const newV = [...videos];
@@ -742,8 +1009,22 @@ const InventoryDashboard = () => {
                                         <span className="text-sm font-bold text-red-600">X</span>
                                     </button>
                                 </div>
-                                <div className="w-full bg-[#666666] text-white text-[10px] py-1.5 px-2 truncate font-mono">
-                                    {vid}
+
+                                {/* Footer with Title and Visibility */}
+                                <div className="w-full bg-[#666666] text-white py-1.5 px-2 flex items-center justify-between gap-1">
+                                    <div className="truncate font-mono text-[10px] flex-1" title={vid.title}>
+                                        {vid.title}
+                                    </div>
+                                    <div className="flex-shrink-0 scale-75 origin-right">
+                                        <OrangeToggle
+                                            checked={vid.visible}
+                                            onChange={() => {
+                                                const newVideos = [...videos];
+                                                newVideos[idx] = { ...newVideos[idx], visible: !newVideos[idx].visible };
+                                                setVideos(newVideos);
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -770,7 +1051,11 @@ const InventoryDashboard = () => {
                                     <div key={idx} className="min-w-[140px] w-[140px] h-[200px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative flex flex-col flex-shrink-0">
                                         <div className="flex-1 w-full bg-white relative p-2 flex items-center justify-center">
                                             {/* Placeholder/Actual Image */}
-                                            <div className="text-4xl text-gray-200">🖼️</div>
+                                            {img.url ? (
+                                                <img src={img.url} alt={img.title} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="text-4xl text-gray-200">🖼️</div>
+                                            )}
                                             <button className="absolute top-2 right-2 h-7 w-7 bg-white flex items-center justify-center border-2 border-blue-900 rounded-[4px] z-10"
                                                 onClick={() => {
                                                     const newI = [...images];
@@ -853,7 +1138,9 @@ const InventoryDashboard = () => {
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="text-[8px] truncate opacity-80 mt-0.5">{lnk.url}</div>
+                                            <div className="text-[8px] truncate opacity-80 mt-0.5">
+                                                <a href={lnk.url} target="_blank" className="underline text-blue-200">Open Link ↗</a>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -923,30 +1210,47 @@ const InventoryDashboard = () => {
 
                     {/* VIDEO LIST - REFINED CARDS */}
                     <div className="flex gap-4 overflow-x-auto px-2 pb-4 mt-2">
-                        {/* Mock Video 1 */}
-                        <div className="min-w-[140px] h-[200px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative flex flex-col">
-                            <div className="flex-1 w-full bg-white relative p-2">
-                                {/* X Button with Blue Border */}
-                                <button className="absolute top-2 right-2 h-7 w-7 bg-white flex items-center justify-center border-2 border-blue-900 rounded-[4px] z-10">
-                                    <span className="text-sm font-bold text-red-600">X</span>
-                                </button>
-                            </div>
-                            {/* Dark Footer */}
-                            <div className="w-full bg-[#666666] text-white text-[10px] py-1.5 px-2 truncate font-mono">
-                                VID2026012017064...
-                            </div>
-                        </div>
-                        {/* Mock Video 2 */}
-                        <div className="min-w-[140px] h-[200px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative flex flex-col">
-                            <div className="flex-1 w-full bg-white relative p-2">
-                                <button className="absolute top-2 right-2 h-7 w-7 bg-white flex items-center justify-center border-2 border-blue-900 rounded-[4px] z-10">
-                                    <span className="text-sm font-bold text-red-600">X</span>
-                                </button>
-                            </div>
-                            <div className="w-full bg-[#666666] text-white text-[10px] py-1.5 px-2 truncate font-mono">
-                                bss inke bharose c...
-                            </div>
-                        </div>
+                        {videos.length === 0 ? (
+                            <div className="text-gray-400 text-sm italic p-2">No videos added yet.</div>
+                        ) : (
+                            videos.map((video) => (
+                                <div key={video.id} className="min-w-[140px] h-[200px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative flex flex-col">
+                                    <div className="flex-1 w-full bg-white relative p-2 flex items-center justify-center">
+                                        {/* Thumbnail or Icon */}
+                                        <div className="h-12 w-12 bg-black rounded-full flex items-center justify-center text-white text-lg">
+                                            ▶
+                                        </div>
+
+                                        {/* X Button */}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                // TODO: Add delete handler
+                                            }}
+                                            className="absolute top-2 right-2 h-7 w-7 bg-white flex items-center justify-center border-2 border-blue-900 rounded-[4px] z-10 hover:bg-red-50"
+                                        >
+                                            <span className="text-sm font-bold text-red-600">X</span>
+                                        </button>
+                                        {/* Visibility Toggle for Item */}
+                                        <div className="absolute bottom-2 left-2 z-10 scale-75 origin-left">
+                                            <OrangeToggle
+                                                checked={video.visible}
+                                                onChange={() => {
+                                                    // Toggle local state
+                                                    setVideos(videos.map(v => v.id === video.id ? { ...v, visible: !v.visible } : v));
+                                                    // TODO: Sync to backend if needed immediately, otherwise it saves on next edit? 
+                                                    // Actually currently we only save on "Add". We might need independent "Update" logic later.
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                    {/* Footer with Title */}
+                                    <div className="w-full bg-[#666666] text-white text-[10px] py-1.5 px-2 truncate font-mono" title={video.title}>
+                                        {video.title}
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             )}
@@ -1054,98 +1358,401 @@ const InventoryDashboard = () => {
             {showVideoModal && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
                     <div className="w-full max-w-sm bg-white rounded-xl shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
-                        <h3 className="text-xl font-bold text-center text-gray-900 mb-6">Add Video</h3>
-                        <form onSubmit={handleVideoSubmit} className="space-y-4">
+                        {previewVideoUrl ? (
+                            <div className="flex flex-col h-full min-h-[400px]">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-bold text-gray-900">Preview</h3>
+                                    <button
+                                        onClick={() => setPreviewVideoUrl(null)}
+                                        className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 transition-colors"
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                    </button>
+                                </div>
+                                <div className="flex-1 bg-black rounded-lg overflow-hidden flex items-center justify-center relative shadow-inner w-full">
+                                    {(previewVideoUrl.includes("youtube.com") || previewVideoUrl.includes("youtu.be")) ? (
+                                        <iframe
+                                            src={`https://www.youtube.com/embed/${previewVideoUrl.split('v=')[1]?.split('&')[0] || previewVideoUrl.split('/').pop()}?autoplay=1&mute=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3`}
+                                            className="w-full h-full"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                        />
+                                    ) : (
+                                        <video
+                                            src={previewVideoUrl}
+                                            controls
+                                            autoPlay
+                                            className="w-full h-full object-contain max-h-[60vh]"
+                                        />
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => setPreviewVideoUrl(null)}
+                                    className="w-full mt-4 bg-gray-900 text-white font-bold py-3 rounded-lg shadow hover:bg-gray-800 transition-colors"
+                                >
+                                    Close Preview
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <h3 className="text-xl font-bold text-center text-gray-900 mb-6">Add Video</h3>
+                                <form onSubmit={handleVideoSubmit} className="space-y-4">
 
-                            {/* Group Title Field */}
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-bold text-gray-700">Title</label>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-500 font-medium">Visible</span>
-                                        <OrangeToggle
-                                            checked={videoGroupTitleVisible}
-                                            onChange={() => setVideoGroupTitleVisible(!videoGroupTitleVisible)}
+                                    {/* Group Title Field */}
+                                    <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <label className="block text-sm font-bold text-gray-700">Title</label>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-gray-500 font-medium">Visible</span>
+                                                <OrangeToggle
+                                                    checked={videoGroupTitleVisible}
+                                                    onChange={() => setVideoGroupTitleVisible(!videoGroupTitleVisible)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={videoGroupTitle}
+                                            onChange={(e) => setVideoGroupTitle(e.target.value)}
+                                            placeholder="Enter section title"
+                                            className="w-full border rounded p-2 text-sm focus:outline-none focus:border-blue-500"
                                         />
                                     </div>
-                                </div>
-                                <input
-                                    type="text"
-                                    value={videoGroupTitle}
-                                    onChange={(e) => setVideoGroupTitle(e.target.value)}
-                                    placeholder="Enter section title"
-                                    className="w-full border rounded p-2 text-sm focus:outline-none focus:border-blue-500"
-                                />
-                            </div>
 
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Upload Video (Max 5)</label>
-                                <div className="relative">
-                                    <input
-                                        type="file"
-                                        multiple
-                                        accept="video/*"
-                                        onChange={handleVideoSelect}
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    />
-                                    <div className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors">
-                                        <div className="text-blue-600 font-bold">Choose Videos</div>
-                                        <p className="text-xs text-gray-400 mt-1">Select multiple videos to upload</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* PREVIEW LIST (Like WhatsApp) */}
-                            {pendingVideos.length > 0 && (
-                                <div className="space-y-3 mt-4 border-t pt-2">
-                                    {pendingVideos.map((video, index) => (
-                                        <div key={video.id} className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
-                                            {/* Thumbnail / Icon */}
-                                            <div className="h-10 w-10 flex-shrink-0 bg-black rounded flex items-center justify-center text-white text-[10px]">
-                                                ▶
+                                    {/* UPLOAD THUMBNAIL SECTION */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Thumbnail</label>
+                                        <div className="relative">
+                                            <input
+                                                type="file"
+                                                multiple
+                                                accept="image/*"
+                                                onChange={handleVideoThumbnailSelect}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            />
+                                            <div className={`w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${pendingVideos.some(v => v.thumbnail || v.thumbnailUrl) ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:bg-gray-50 bg-gray-50"}`}>
+                                                <div className={`font-bold ${pendingVideos.some(v => v.thumbnail || v.thumbnailUrl) ? "text-blue-700" : "text-orange-600"}`}>
+                                                    {pendingVideos.some(v => v.thumbnail || v.thumbnailUrl) ? "✔ Thumbnails Selected" : "Choose Thumbnails"}
+                                                </div>
+                                                <p className={`text-xs mt-1 ${pendingVideos.some(v => v.thumbnail || v.thumbnailUrl) ? "text-blue-500" : "text-gray-400"}`}>
+                                                    {pendingVideos.some(v => v.thumbnail || v.thumbnailUrl) ? "Thumbnails ready to upload" : "Create entries from thumbnails"}
+                                                </p>
                                             </div>
-
-                                            {/* Details Input */}
-                                            <div className="flex-1 min-w-0">
-                                                <input
-                                                    type="text"
-                                                    value={video.title}
-                                                    onChange={(e) => updatePendingVideo(video.id, 'title', e.target.value)}
-                                                    placeholder="Video Title"
-                                                    className="w-full text-sm border-b border-gray-300 bg-transparent focus:outline-none focus:border-blue-500 px-1"
-                                                />
-                                                <p className="text-[10px] text-gray-400 truncate mt-0.5">{video.file.name}</p>
-                                            </div>
-
-                                            {/* Visibility Toggle */}
-                                            <div className="flex flex-col items-center gap-0.5">
-                                                <span className="text-[8px] font-bold text-gray-500">VISIBLE</span>
-                                                <OrangeToggle
-                                                    checked={video.visible}
-                                                    onChange={() => updatePendingVideo(video.id, 'visible', !video.visible)}
-                                                />
-                                            </div>
-
-                                            {/* Delete */}
-                                            <button
-                                                type="button"
-                                                onClick={() => removePendingVideo(video.id)}
-                                                className="text-gray-400 hover:text-red-500"
-                                            >
-                                                &times;
-                                            </button>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
+                                    </div>
 
-                            <button type="submit" className="w-full bg-[#E57355] text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2">
-                                <span>Upload {pendingVideos.length > 0 ? `(${pendingVideos.length})` : ''}</span>
-                            </button>
-                            <button type="button" onClick={() => { setShowVideoModal(false); setPendingVideos([]); }} className="w-full text-gray-500 py-2">
-                                Cancel
-                            </button>
-                        </form>
+                                    {/* UPLOAD VIDEO SECTION */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Upload Video (Max 5)</label>
+                                        <div className="relative">
+                                            <input
+                                                type="file"
+                                                multiple
+                                                accept="video/*"
+                                                onChange={handleVideoSelect}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            />
+                                            <div className={`w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${pendingVideos.some(v => v.file) ? "border-green-500 bg-green-50" : "border-gray-300 hover:bg-gray-50"}`}>
+                                                <div className={`font-bold ${pendingVideos.some(v => v.file) ? "text-green-600" : "text-blue-600"}`}>
+                                                    {pendingVideos.filter(v => v.file).length > 0
+                                                        ? `✔ ${pendingVideos.filter(v => v.file).length} Video${pendingVideos.filter(v => v.file).length > 1 ? 's' : ''} Selected`
+                                                        : "Choose Videos"}
+                                                </div>
+                                                <p className={`text-xs mt-1 ${pendingVideos.some(v => v.file) ? "text-green-600" : "text-gray-400"}`}>
+                                                    {pendingVideos.filter(v => v.file).length > 0
+                                                        ? `${5 - pendingVideos.filter(v => v.file).length} remaining`
+                                                        : "Select multiple videos to upload"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* ADD VIDEO LINK SECTION */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Add Video Link</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={videoLinkInput}
+                                                onChange={(e) => setVideoLinkInput(e.target.value)}
+                                                placeholder="Paste video URL"
+                                                className="flex-1 border rounded-l p-2 text-sm focus:outline-none focus:border-blue-500"
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        if (videoLinkInput.trim()) {
+                                                            const newId = Math.random().toString(36).substr(2, 9);
+                                                            setPendingVideos(prev => [...prev, {
+                                                                id: newId,
+                                                                file: null,
+                                                                title: "Video Link",
+                                                                visible: true,
+                                                                url: videoLinkInput.trim(),
+                                                                previewUrl: videoLinkInput.trim() // ✅ Set preview
+                                                            }]);
+                                                            setVideoLinkInput("");
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                            {/* Preview Button Removed */}
+                                        </div>
+                                        {/* Live Link Preview Container */}
+                                        {videoLinkInput && (
+                                            <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                <div
+                                                    className="relative bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center text-center w-full max-w-[140px] cursor-pointer hover:shadow-md transition-all hover:scale-105 active:scale-95"
+                                                    onClick={() => setPreviewVideoUrl(videoLinkInput)}
+                                                >
+                                                    <div className="relative w-full h-24 bg-gray-200 rounded-lg overflow-hidden group mb-2 shadow-inner border border-gray-300 flex items-center justify-center">
+                                                        {(videoLinkInput.includes("youtube.com") || videoLinkInput.includes("youtu.be")) ? (
+                                                            <>
+                                                                <img
+                                                                    src={`https://img.youtube.com/vi/${(videoLinkInput.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/)?.[2] || "")}/0.jpg`}
+                                                                    alt="Thumb"
+                                                                    className="w-full h-full object-cover"
+                                                                    onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }}
+                                                                />
+                                                                {/* Fallback Icon if Image Fails (hidden by default) */}
+                                                                <div className="hidden absolute inset-0 flex items-center justify-center bg-gray-100 text-4xl">🎥</div>
+                                                            </>
+                                                        ) : (
+                                                            <div className="text-4xl">🎥</div>
+                                                        )}
+
+                                                        {/* Play Overlay */}
+                                                        <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
+                                                            <div className="w-8 h-8 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-lg group-hover:bg-red-600/90 transition-colors">
+                                                                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-white ml-0.5">
+                                                                    <path d="M8 5v14l11-7z" />
+                                                                </svg>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-[10px] font-bold text-gray-600 truncate w-full px-1">
+                                                        Click to Preview
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* PREVIEW LIST (Compact Grid) */}
+                                    {pendingVideos.length > 0 && (
+                                        <div className="grid grid-cols-3 gap-2 mt-4 border-t pt-2 max-h-[200px] overflow-y-auto">
+                                            {pendingVideos.map((video, index) => (
+                                                <div key={video.id} className="relative bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center text-center h-auto min-h-[140px] justify-between">
+
+                                                    {/* Delete (Absolute Top Right) */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removePendingVideo(video.id)}
+                                                        className="absolute top-1 right-1 text-gray-400 hover:text-red-500 bg-white rounded-full h-5 w-5 flex items-center justify-center border border-gray-200 shadow-sm z-10"
+                                                    >
+                                                        <span className="text-sm leading-none mb-[1px]">&times;</span>
+                                                    </button>
+
+                                                    {/* Unified Media Area (Thumbnail + Video Status) */}
+                                                    <div className="relative w-full h-24 bg-gray-200 rounded-lg overflow-hidden group mb-2 shadow-inner border border-gray-300">
+
+                                                        {/* Background: Thumbnail or Placeholder */}
+                                                        {video.thumbnailUrl ? (
+                                                            <img src={video.thumbnailUrl} alt="Thumb" className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-100">
+                                                                <span className="text-2xl">🖼️</span>
+                                                                <span className="text-[9px]">No Thumb</span>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Edit Thumbnail Input (Hidden, triggers on click of background if no other interaction?) 
+                                                            Let's make a small edit icon for thumbnail specifically to avoid conflict with video actions 
+                                                        */}
+                                                        <label className="absolute top-1 left-1 p-1 bg-black/50 hover:bg-black/70 rounded-full cursor-pointer z-20" title="Change Thumbnail">
+                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                className="hidden"
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) {
+                                                                        const url = URL.createObjectURL(file);
+                                                                        setPendingVideos(prev => prev.map(v =>
+                                                                            v.id === video.id ? { ...v, thumbnail: file, thumbnailUrl: url } : v
+                                                                        ));
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </label>
+
+                                                        {/* Center Overlay: Action (Play or Add Video) */}
+                                                        <div className="absolute inset-0 flex items-center justify-center bg-black/10 transition-colors z-10">
+
+                                                            {video.file || video.url ? (
+                                                                /* Has Video -> Play Button */
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        setPreviewVideoUrl(video.previewUrl || video.url || "");
+                                                                    }}
+                                                                    className="group/play flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+                                                                >
+                                                                    <div className="w-10 h-10 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-lg group-hover/play:bg-red-600/90 transition-colors">
+                                                                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white ml-0.5">
+                                                                            <path d="M8 5v14l11-7z" />
+                                                                        </svg>
+                                                                    </div>
+                                                                </button>
+                                                            ) : (
+                                                                /* No Video -> Add Video Button */
+                                                                <label className="cursor-pointer group/add flex flex-col items-center justify-center gap-1 p-2 bg-white/90 hover:bg-white rounded-xl shadow-lg border border-red-100 transition-all hover:scale-105 hover:shadow-xl">
+                                                                    <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500 font-bold border border-red-200">
+                                                                        +
+                                                                    </div>
+                                                                    <span className="text-[9px] font-bold text-red-500 uppercase tracking-widest">Add Video</span>
+                                                                    <input
+                                                                        type="file"
+                                                                        accept="video/*"
+                                                                        className="hidden"
+                                                                        onChange={(e) => {
+                                                                            const file = e.target.files?.[0];
+                                                                            if (file) {
+                                                                                setPendingVideos(prev => prev.map(v =>
+                                                                                    v.id === video.id ? { ...v, file: file, title: v.title || file.name.replace(/\.[^/.]+$/, "") } : v
+                                                                                ));
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                </label>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Bottom Status Bar inside Image */}
+                                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 pt-4 flex justify-between items-end">
+                                                            <span className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded-sm bg-black/40 border border-white/20">
+                                                                {video.file || video.url ? "VIDEO READY" : "MISSING VIDEO"}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+
+
+                                                    {/* Details Input */}
+                                                    <div className="w-full min-w-0 flex-1 flex flex-col justify-center">
+                                                        <input
+                                                            type="text"
+                                                            value={video.title}
+                                                            onChange={(e) => updatePendingVideo(video.id, 'title', e.target.value)}
+                                                            placeholder="Title"
+                                                            className="w-full text-xs text-center border-b border-gray-300 bg-transparent focus:outline-none focus:border-blue-500 px-0.5 pb-0.5 truncate font-medium text-gray-800"
+                                                        />
+                                                    </div>
+
+                                                    {/* Visibility Toggle */}
+                                                    <div className="flex items-center gap-1 mt-2 scale-75 origin-bottom">
+                                                        <span className="text-[8px] font-bold text-gray-400 uppercase">Vis</span>
+                                                        <OrangeToggle
+                                                            checked={video.visible}
+                                                            onChange={() => updatePendingVideo(video.id, 'visible', !video.visible)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <button type="submit" className="w-full bg-[#E57355] text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2">
+                                        <span>Upload {pendingVideos.length > 0 ? `(${pendingVideos.length})` : ''}</span>
+                                    </button>
+                                    <button type="button" onClick={() => { setShowVideoModal(false); setPendingVideos([]); }} className="w-full text-gray-500 py-2">
+                                        Cancel
+                                    </button>
+                                </form>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* PREVIEW VIDEO OVERLAY (Only show if NOT in Add Video Modal) */}
+            {(previewVideoUrl && !showVideoModal) && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setPreviewVideoUrl(null)}>
+                    <div
+                        className={`relative bg-black rounded-lg overflow-hidden shadow-2xl flex flex-col ${(previewVideoUrl.includes("youtube.com") || previewVideoUrl.includes("youtu.be"))
+                                ? "w-full max-w-4xl aspect-video"
+                                : "w-auto h-auto max-w-[90vw] max-h-[90vh]"
+                            }`}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <button
+                            onClick={() => setPreviewVideoUrl(null)}
+                            className="absolute top-4 right-4 text-white hover:text-red-500 z-50 bg-black/50 rounded-full p-2 transition-colors"
+                        >
+                            <X size={24} />
+                        </button>
+
+                        {(() => {
+                            const cleanUrl = sanitizeUrl(previewVideoUrl);
+                            if (cleanUrl.includes("youtube.com") || cleanUrl.includes("youtu.be")) {
+                                const videoId = cleanUrl.split('v=')[1]?.split('&')[0] || cleanUrl.split('/').pop();
+                                return (
+                                    <iframe
+                                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3`}
+                                        className="w-full h-full border-0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    />
+                                );
+                            } else if (cleanUrl.match(/\.(mp4|webm|ogg|mov)$/i) || cleanUrl.startsWith("blob:") || cleanUrl.includes("uploads/")) {
+                                return (
+                                    <video
+                                        src={cleanUrl}
+                                        controls
+                                        autoPlay
+                                        className="max-w-full max-h-[90vh] object-contain"
+                                        poster={pendingVideos.find(v => (v.url === previewVideoUrl || v.previewUrl === previewVideoUrl))?.thumbnailUrl || undefined}
+                                    >
+                                        Your browser does not support the video tag.
+                                    </video>
+                                );
+                            } else {
+                                return (
+                                    <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900 text-white min-w-[320px] min-h-[320px] p-10">
+                                        <p className="mb-4 text-center">External Link Preview</p>
+                                        <a
+                                            href={cleanUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold shadow-lg"
+                                        >
+                                            Open in New Tab ↗
+                                        </a>
+                                    </div>
+                                );
+                            }
+                        })()}
+                    </div>
+                </div>
+            )}
+
+            {/* IMAGE PREVIEW OVERLAY */}
+            {previewImageUrl && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/20 p-4 backdrop-blur-none" onClick={() => setPreviewImageUrl(null)}>
+                    <div className="relative w-full max-w-4xl h-full max-h-[80vh] flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                        <button
+                            onClick={() => setPreviewImageUrl(null)}
+                            className="absolute top-4 right-4 text-white hover:text-red-500 z-50 bg-black/50 rounded-full p-2 transition-colors"
+                        >
+                            <X size={24} />
+                        </button>
+                        <img
+                            src={previewImageUrl}
+                            alt="Full Preview"
+                            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                        />
                     </div>
                 </div>
             )}
@@ -1178,6 +1785,10 @@ const InventoryDashboard = () => {
                                 />
                             </div>
 
+                            {/* Category Name Input */}
+                            {/* Category Selection Logic */}
+
+
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Upload Image (Max 5)</label>
                                 <div className="relative">
@@ -1199,16 +1810,23 @@ const InventoryDashboard = () => {
                             {pendingImages.length > 0 && (
                                 <div className="grid grid-cols-3 gap-2 mt-4 border-t pt-2 max-h-[200px] overflow-y-auto">
                                     {pendingImages.map((img, index) => (
-                                        <div key={img.id} className="relative bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center text-center">
+                                        <div key={img.id} className="relative bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center text-center group">
                                             {/* Thumbnail / Icon */}
-                                            <div className="h-10 w-10 bg-gray-200 rounded flex items-center justify-center text-gray-500 text-lg mb-1">
-                                                🖼️
+                                            <div
+                                                className="h-16 w-16 bg-gray-200 rounded-md overflow-hidden flex items-center justify-center mb-1 cursor-pointer border border-gray-300 shadow-sm hover:opacity-90 transition-opacity"
+                                                onClick={() => setPreviewImageUrl(img.previewUrl || img.url || "")}
+                                            >
+                                                {img.previewUrl || img.url ? (
+                                                    <img src={img.previewUrl || img.url} alt="Preview" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-2xl">🖼️</span>
+                                                )}
                                             </div>
 
                                             {/* Details Input */}
                                             <div className="w-full min-w-0">
                                                 <div className="text-xs font-medium text-gray-900 truncate">{img.title}</div>
-                                                <p className="text-[8px] text-gray-400 truncate">{img.file.name}</p>
+                                                <p className="text-[8px] text-gray-400 truncate">{img.file?.name || img.url || "File"}</p>
                                             </div>
 
                                             {/* Delete */}
@@ -1235,41 +1853,7 @@ const InventoryDashboard = () => {
                 </div>
             )}
 
-            {/* ADD LINK MODAL */}
-            {showLinkModal && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-                    <div className="w-full max-w-sm bg-white rounded-xl shadow-2xl p-6">
-                        <h3 className="text-xl font-bold text-center text-gray-900 mb-6">Add Link</h3>
-                        <form onSubmit={handleLinkSubmit} className="space-y-4">
 
-                            {/* Link Fields */}
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-bold text-gray-700">Link Title</label>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-500 font-medium">Visible</span>
-                                        <OrangeToggle
-                                            checked={newLinkVisible}
-                                            onChange={() => setNewLinkVisible(!newLinkVisible)}
-                                        />
-                                    </div>
-                                </div>
-                                <input type="text" name="linkTitle" placeholder="e.g. Website" className="w-full border rounded p-2" required />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">URL</label>
-                                <input type="url" name="linkUrl" placeholder="https://..." className="w-full border rounded p-2" required />
-                            </div>
-                            <button type="submit" className="w-full bg-[#E57355] text-white font-bold py-3 rounded-lg">
-                                Add
-                            </button>
-                            <button type="button" onClick={() => setShowLinkModal(false)} className="w-full text-gray-500 py-2">
-                                Cancel
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
 
             {/* ADD MISSING SERVICES MODAL */}
             {showAddMissingModal && (
@@ -1330,6 +1914,7 @@ const InventoryDashboard = () => {
                     </div>
                 </div>
             )}
+
         </div>
     );
 };

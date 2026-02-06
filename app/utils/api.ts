@@ -67,17 +67,52 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // 🔍 DEBUG: Log complete request details
+    console.log("🌐 AXIOS REQUEST:", {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`,
+      headers: config.headers,
+      data: config.data
+    });
+    
     return config;
   },
   (error) => {
+    console.error("❌ REQUEST INTERCEPTOR ERROR:", error);
     return Promise.reject(error);
   }
 );
 
 // Response interceptor for error handling
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // 🔍 DEBUG: Log successful response
+    console.log("✅ AXIOS RESPONSE:", {
+      status: response.status,
+      statusText: response.statusText,
+      data: response.data,
+      headers: response.headers
+    });
+    return response;
+  },
   (error) => {
+    // 🔍 DEBUG: Log error response
+    console.error("❌ AXIOS ERROR:", {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      headers: error.response?.headers,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        data: error.config?.data
+      }
+    });
+    
     if (error.response?.status === 401) {
       // Handle unauthorized access
       localStorage.removeItem('token');

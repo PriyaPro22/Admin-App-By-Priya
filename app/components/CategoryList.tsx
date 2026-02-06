@@ -128,9 +128,9 @@ const CategoryList: React.FC<CategoryListProps> = ({
   };
 
 
-  // Filter out "childCatVideos" if present
+  // Filter out "childCatVideos" and items with no name
   const rawList = dataOverride || dataMap[type] || [];
-  const list = rawList.filter((item: any) => item.name !== "childCatVideos");
+  const list = rawList.filter((item: any) => item.name !== "childCatVideos" && item.name && item.name.trim() !== "");
 
   const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({});
 

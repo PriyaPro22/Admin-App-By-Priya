@@ -7,9 +7,10 @@ import { generateCategoryId } from '../utils/generateCategoryId';
 
 
 
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_DOMAIN
   ? `${process.env.NEXT_PUBLIC_API_DOMAIN}/api/product-listing`
-  : BASE_URL + "";
+  : 'https://api.bijliwalaaya.in/api/product-listing';
 const API_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN || "super_secure_token";
 // Define Types
 // export interface MainCategory {
@@ -103,6 +104,7 @@ export interface DeepChildCategory {
   maxTimeVisible?: boolean;
   photoVisible?: boolean;
   videoVisible?: boolean;
+  childCatVideosVisible?: boolean;
 
   // Navigation Context (For Updates)
   mainCategoryId?: string;
@@ -155,14 +157,56 @@ export interface SubDeepChildCategory {
   maxTimeVisible?: boolean;
   photoVisible?: boolean;
   videoVisible?: boolean;
+  childCatVideosVisible?: boolean;
+}
+
+// Child Category V2 Interface
+export interface ChildCategoryV2 {
+  key: string; // The URL parameter
+  name: string;
+  visibility: boolean;
+  images: {
+    name: string;
+    visibility: boolean;
+    // Index-based keys "0", "1", ...
+    [key: string]: any;
+  };
+  videos: {
+    name: string;
+    visibility: boolean;
+    // Index-based keys "0", "1", ...
+    [key: string]: any;
+  };
+  links: {
+    name: string;
+    visibility: boolean;
+    // Index-based keys "0", "1", ...
+    [key: string]: any;
+  };
+  updatedAt?: string;
 }
 
 interface CategoryContextType {
+  addChildCategoryMedia: (
+    mainId: string,
+    type: "images" | "videos",
+    item: {
+      imageTitle?: string;
+      videoTitle?: string;
+      url?: string;
+      file?: File;  // For file uploads
+      visibility?: boolean;
+    },
+    subCategoryId?: string
+  ) => Promise<void>;
+
   mainCategories: MainCategory[];
   subCategories: SubCategory[];
   childCategories: ChildCategory[];
   deepChildCategories: DeepChildCategory[];
   subDeepChildCategories: SubDeepChildCategory[];
+  // V2 State
+  childCategoriesV2: Record<string, ChildCategoryV2>; // Map key -> data
 
   fetchMainCategories: () => Promise<void>;
   fetchSubCategories: (mainId: string) => Promise<void>;
@@ -180,6 +224,29 @@ interface CategoryContextType {
   updateDeepChildCategory: (item: any) => Promise<void>;
   updateDeepChildCategoryWithSub: (item: any) => Promise<void>;
   updateSubDeepChildCategory: (item: any) => Promise<void>;
+
+  // V2 Methods
+  fetchChildCategoryMedia: (mainId: string, subId?: string) => Promise<any>;
+  updateChildCategoryMediaByIndex: (
+    mainId: string,
+    type: "images" | "videos",
+    index: number,
+    payload: {
+      imageTitle?: string;
+      videoTitle?: string;
+      url?: string;
+      visibility?: boolean;
+    },
+    subId?: string
+  ) => Promise<void>;
+  deleteChildCategoryMediaByIndex: (
+    mainId: string,
+    type: "images" | "videos",
+    index: number,
+    subId?: string
+  ) => Promise<void>;
+
+  deleteChildCategoryV2: (mainId: string, key: string, subCategoryId?: string) => Promise<void>;
 
   addMainCategory: (category: Omit<MainCategory, 'id'>) => Promise<void>;
   addSubCategory: (category: Omit<SubCategory, 'id'>) => Promise<void>;
@@ -210,13 +277,19 @@ interface CategoryContextType {
 
 const CategoryContext = createContext<CategoryContextType | undefined>(undefined);
 
-const getAuthHeaders = () => {
+const getAuthHeaders = (isFormData = false) => {
   const token = localStorage.getItem("token");
-  return {
+
+  const headers: any = {
     "x-api-token": API_TOKEN,
     Authorization: token ? `Bearer ${token}` : "",
-    "Content-Type": "multipart/form-data", // Important for FormData
   };
+
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  return headers;
 };
 
 export const CategoryProvider = ({ children }: { children: ReactNode }) => {
@@ -226,7 +299,8 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   const [deepChildCategories, setDeepChildCategories] = useState<DeepChildCategory[]>([]);
   const [subDeepChildCategories, setSubDeepChildCategories] = useState<SubDeepChildCategory[]>([]); // Local state for SubDeep
   const [isLoadingSubDeep, setIsLoadingSubDeep] = useState<boolean>(false);
-
+  const [childCategoriesV2, setChildCategoriesV2] = useState<Record<string, ChildCategoryV2>>({});
+  const [childCategoryMedia, setChildCategoryMedia] = useState<any>(null);
 
   // FETCH MAIN DATA ON MOUNT
   useEffect(() => {
@@ -1555,6 +1629,237 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  /* ================= V2 API METHODS ================= */
+
+  const fetchChildCategoryMedia = async (
+    mainId: string,
+    subId?: string
+  ) => {
+    // ✅ FIX: Use relative path (baseURL already has /api/product-listing)
+    const url = subId
+      ? `/main/${mainId}/sub/${subId}/child-category/media`
+      : `/main/${mainId}/child-category/media`;
+
+    console.log("🚀 FETCH MEDIA URL:", url);
+    const res = await api.get(url);
+
+    console.log("🔥 CHILD CAT MEDIA FETCH:", res.data);
+
+    const data = res.data?.data || null;
+
+    setChildCategoryMedia(data);   // ✅ THIS WAS MISSING
+    return data;
+  };
+
+  /**
+   * Add Image or Video to Child Category Media
+   * POST /main/:mainId/child-category/media
+   * POST /main/:mainId/sub/:subId/child-category/media
+   *
+   * According to API Documentation:
+   * - Backend auto-generates indices (0, 1, 2, ...)
+   * - Client must NOT send index
+   * - Supports both file uploads (multer) and direct URLs (YouTube, etc.)
+   * - For files: use FormData with multipart/form-data
+   * - For URLs: use JSON with application/json
+   * - Payload structure: { childCatMedia: { images/videos: { imageTitle/videoTitle, url, visibility } } }
+   */
+  const addChildCategoryMedia = async (
+    mainId: string,
+    type: "images" | "videos",
+    item: {
+      imageTitle?: string;
+      videoTitle?: string;
+      url?: string;
+      file?: File;  // For file uploads
+      visibility?: boolean;
+    },
+    subId?: string
+  ) => {
+    console.log("📥 addChildCategoryMedia RECEIVED - mainId:", mainId);
+    console.log("📥 addChildCategoryMedia RECEIVED - type:", type);
+    console.log("📥 addChildCategoryMedia RECEIVED - item:", item);
+
+    // Build URL based on whether we have subCategory or not
+    const url = subId
+      ? `/main/${mainId}/sub/${subId}/child-category/media`
+      : `/main/${mainId}/child-category/media`;
+
+    try {
+      // ✅ CASE 1: FILE UPLOAD (multer)
+      if (item.file instanceof File) {
+        console.log("📤 Using FormData for file upload");
+
+        const formData = new FormData();
+
+        // ✅ CONSISTENT PROJECT PATTERN: Using 'imageUri' / 'videoUri'
+        if (type === "images") {
+          formData.append("imageUri", item.file); // Root key for Multer
+          formData.append(`childCatMedia[images][imageUri]`, item.file); // Nested
+          formData.append(`childCatMedia[images][imageTitle]`, item.imageTitle || "");
+          formData.append(`childCatMedia[images][visibility]`, String(item.visibility ?? true));
+        } else {
+          formData.append("videoUri", item.file); // Root key for Multer
+          formData.append(`childCatMedia[videos][videoUri]`, item.file); // Nested
+          formData.append(`childCatMedia[videos][videoTitle]`, item.videoTitle || "");
+          formData.append(`childCatMedia[videos][visibility]`, String(item.visibility ?? true));
+        }
+
+        console.log("📦 MEDIA POST (FormData) URL:", url);
+
+        const response = await axios.post(
+          `${BASE_URL}${url}`,
+          formData,
+          {
+            headers: {
+              ...getAuthHeaders(true), // isFormData = true (no Content-Type header)
+            }
+          }
+        );
+
+        console.log("✅ POST SUCCESS (File):", response.data);
+      }
+      // ✅ CASE 2: DIRECT URL (YouTube, external links, etc.)
+      // ✅ CASE 2: DIRECT URL (JSON)
+      else if (item.url) {
+        console.log("📤 Using JSON for direct URL");
+
+        // Building exact payload structure like Thunder Client
+        const body = {
+          childCatMedia: {
+            [type]: type === "images"
+              ? {
+                imageTitle: item.imageTitle || "",
+                url: item.url,
+                visibility: item.visibility ?? true
+              }
+              : {
+                videoTitle: item.videoTitle || "",
+                url: item.url,
+                visibility: item.visibility ?? true
+              }
+          }
+        };
+
+        const fullUrl = `${BASE_URL}${url}`;
+
+        console.log("📦 MEDIA POST (JSON) PAYLOAD:", JSON.stringify(body, null, 2));
+        console.log("🚀 FULL URL:", fullUrl);
+        console.log("🔍 Body structure check:", {
+          hasChildCatMedia: !!body.childCatMedia,
+          type: type,
+          hasType: !!(body.childCatMedia as any)[type],
+          content: (body.childCatMedia as any)[type]
+        });
+
+        const token = localStorage.getItem("token");
+        const headers = {
+          "Content-Type": "application/json",
+          "x-api-token": API_TOKEN,
+          Authorization: token ? `Bearer ${token}` : "",
+        };
+
+        console.log("🔐 Headers:", headers);
+
+        const response = await axios.post(fullUrl, body, { headers });
+
+        console.log("✅ POST SUCCESS (URL):", response.data);
+        console.log("✅ Response status:", response.status);
+        console.log("✅ Response data detail:", JSON.stringify(response.data, null, 2));
+      } else {
+        throw new Error("Either 'file' or 'url' must be provided");
+      }
+    } catch (error: any) {
+      console.error("❌ POST FAILED:", error);
+      console.error("❌ Error Response:", error.response?.data);
+      console.error("❌ Error Status:", error.response?.status);
+      console.error("❌ Full Error:", error);
+      throw error;
+    }
+
+    // ✅ REFRESH DATA after successful post
+    console.log("🔄 Refreshing data...");
+    await fetchChildCategoryMedia(mainId, subId);
+  };
+
+  /**
+   * Update a specific media item by index
+   * PUT /main/:mainId/child-category/media/:type/:index
+   * PUT /main/:mainId/sub/:subId/child-category/media/:type/:index
+   */
+  const updateChildCategoryMediaByIndex = async (
+    mainId: string,
+    type: "images" | "videos",
+    index: number,
+    payload: {
+      imageTitle?: string;
+      videoTitle?: string;
+      url?: string;
+      visibility?: boolean;
+    },
+    subId?: string
+  ) => {
+    // ✅ FIX: Use relative path
+    const url = subId
+      ? `/main/${mainId}/sub/${subId}/child-category/media/${type}/${index}`
+      : `/main/${mainId}/child-category/media/${type}/${index}`;
+
+    console.log(`📝 UPDATE MEDIA [${type}][${index}]:`, url, payload);
+
+    await api.put(url, payload);
+
+    // Refresh data after update
+    await fetchChildCategoryMedia(mainId, subId);
+  };
+
+  /**
+   * Delete a specific media item by index
+   * DELETE /main/:mainId/child-category/media/:type/:index
+   * DELETE /main/:mainId/sub/:subId/child-category/media/:type/:index
+   */
+  const deleteChildCategoryMediaByIndex = async (
+    mainId: string,
+    type: "images" | "videos",
+    index: number,
+    subId?: string
+  ) => {
+    // ✅ FIX: Use relative path
+    const url = subId
+      ? `/main/${mainId}/sub/${subId}/child-category/media/${type}/${index}`
+      : `/main/${mainId}/child-category/media/${type}/${index}`;
+
+    console.log(`🗑️ DELETE MEDIA [${type}][${index}]:`, url);
+
+    await api.delete(url);
+
+    // Refresh data after delete
+    await fetchChildCategoryMedia(mainId, subId);
+  };
+
+
+  const deleteChildCategoryV2 = async (mainId: string, key: string, subCategoryId?: string) => {
+    try {
+      let url = "";
+      if (subCategoryId) {
+        url = `${BASE_URL}/main/${mainId}/sub/${subCategoryId}/child-category/media`;
+      } else {
+        url = `${BASE_URL}/main/${mainId}/child-category/media`;
+      }
+      console.log("🗑️ DELETE V2:", url);
+      await api.delete(url);
+
+      // Remove from state
+      setChildCategoriesV2(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    } catch (e: any) {
+      console.error("❌ Failed to delete Child Category V2:", e);
+      throw e;
+    }
+  };
+
   // const addSubDeepChildCategory = async (data: any) => {
   //   const token = localStorage.getItem("token");
 
@@ -1671,6 +1976,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       {
         // 📝 CONTENT
         firstTitle: data.firstTitle,
+
         secondTitle: data.secondTitle,
         description: data.description,
         visible: data.subDeepCategoryVisible ?? data.visible,
@@ -2426,11 +2732,15 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   return (
     <CategoryContext.Provider
       value={{
+        addChildCategoryMedia,
         mainCategories,
         subCategories,
         childCategories,
         deepChildCategories,
         subDeepChildCategories, // Ensure this is here
+
+        // ✅ EXPOSE THIS
+
         addMainCategory: addMainCategory as any,
         fetchMainCategories,
         addSubCategory: addSubCategory as any,
@@ -2464,7 +2774,14 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
         updateDeepChildCategoryWithSub,
         updateSubDeepChildCategory,
         fetchChildCategories,
-        fetchDeepChildCategories
+        fetchDeepChildCategories,
+
+        // V2 Exports
+        childCategoriesV2,
+        fetchChildCategoryMedia,
+        updateChildCategoryMediaByIndex,
+        deleteChildCategoryMediaByIndex,
+        deleteChildCategoryV2
       }}
     >
       {children}
