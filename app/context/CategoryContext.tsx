@@ -1686,38 +1686,45 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
       : `/main/${mainId}/child-category/media`;
 
     try {
-      // ✅ CASE 1: FILE UPLOAD (multer)
+      // ✅ Case 1: FILE UPLOAD (naman123 - 2-Step Auto-Fix for proper URL mapping)
       if (item.file instanceof File) {
-        console.log("📤 Using FormData for file upload");
+        console.log("📤 Step 1: Creating metadata node...");
 
-        const formData = new FormData();
-
-        // ✅ CONSISTENT PROJECT PATTERN: Using 'imageUri' / 'videoUri'
-        if (type === "images") {
-          formData.append("imageUri", item.file); // Root key for Multer
-          formData.append(`childCatMedia[images][imageUri]`, item.file); // Nested
-          formData.append(`childCatMedia[images][imageTitle]`, item.imageTitle || "");
-          formData.append(`childCatMedia[images][visibility]`, String(item.visibility ?? true));
-        } else {
-          formData.append("videoUri", item.file); // Root key for Multer
-          formData.append(`childCatMedia[videos][videoUri]`, item.file); // Nested
-          formData.append(`childCatMedia[videos][videoTitle]`, item.videoTitle || "");
-          formData.append(`childCatMedia[videos][visibility]`, String(item.visibility ?? true));
-        }
-
-        console.log("📦 MEDIA POST (FormData) URL:", url);
-
-        const response = await axios.post(
-          `${BASE_URL}${url}`,
-          formData,
-          {
-            headers: {
-              ...getAuthHeaders(true), // isFormData = true (no Content-Type header)
+        // Metadata Payload (Just labels and visibility)
+        const createBody = {
+          childCatMedia: {
+            [type]: {
+              [type === "images" ? "imageTitle" : "videoTitle"]: type === "images" ? item.imageTitle : item.videoTitle,
+              visibility: item.visibility ?? true,
+              url: "pending" // Placeholder
             }
           }
-        );
+        };
 
-        console.log("✅ POST SUCCESS (File):", response.data);
+        const createRes = await axios.post(`${BASE_URL}${url}`, createBody, { headers: getAuthHeaders() });
+
+        if (createRes.data.success) {
+          console.log("📤 Step 2: Extracting index and uploading binary file...");
+
+          // Find the new index (the highest number in the returned object)
+          const currentMedia = createRes.data.data[type];
+          const indices = Object.keys(currentMedia).map(Number).filter(n => !isNaN(n));
+          const newIndex = Math.max(...indices);
+
+          // Construct Update URL: e.g. /main/:id/child-category/media/images/0
+          const updateUrl = `${url}/${type}/${newIndex}`;
+
+          const formData = new FormData();
+          formData.append("url", item.file); // Root key at the top level for attachUploads compatibility
+
+          const updateRes = await axios.put(`${BASE_URL}${updateUrl}`, formData, {
+            headers: {
+              ...getAuthHeaders(true),
+            }
+          });
+
+          console.log("✅ 2-STEP SUCCESS (URL Stored):", updateRes.data);
+        }
       }
       // ✅ CASE 2: DIRECT URL (YouTube, external links, etc.)
       // ✅ CASE 2: DIRECT URL (JSON)
