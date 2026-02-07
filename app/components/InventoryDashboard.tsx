@@ -14,6 +14,11 @@ import CategoryList from "./CategoryList";
 
 
 
+const sanitizeUrl = (url?: string) => {
+    if (!url) return "";
+    return url.trim();
+};
+
 const InventoryDashboard = () => {
     const [activeForm, setActiveForm] = useState<string | null>(null);
     const [activeView, setActiveView] = useState<string | null>(null); // 'mainList', 'subList', 'childList'
@@ -48,13 +53,17 @@ const InventoryDashboard = () => {
     // ✅ PENDING VIDEO UPLOAD STATE
     interface PendingVideo {
         id: string;
-        file: File | null; // Null if URL
+        videoTitle?: string;
+        imageTitle?: string;
+        linkTitle?: string;
+        file: File | null;
         title: string;
         visible: boolean;
-        url?: string; // Added URL support
-        previewUrl?: string; // ✅ For previewing files/links
+        url?: string;
+        previewUrl?: string;
         thumbnail?: File | null;
         thumbnailUrl?: string;
+        dbIndex?: number | string;
     }
     const [pendingVideos, setPendingVideos] = useState<PendingVideo[]>([]);
     const [pendingImages, setPendingImages] = useState<PendingVideo[]>([]); // Reusing PendingVideo interface as it's just ID/File/Title/Visible
@@ -78,10 +87,11 @@ const InventoryDashboard = () => {
 
     // ✅ Updated Images State to store full object
     const [images, setImages] = useState<PendingVideo[]>([]);
+    const [links, setLinks] = useState<PendingVideo[]>([]);
     const [videoLinkInput, setVideoLinkInput] = useState("");
-
-    // ✅ Updated Links State to include visibility
-    const [links, setLinks] = useState<{ title: string, url: string, visible: boolean }[]>([]);
+    const [playingVideoUrl, setPlayingVideoUrl] = useState<string | null>(null); // ✅ NEW: Inline Playback State
+    const [deleteMediaInfo, setDeleteMediaInfo] = useState<{ type: "images" | "videos" | "links", index: number, dbIndex?: string | number, title: string } | null>(null);
+    const [isDeletingMedia, setIsDeletingMedia] = useState(false);
 
     // ✅ Smart Video Select: Merges with thumbnail-only entries if available
     const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,7 +126,7 @@ const InventoryDashboard = () => {
                             id: Math.random().toString(36).substr(2, 9),
                             file,
                             title: file.name.replace(/\.[^/.]+$/, ""),
-                            visible: true,
+                            visible: false, // ✅ Default to false for new upload
                             previewUrl
                         });
                     }
@@ -161,7 +171,7 @@ const InventoryDashboard = () => {
                             thumbnail: file,
                             thumbnailUrl,
                             title: file.name.replace(/\.[^/.]+$/, ""),
-                            visible: true
+                            visible: false // ✅ Default to false for new upload
                         });
                     }
                 });
@@ -180,7 +190,7 @@ const InventoryDashboard = () => {
                 id: Math.random().toString(36).substr(2, 9),
                 file,
                 title: file.name.replace(/\.[^/.]+$/, ""),
-                visible: true,
+                visible: false, // ✅ Default to false for new upload
                 previewUrl: URL.createObjectURL(file) // ✅ Generate preview
             }));
             setPendingImages(prev => [...prev, ...newPending]);
@@ -223,7 +233,7 @@ const InventoryDashboard = () => {
                 id: newId,
                 file: null,
                 title: "Video Link",
-                visible: true,
+                visible: false, // ✅ Default to false
                 url: videoLinkInput.trim(),
                 previewUrl: videoLinkInput.trim()
             });
@@ -251,17 +261,14 @@ const InventoryDashboard = () => {
                         videoTitle: videoGroupTitle.trim() || vid.title || "Untitled Video",
                         url: vid.file ? undefined : vid.url, // Don't send local blob URL if it's a file
                         file: vid.file || undefined,
-                        visibility: vid.visible ?? true
+                        visibility: vid.visible ?? false // ✅ Default to false
                     },
                     selectedSubCategoryId || undefined
                 );
             }
 
-            // Refresh UI
-            const media = await fetchChildCategoryMedia(selectedMainCategoryId, selectedSubCategoryId || undefined);
-            if (media) {
-                setVideos(Object.values(media.videos || {}).filter(v => typeof v === "object"));
-            }
+            // Refresh UI using centralized fetcher
+            await fetchCurrentMedia();
 
             alert("✅ Videos added successfully!");
             setPendingVideos([]);
@@ -352,6 +359,8 @@ const InventoryDashboard = () => {
         deleteChildCategory,
         deleteDeepChildCategory,
         deleteSubDeepChildCategory,
+        deleteChildCategoryMediaByIndex,
+        updateChildCategoryMediaByIndex,
 
         // toggle
         toggleMainVisibility,
@@ -375,6 +384,7 @@ const InventoryDashboard = () => {
 
         // 🔥 MEDIA (YE IMPORTANT HAI)
         fetchChildCategoryMedia,
+        updateChildCategoryMediaGroup,
         childCategoriesV2
 
     } = useCategory();
@@ -419,7 +429,63 @@ const InventoryDashboard = () => {
         fetchMainCategories();
     }, []);
 
-    const handleMainCategoryClick = (item: any) => {
+    const fetchCurrentMedia = async (mainId?: string | null, subId?: string | null) => {
+        const mId = mainId || selectedMainCategoryId;
+        const sId = subId !== undefined ? subId : selectedSubCategoryId;
+
+        if (!mId) return;
+
+        console.log(`🔄 Global Fetch Media for Main: ${mId}, Sub: ${sId}`);
+        try {
+            const media = await fetchChildCategoryMedia(mId, sId || undefined);
+            if (media) {
+                // ✅ Update Group States from DB
+                if (media.images) {
+                    setImageGroupTitle(media.images.name || "");
+                    setImageGroupTitleVisible(media.images.visibility ?? true);
+                }
+                if (media.videos) {
+                    setVideoGroupTitle(media.videos.name || "");
+                    setVideoGroupTitleVisible(media.videos.visibility ?? true);
+                }
+
+                // ✅ ROBUST MAPPER: Map DB 'visibility' to UI 'visible' using Object.entries to preserve keys
+                const mapMedia = (obj: any, isVideo: boolean) =>
+                    Object.entries(obj || {})
+                        .filter(([key, v]: any) => v && typeof v === "object" && (v.url || v.uri || v.imageTitle || v.videoTitle))
+                        .map(([key, v]: any) => ({
+                            ...v,
+                            dbIndex: key, // ✅ Crucial: Store the actual index from the database
+                            id: v.id || v._id || key,
+                            title: isVideo ? (v.videoTitle || "Untitled Video") : (v.imageTitle || "Untitled Image"),
+                            visible: v.visibility !== undefined ? v.visibility : true // Map DB field
+                        }));
+
+                setImages(mapMedia(media.images, false));
+                setVideos(mapMedia(media.videos, true));
+
+                // Mapping Links
+                if (media.links) {
+                    const mappedLinks = Object.entries(media.links)
+                        .filter(([k, v]: any) => v && typeof v === 'object' && (v.url || v.linkTitle))
+                        .map(([k, v]: any) => ({
+                            ...v,
+                            id: v.id || v._id || k,
+                            dbIndex: k,
+                            title: v.linkTitle || "Untitled Link",
+                            url: v.url || "",
+                            visible: v.visibility ?? v.visible ?? true
+                        }));
+                    setLinks(mappedLinks as any);
+                    setLinkGroupTitleVisible(media.links.visibility ?? true);
+                }
+            }
+        } catch (err) {
+            console.error("❌ Failed to fetch current media:", err);
+        }
+    };
+
+    const handleMainCategoryClick = async (item: any) => {
         const mainId = item._id || item.id;
         setSelectedMainCategoryId(mainId);
         setSelectedMainCategoryName(item.name);
@@ -434,15 +500,19 @@ const InventoryDashboard = () => {
         } else {
             fetchChildCategories(mainId, null);
             setActiveView("childList");
+            // ✅ Load media immediately when joining childList
+            await fetchCurrentMedia(mainId, null);
         }
     };
 
-    const handleSubCategoryClick = (item: any) => {
+    const handleSubCategoryClick = async (item: any) => {
         const id = item.documentId || item._id || item.id;
         setSelectedSubCategoryId(id);
         setSelectedSubCategoryName(item.name);
         if (selectedMainCategoryId) {
             fetchChildCategories(selectedMainCategoryId, id);
+            // ✅ Load media immediately when joining childList from sub-cat
+            await fetchCurrentMedia(selectedMainCategoryId, id);
         }
         setActiveView('childList');
     };
@@ -452,15 +522,8 @@ const InventoryDashboard = () => {
 
         if (!selectedMainCategoryId) return;
 
-        const media = await fetchChildCategoryMedia(selectedMainCategoryId);
-
-        setImages(
-            Object.values(media?.images || {}).filter(i => typeof i === "object")
-        );
-
-        setVideos(
-            Object.values(media?.videos || {}).filter(v => typeof v === "object")
-        );
+        // ✅ Ensure we fetch media with correct subId if present
+        await fetchCurrentMedia(selectedMainCategoryId, selectedSubCategoryId);
 
         setActiveView("deepList");
     };
@@ -545,6 +608,138 @@ const InventoryDashboard = () => {
     const handleEditDeep = (item: any) => {
         setEditingDeepChildCategory(item);
         setActiveForm('deep');
+    };
+
+    const handleToggleMediaVisibility = async (type: "images" | "videos" | "links", index: number, currentVisible: boolean) => {
+        if (!selectedMainCategoryId) return;
+
+        const mediaItem = type === "images" ? images[index] : (type === "videos" ? videos[index] : links[index]);
+        const dbIndex = mediaItem?.dbIndex ?? index;
+        const newVisible = !currentVisible;
+
+        // 🚀 Optimistic Update
+        if (type === "images") {
+            setImages(prev => prev.map((img, i) => i === index ? { ...img, visible: newVisible } : img));
+        } else if (type === "videos") {
+            setVideos(prev => prev.map((vid, i) => i === index ? { ...vid, visible: newVisible } : vid));
+        } else if (type === "links") {
+            setLinks(prev => prev.map((lnk, i) => i === index ? { ...lnk, visible: newVisible } : lnk));
+        }
+
+        try {
+            await updateChildCategoryMediaByIndex(
+                selectedMainCategoryId,
+                type as any,
+                dbIndex,
+                { visibility: newVisible },
+                selectedSubCategoryId || undefined
+            );
+            console.log(`✅ ${type} item [${dbIndex}] visible toggled to ${newVisible}`);
+        } catch (err) {
+            console.error(`❌ Failed to toggle ${type} item visibility:`, err);
+            // Revert on failure
+            if (type === "images") {
+                setImages(prev => prev.map((img, i) => i === index ? { ...img, visible: currentVisible } : img));
+            } else if (type === "videos") {
+                setVideos(prev => prev.map((vid, i) => i === index ? { ...vid, visible: currentVisible } : vid));
+            } else if (type === "links") {
+                setLinks(prev => prev.map((lnk, i) => i === index ? { ...lnk, visible: currentVisible } : lnk));
+            }
+        }
+    };
+
+    const handleToggleGroupVisibility = async (type: "images" | "videos" | "links", currentVisible: boolean) => {
+        if (!selectedMainCategoryId) return;
+
+        const newVisible = !currentVisible;
+
+        // 🚀 Optimistic Update
+        if (type === "images") {
+            setImageGroupTitleVisible(newVisible);
+        } else if (type === "videos") {
+            setVideoGroupTitleVisible(newVisible);
+        } else if (type === "links") {
+            setLinkGroupTitleVisible(newVisible);
+        }
+
+        try {
+            const currentName = type === "images" ? imageGroupTitle : (type === "videos" ? videoGroupTitle : linkGroupTitle);
+            await updateChildCategoryMediaGroup(
+                selectedMainCategoryId,
+                type,
+                { name: currentName, visibility: newVisible },
+                selectedSubCategoryId || undefined
+            );
+            console.log(`✅ ${type} group visible toggled to ${newVisible}`);
+            // Removed automatic fetchCurrentMedia refresh to prevent race conditions 
+            // and "automatic on/off" flickering.
+
+        } catch (err) {
+            console.error(`❌ Failed to toggle ${type} group visibility:`, err);
+            // Revert
+            if (type === "images") {
+                setImageGroupTitleVisible(currentVisible);
+            } else if (type === "videos") {
+                setVideoGroupTitleVisible(currentVisible);
+            } else if (type === "links") {
+                setLinkGroupTitleVisible(currentVisible);
+            }
+        }
+    };
+
+    const handleConfirmDeleteMedia = async () => {
+        if (!deleteMediaInfo || !selectedMainCategoryId) return;
+        setIsDeletingMedia(true);
+
+        try {
+            if (deleteMediaInfo.type === 'links') {
+                // Just local delete for links as API support is uncertain based on current code
+                const newL = [...links];
+                newL.splice(deleteMediaInfo.index, 1);
+                setLinks(newL);
+                setDeleteMediaInfo(null);
+                setIsDeletingMedia(false);
+                return;
+            }
+
+            console.log(`🗑️ Deleting ${deleteMediaInfo.type} at index ${deleteMediaInfo.index}`);
+
+            // 🚀 Optimistic update
+            if (deleteMediaInfo.type === "images") {
+                setImages(prev => prev.filter((_, i) => i !== deleteMediaInfo.index));
+            } else {
+                setVideos(prev => prev.filter((_, i) => i !== deleteMediaInfo.index));
+            }
+
+            const dbIndex = deleteMediaInfo.dbIndex ?? deleteMediaInfo.index;
+
+            await deleteChildCategoryMediaByIndex(
+                selectedMainCategoryId,
+                deleteMediaInfo.type,
+                dbIndex,
+                selectedSubCategoryId || undefined
+            );
+
+            // Refresh UI
+            const media = await fetchChildCategoryMedia(selectedMainCategoryId, selectedSubCategoryId || undefined);
+            if (media) {
+                // Skip nulls and administrative keys
+                const filterFn = (v: any) => v && typeof v === "object" && (v.url || v.uri || v.imageTitle || v.videoTitle);
+                if (deleteMediaInfo.type === "images") {
+                    setImages(Object.values(media.images || {}).filter(filterFn) as any);
+                } else {
+                    setVideos(Object.values(media.videos || {}).filter(filterFn) as any);
+                }
+            }
+
+            setDeleteMediaInfo(null);
+            alert("✅ Deleted successfully!");
+        } catch (error) {
+            console.error("❌ Delete Failed:", error);
+            alert("Delete failed. Please try again.");
+        } finally {
+            setIsDeletingMedia(false);
+        }
     };
 
     const handleEditSubDeep = (item: any) => {
@@ -632,24 +827,15 @@ const InventoryDashboard = () => {
                     {
                         imageTitle: imageGroupTitle.trim() || img.title || "",
                         url: img.url,
-                        file: img.file,
-                        visibility: img.visible ?? true
+                        file: img.file as any,
+                        visibility: img.visible ?? false // ✅ Default to false
                     },
                     selectedSubCategoryId || undefined
                 );
             }
 
-            // Refresh media after all uploads
-            const media = await fetchChildCategoryMedia(
-                selectedMainCategoryId,
-                selectedSubCategoryId || undefined
-            );
-
-            if (media) {
-                setImages(
-                    Object.values(media.images || {}).filter(i => typeof i === "object")
-                );
-            }
+            // Refresh media after all uploads using centralized fetcher
+            await fetchCurrentMedia();
 
             alert("✅ Images added successfully with POST!");
             setPendingImages([]);
@@ -724,7 +910,7 @@ const InventoryDashboard = () => {
                 if (data === undefined) return;
                 if (data && typeof data === 'object' && !(data instanceof Date) && !(data instanceof File) && !(data instanceof Blob)) {
                     Object.keys(data).forEach(key => {
-                        buildFormData(formData, data[key], parentKey ? `${parentKey}[${key}]` : key);
+                        buildFormData(formData, data[key], parentKey ? `${ parentKey }[${ key }]` : key);
                     });
                 } else {
                     const value = data == null ? '' : data;
@@ -834,19 +1020,19 @@ const InventoryDashboard = () => {
                                 {activeForm === 'main' && <div className="mt-4"><MainCategoryForm onSuccess={() => { }} /></div>}
                             </div>
                             <div>
-                                <button onClick={() => toggleForm('sub')} className={`w-full py-3 rounded-lg text-white font-bold text-lg shadow-md transition-all ${activeForm === 'sub' ? 'bg-green-500' : 'bg-gray-400 hover:bg-gray-500'}`}>Manage Sub Category</button>
+                                <button onClick={() => toggleForm('sub')} className={`w-full py-3 rounded-lg text-white font-bold text-lg shadow-md transition-all ${activeForm === 'sub' ? 'bg-green-500' : 'bg-gray-400 hover:bg-gray-500'} `}>Manage Sub Category</button>
                                 {activeForm === 'sub' && <div className="mt-4"><SubCategoryForm onSuccess={() => { }} /></div>}
                             </div>
                             <div>
-                                <button onClick={() => toggleForm('child')} className={`w-full py-3 rounded-lg text-white font-bold text-lg shadow-md transition-all ${activeForm === 'child' ? 'bg-red-600' : 'bg-gray-400 hover:bg-gray-500'}`}>Manage Child Category</button>
+                                <button onClick={() => toggleForm('child')} className={`w-full py-3 rounded-lg text-white font-bold text-lg shadow-md transition-all ${activeForm === 'child' ? 'bg-red-600' : 'bg-gray-400 hover:bg-gray-500'} `}>Manage Child Category</button>
                                 {activeForm === 'child' && <div className="mt-4"><ChildCategoryForm onSuccess={() => { }} /></div>}
                             </div>
                             <div>
-                                <button onClick={() => toggleForm('deep')} className={`w-full py-3 rounded-lg text-white font-bold text-lg shadow-md transition-all ${activeForm === 'deep' ? 'bg-green-500' : 'bg-gray-400 hover:bg-gray-500'}`}>Manage Deep child category</button>
+                                <button onClick={() => toggleForm('deep')} className={`w-full py-3 rounded-lg text-white font-bold text-lg shadow-md transition-all ${activeForm === 'deep' ? 'bg-green-500' : 'bg-gray-400 hover:bg-gray-500'} `}>Manage Deep child category</button>
                                 {activeForm === 'deep' && <div className="mt-4"><DeepChildCategoryForm initialChildCategoryId={undefined} onSuccess={() => { }} /></div>}
                             </div>
                             <div>
-                                <button onClick={() => toggleForm('subDeep')} className={`w-full py-3 rounded-lg text-white font-bold text-lg shadow-md transition-all ${activeForm === 'subDeep' ? 'bg-purple-600' : 'bg-gray-400 hover:bg-gray-500'}`}>Manage Sub Deep child category</button>
+                                <button onClick={() => toggleForm('subDeep')} className={`w-full py-3 rounded-lg text-white font-bold text-lg shadow-md transition-all ${activeForm === 'subDeep' ? 'bg-purple-600' : 'bg-gray-400 hover:bg-gray-500'} `}>Manage Sub Deep child category</button>
                                 {activeForm === 'subDeep' && <div className="mt-4"><SubDeepChildCategoryForm initialDeepChildCategoryId={undefined} onSuccess={() => { }} /></div>}
                             </div>
 
@@ -1003,7 +1189,7 @@ const InventoryDashboard = () => {
                                 <span className="text-[8px] font-bold text-gray-500 uppercase">Visible</span>
                                 <OrangeToggle
                                     checked={videoGroupTitleVisible}
-                                    onChange={() => setVideoGroupTitleVisible(!videoGroupTitleVisible)}
+                                    onChange={() => handleToggleGroupVisibility("videos", videoGroupTitleVisible)}
                                 />
                             </div>
                         </div>
@@ -1012,22 +1198,49 @@ const InventoryDashboard = () => {
                     {/* VIDEO LIST - REFINED CARDS (HORIZONTAL SCROLL) */}
                     <div className="flex gap-4 overflow-x-auto px-2 pb-4 mt-2">
                         {videos.map((vid, idx) => (
-                            <div key={idx} className="min-w-[140px] h-[200px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative flex flex-col flex-shrink-0">
+                            <div key={idx} className="min-w-[140px] w-[140px] h-[200px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative flex flex-col flex-shrink-0">
                                 <div className="flex-1 w-full bg-white relative p-2 flex items-center justify-center">
                                     {/* Placeholder/Actual Video */}
                                     {vid.url ? (
-                                        <div className="w-full h-full flex flex-col justify-center items-center">
-                                            <div className="text-4xl">🎥</div>
-                                            <a href={vid.url} target="_blank" rel="noreferrer text-xs" className="mt-2 text-blue-600 underline text-xs">Open</a>
+                                        <div className="w-full h-full flex flex-col justify-center items-center relative overflow-hidden group bg-black">
+                                            {(() => {
+                                                const cleanUrl = sanitizeUrl(vid.url);
+                                                const ytId = cleanUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/)?.[2];
+                                                if (ytId) {
+                                                    return <img src={`https://img.youtube.com/vi/${ytId}/0.jpg`} className="w-full h-full object-cover" alt="Video" />;
+                                                }
+                                                return (
+                                                    <div className="w-full h-full relative">
+                                                        <video src={cleanUrl} className="w-full h-full object-cover" preload="metadata" />
+                                                    </div>
+                                                );
+                                            })()}
+                                            <div
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPreviewVideoUrl(vid.url || null);
+                                                }}
+                                                className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors flex items-center justify-center cursor-pointer"
+                                            >
+                                                <div className="h-10 w-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/50 text-white shadow-xl group-hover:scale-110 transition-transform">
+                                                    <span className="text-lg">▶</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     ) : (
-                                        <div className="text-4xl text-gray-200">▶️</div>
+                                        <div className="flex flex-col items-center">
+                                            <div className="text-4xl text-gray-200">▶️</div>
+                                        </div>
                                     )}
-                                    <button className="absolute top-2 right-2 h-7 w-7 bg-white flex items-center justify-center border-2 border-blue-900 rounded-[4px] z-10"
-                                        onClick={() => {
-                                            const newV = [...videos];
-                                            newV.splice(idx, 1);
-                                            setVideos(newV);
+                                    <button className="absolute top-2 right-2 h-7 w-7 bg-white flex items-center justify-center border-2 border-blue-900 rounded-[4px] z-10 hover:bg-red-50 transition-colors"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setDeleteMediaInfo({
+                                                type: 'videos',
+                                                index: idx,
+                                                dbIndex: vid.dbIndex,
+                                                title: vid.title
+                                            });
                                         }}
                                     >
                                         <span className="text-sm font-bold text-red-600">X</span>
@@ -1042,11 +1255,7 @@ const InventoryDashboard = () => {
                                     <div className="flex-shrink-0 scale-75 origin-right">
                                         <OrangeToggle
                                             checked={vid.visible}
-                                            onChange={() => {
-                                                const newVideos = [...videos];
-                                                newVideos[idx] = { ...newVideos[idx], visible: !newVideos[idx].visible };
-                                                setVideos(newVideos);
-                                            }}
+                                            onChange={() => handleToggleMediaVisibility("videos", idx, vid.visible)}
                                         />
                                     </div>
                                 </div>
@@ -1055,910 +1264,866 @@ const InventoryDashboard = () => {
                     </div>
 
                     {/* IMAGES SECTION (HORIZONTAL SCROLL) */}
-                    {images.length > 0 && (
-                        <div className="mt-4 px-2">
-                            <div className="w-full mb-2 flex items-center gap-4">
-                                <button className="w-[100px] bg-white text-blue-950 font-bold py-2 rounded-lg border-2 border-blue-900 text-center text-sm shadow-sm">
-                                    Images
-                                </button>
-                                {/* Group Visibility Toggle */}
-                                <div className="flex flex-col items-center">
-                                    <span className="text-[8px] font-bold text-gray-500 uppercase">Visible</span>
-                                    <OrangeToggle
-                                        checked={imageGroupTitleVisible}
-                                        onChange={() => setImageGroupTitleVisible(!imageGroupTitleVisible)}
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex gap-4 overflow-x-auto pb-4">
-                                {images.map((img, idx) => (
-                                    <div key={idx} className="min-w-[140px] w-[140px] h-[200px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative flex flex-col flex-shrink-0">
-                                        <div className="flex-1 w-full bg-white relative p-2 flex items-center justify-center">
-                                            {/* Placeholder/Actual Image */}
-                                            {img.url ? (
-                                                <img src={img.url} alt={img.title} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="text-4xl text-gray-200">🖼️</div>
-                                            )}
-                                            <button className="absolute top-2 right-2 h-7 w-7 bg-white flex items-center justify-center border-2 border-blue-900 rounded-[4px] z-10"
-                                                onClick={() => {
-                                                    const newI = [...images];
-                                                    newI.splice(idx, 1);
-                                                    setImages(newI);
-                                                }}
-                                            >
-                                                <span className="text-sm font-bold text-red-600">X</span>
-                                            </button>
-                                        </div>
-
-                                        {/* Footer with Title and Visibility */}
-                                        <div className="w-full bg-[#666666] text-white py-1.5 px-2 flex items-center justify-between gap-1">
-                                            <div className="truncate font-mono text-[10px] flex-1" title={img.title}>
-                                                {img.title}
-                                            </div>
-                                            <div className="flex-shrink-0 scale-75 origin-right">
-                                                <OrangeToggle
-                                                    checked={img.visible}
-                                                    onChange={() => {
-                                                        const newImages = [...images];
-                                                        newImages[idx] = { ...newImages[idx], visible: !newImages[idx].visible };
-                                                        setImages(newImages);
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
+                    {
+                        images.length > 0 && (
+                            <div className="mt-4 px-2">
+                                <div className="w-full mb-2 flex items-center gap-4">
+                                    <button className="w-[100px] bg-white text-blue-950 font-bold py-2 rounded-lg border-2 border-blue-900 text-center text-sm shadow-sm">
+                                        Images
+                                    </button>
+                                    {/* Group Visibility Toggle */}
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-[8px] font-bold text-gray-500 uppercase">Visible</span>
+                                        <OrangeToggle
+                                            checked={imageGroupTitleVisible}
+                                            onChange={() => handleToggleGroupVisibility("images", imageGroupTitleVisible)}
+                                        />
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* LINKS SECTION (HORIZONTAL SCROLL) */}
-                    {links.length > 0 && (
-                        <div className="mt-4 px-2">
-                            <div className="w-full mb-2 flex items-center gap-4">
-                                <button className="w-[100px] bg-white text-blue-950 font-bold py-2 rounded-lg border-2 border-blue-900 text-center text-sm shadow-sm">
-                                    Links
-                                </button>
-                                {/* Group Visibility Toggle */}
-                                <div className="flex flex-col items-center">
-                                    <span className="text-[8px] font-bold text-gray-500 uppercase">Visible</span>
-                                    <OrangeToggle
-                                        checked={linkGroupTitleVisible}
-                                        onChange={() => setLinkGroupTitleVisible(!linkGroupTitleVisible)}
-                                    />
                                 </div>
-                            </div>
-                            <div className="flex gap-4 overflow-x-auto pb-4">
-                                {links.map((lnk, idx) => (
-                                    <div key={idx} className="min-w-[140px] w-[140px] h-[200px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative flex flex-col flex-shrink-0">
-                                        <div className="flex-1 w-full bg-white relative p-2 flex items-center justify-center">
-                                            {/* Placeholder for Link Thumbnail (Video/GIF/Image) */}
-                                            <div className="text-4xl text-gray-200">🔗</div>
+                                <div className="flex gap-4 overflow-x-auto pb-4">
+                                    {images.map((img, idx) => (
+                                        <div key={idx} className="min-w-[140px] w-[140px] h-[200px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative flex flex-col flex-shrink-0">
+                                            <div className="flex-1 w-full bg-white relative p-2 flex items-center justify-center">
+                                                {/* Placeholder/Actual Image */}
+                                                {img.url ? (
+                                                    <img src={img.url} alt={img.title} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="text-4xl text-gray-200">🖼️</div>
+                                                )}
+                                                <button className="absolute top-2 right-2 h-7 w-7 bg-white flex items-center justify-center border-2 border-blue-900 rounded-[4px] z-10 hover:bg-red-50 transition-colors"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDeleteMediaInfo({
+                                                            type: 'images',
+                                                            index: idx,
+                                                            dbIndex: img.dbIndex,
+                                                            title: img.title
+                                                        });
+                                                    }}
+                                                >
+                                                    <span className="text-sm font-bold text-red-600">X</span>
+                                                </button>
+                                            </div>
 
-                                            <button className="absolute top-2 right-2 h-7 w-7 bg-white flex items-center justify-center border-2 border-blue-900 rounded-[4px] z-10"
-                                                onClick={() => {
-                                                    const newL = [...links];
-                                                    newL.splice(idx, 1);
-                                                    setLinks(newL);
-                                                }}
-                                            >
-                                                <span className="text-sm font-bold text-red-600">X</span>
-                                            </button>
-                                        </div>
-
-                                        {/* Title & URL Footer with Visibility */}
-                                        <div className="w-full bg-[#666666] text-white py-1.5 px-2 flex flex-col justify-center">
-                                            <div className="flex items-center justify-between gap-1 w-full">
-                                                <div className="text-[10px] font-bold truncate flex-1" title={lnk.title}>{lnk.title}</div>
+                                            {/* Footer with Title and Visibility */}
+                                            <div className="w-full bg-[#666666] text-white py-1.5 px-2 flex items-center justify-between gap-1">
+                                                <div className="truncate font-mono text-[10px] flex-1" title={img.title}>
+                                                    {img.title}
+                                                </div>
                                                 <div className="flex-shrink-0 scale-75 origin-right">
                                                     <OrangeToggle
-                                                        checked={lnk.visible}
-                                                        onChange={() => {
-                                                            const newLinks = [...links];
-                                                            newLinks[idx] = { ...newLinks[idx], visible: !newLinks[idx].visible };
-                                                            setLinks(newLinks);
-                                                        }}
+                                                        checked={img.visible}
+                                                        onChange={() => handleToggleMediaVisibility("images", idx, img.visible)}
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="text-[8px] truncate opacity-80 mt-0.5">
-                                                <a href={lnk.url} target="_blank" className="underline text-blue-200">Open Link ↗</a>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    {/* LINKS SECTION (HORIZONTAL SCROLL) */}
+                    {
+                        links.length > 0 && (
+                            <div className="mt-4 px-2">
+                                <div className="w-full mb-2 flex items-center gap-4">
+                                    <button className="w-[100px] bg-white text-blue-950 font-bold py-2 rounded-lg border-2 border-blue-900 text-center text-sm shadow-sm">
+                                        Links
+                                    </button>
+                                    {/* Group Visibility Toggle */}
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-[8px] font-bold text-gray-500 uppercase">Visible</span>
+                                        <OrangeToggle
+                                            checked={linkGroupTitleVisible}
+                                            onChange={() => handleToggleGroupVisibility("links", linkGroupTitleVisible)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex gap-4 overflow-x-auto pb-4">
+                                    {links.map((lnk, idx) => (
+                                        <div key={idx} className="min-w-[140px] w-[140px] h-[200px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative flex flex-col flex-shrink-0">
+                                            <div className="flex-1 w-full bg-white relative p-2 flex items-center justify-center">
+                                                {/* Placeholder for Link Thumbnail (Video/GIF/Image) */}
+                                                <div className="text-4xl text-gray-200">🔗</div>
+
+                                                <button className="absolute top-2 right-2 h-7 w-7 bg-white flex items-center justify-center border-2 border-blue-900 rounded-[4px] z-10"
+                                                    onClick={() => {
+                                                        const newL = [...links];
+                                                        newL.splice(idx, 1);
+                                                        setLinks(newL);
+                                                    }}
+                                                >
+                                                    <span className="text-sm font-bold text-red-600">X</span>
+                                                </button>
+                                            </div>
+
+                                            {/* Title & URL Footer with Visibility */}
+                                            <div className="w-full bg-[#666666] text-white py-1.5 px-2 flex flex-col justify-center">
+                                                <div className="flex items-center justify-between gap-1 w-full">
+                                                    <div className="text-[10px] font-bold truncate flex-1" title={lnk.title}>{lnk.title}</div>
+                                                    <div className="flex-shrink-0 scale-75 origin-right">
+                                                        <OrangeToggle
+                                                            checked={lnk.visible}
+                                                            onChange={() => handleToggleMediaVisibility("links", idx, lnk.visible)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="text-[8px] truncate opacity-80 mt-0.5">
+                                                    <a href={lnk.url} target="_blank" className="underline text-blue-200">Open Link ↗</a>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </div>
+                        )
+                    }
+                </div >
             )}
 
             {/* DEEP CHILD LIST VIEW */}
             {/* DEEP CHILD LIST VIEW - MATCHING EXACT SCREENSHOT */}
-            {activeView === 'deepList' && (
-                <div className="mb-8 pt-6">
-                    {/* Header with Divide Line */}
-                    <div className="pb-3 border-b border-gray-300 mb-6">
-                        <div className="flex items-center gap-4">
-                            <button onClick={handleBack} className="p-1 rounded-full hover:bg-gray-100">
-                                <ArrowLeft size={24} className="text-black" />
-                            </button>
-                            <h3 className="text-lg font-bold text-blue-950">
-                                Deep Child Category Management
-                            </h3>
-                        </div>
-                    </div>
-
-                    {/* Breadcrumb Chip */}
-                    <div className="flex justify-center mb-6">
-                        <div className="bg-[#F3E8FF] border border-purple-200 rounded px-3 py-1 flex items-center gap-2 text-[10px] font-semibold text-gray-600">
-                            <span>1_e449</span>
-                            <span>→</span>
-                            <span>Priya</span>
-                        </div>
-                    </div>
-
-                    {(selectedChildCategoryId) && (
-                        <CategoryList
-                            type="deep"
-                            filterId={selectedChildCategoryId}
-                            onItemClick={handleDeepChildCategoryClick}
-                            onToggleVisibility={handleToggleDeep}
-                            onDeleteClick={(item: any) => deleteDeepChildCategory(item.id || item._id)}
-                            onEditClick={handleEditDeep}
-                        />
-                    )}
-
-                    {/* ACTION BUTTONS: Darker Gray Background */}
-                    <div className="mt-8 px-2 space-y-4">
-                        <div className="flex justify-between gap-4">
-                            <button className="flex-1 bg-[#E0E0E0] text-[#D00000] font-bold py-3 rounded-xl shadow-sm hover:bg-gray-300 transition-colors text-sm">
-                                Add Video
-                            </button>
-                            <button
-                                onClick={() => toggleForm('deep')}
-                                className="flex-1 bg-[#E0E0E0] text-[#D00000] font-bold py-3 rounded-xl shadow-sm hover:bg-gray-300 transition-colors text-sm"
-                            >
-                                Add Category
-                            </button>
-                        </div>
-
-                        {/* Videos Label Button: Outlined Blue */}
-                        <div className="w-full">
-                            <button className="w-[100px] bg-white text-blue-950 font-bold py-2 rounded-lg border-2 border-blue-900 text-center text-sm shadow-sm">
-                                Videos
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* VIDEO LIST - REFINED CARDS */}
-                    <div className="flex gap-4 overflow-x-auto px-2 pb-4 mt-2">
-                        {videos.length === 0 ? (
-                            <div className="text-gray-400 text-sm italic p-2">No videos added yet.</div>
-                        ) : (
-                            videos.map((video) => (
-                                <div key={video.id} className="min-w-[140px] h-[200px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative flex flex-col">
-                                    <div className="flex-1 w-full bg-white relative p-2 flex items-center justify-center">
-                                        {/* Thumbnail or Icon */}
-                                        <div className="h-12 w-12 bg-black rounded-full flex items-center justify-center text-white text-lg">
-                                            ▶
-                                        </div>
-
-                                        {/* X Button */}
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                // TODO: Add delete handler
-                                            }}
-                                            className="absolute top-2 right-2 h-7 w-7 bg-white flex items-center justify-center border-2 border-blue-900 rounded-[4px] z-10 hover:bg-red-50"
-                                        >
-                                            <span className="text-sm font-bold text-red-600">X</span>
-                                        </button>
-                                        {/* Visibility Toggle for Item */}
-                                        <div className="absolute bottom-2 left-2 z-10 scale-75 origin-left">
-                                            <OrangeToggle
-                                                checked={video.visible}
-                                                onChange={() => {
-                                                    // Toggle local state
-                                                    setVideos(videos.map(v => v.id === video.id ? { ...v, visible: !v.visible } : v));
-                                                    // TODO: Sync to backend if needed immediately, otherwise it saves on next edit? 
-                                                    // Actually currently we only save on "Add". We might need independent "Update" logic later.
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                    {/* Footer with Title */}
-                                    <div className="w-full bg-[#666666] text-white text-[10px] py-1.5 px-2 truncate font-mono" title={video.title}>
-                                        {video.title}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* SUB DEEP CHILD LIST VIEW */}
-            {activeView === 'subDeepList' && (
-                <div className="mb-8 pt-6">
-                    <div className="flex items-center gap-4 mb-8">
-                        <button onClick={handleBack} className="p-1 rounded-full hover:bg-gray-200">
-                            <ArrowLeft size={28} className="text-black" />
-                        </button>
-                        <h3 className="text-xl font-bold text-blue-950">
-                            {selectedDeepChildCategoryName}
-                        </h3>
-                    </div>
-                    {selectedDeepChildCategoryId && (
-                        <div className="space-y-4">
-                            <div className="flex justify-end">
-                                <button
-                                    onClick={() => toggleForm('subDeep')}
-                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                                >
-                                    <Plus size={20} />
-                                    Add Sub Deep Category
+            {
+                activeView === 'deepList' && (
+                    <div className="mb-8 pt-6">
+                        {/* Header with Divide Line */}
+                        <div className="pb-3 border-b border-gray-300 mb-6">
+                            <div className="flex items-center gap-4">
+                                <button onClick={handleBack} className="p-1 rounded-full hover:bg-gray-100">
+                                    <ArrowLeft size={24} className="text-black" />
                                 </button>
+                                <h3 className="text-lg font-bold text-blue-950">
+                                    Deep Child Category Management
+                                </h3>
                             </div>
+                        </div>
+
+                        {/* Breadcrumb Chip */}
+                        <div className="flex justify-center mb-6">
+                            <div className="bg-[#F3E8FF] border border-purple-200 rounded px-3 py-1 flex items-center gap-2 text-[10px] font-semibold text-gray-600">
+                                <span>1_e449</span>
+                                <span>→</span>
+                                <span>Priya</span>
+                            </div>
+                        </div>
+
+                        {(selectedChildCategoryId) && (
                             <CategoryList
-                                type="subDeep"
-                                filterId={selectedDeepChildCategoryId}
-                                onDeleteClick={handleDeleteSubDeep}
-                                onToggleVisibility={handleToggleSubDeep}
-                                onEditClick={handleEditSubDeep}
+                                type="deep"
+                                filterId={selectedChildCategoryId}
+                                onItemClick={handleDeepChildCategoryClick}
+                                onToggleVisibility={handleToggleDeep}
+                                onDeleteClick={(item: any) => deleteDeepChildCategory(item.id || item._id)}
+                                onEditClick={handleEditDeep}
                             />
-                        </div>
-                    )}
-                </div>
-            )}
+                        )}
 
-
-            {(activeView && activeForm) && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-xl">
-                        <button
-                            onClick={() => toggleForm(activeForm)}
-                            className="absolute right-4 top-4 p-2 text-gray-500 hover:text-gray-700 z-10"
-                        >
-                            <span className="text-2xl">&times;</span>
-                        </button>
-
-                        <div className="p-6">
-                            {activeForm === 'subDeep' && (
-                                <SubDeepChildCategoryForm
-                                    initialDeepChildCategoryId={selectedDeepChildCategoryId || undefined}
-                                    editingCategory={editingSubDeepChildCategory}
-                                    onSuccess={() => {
-                                        if (selectedMainCategoryId && selectedChildCategoryId && selectedDeepChildCategoryId) {
-                                            fetchSubDeepChildCategories(selectedMainCategoryId, selectedChildCategoryId, selectedDeepChildCategoryId, selectedSubCategoryId);
-                                        }
-                                        toggleForm('subDeep');
-                                    }}
-                                />
-                            )}
-                            {activeForm === 'main' && (
-                                <MainCategoryForm
-                                    editingCategory={editingMainCategory}
-                                    onSuccess={() => {
-                                        fetchMainCategories();
-                                        toggleForm('main');
-                                    }}
-                                />
-                            )}
-                            {activeForm === 'sub' && (
-                                <SubCategoryForm
-                                    editingCategory={editingSubCategory}
-                                    onSuccess={() => {
-                                        if (selectedMainCategoryId) fetchSubCategories(selectedMainCategoryId);
-                                        toggleForm('sub');
-                                    }}
-                                />
-                            )}
-                            {activeForm === 'child' && <ChildCategoryForm
-                                editingCategory={editingChildCategory}
-                                onSuccess={() => {
-                                    if (selectedMainCategoryId) fetchChildCategories(selectedMainCategoryId, selectedSubCategoryId);
-                                    toggleForm('child');
-                                }} />}
-                            {activeForm === 'deep' && (
-                                <DeepChildCategoryForm
-                                    initialChildCategoryId={selectedChildCategoryId || undefined}
-                                    editingCategory={editingDeepChildCategory}
-                                    onSuccess={() => {
-                                        if (selectedMainCategoryId && selectedChildCategoryId) {
-                                            fetchDeepChildCategories(selectedMainCategoryId, selectedChildCategoryId, selectedSubCategoryId);
-                                        }
-                                        toggleForm('deep');
-                                    }}
-                                />
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ADD VIDEO MODAL */}
-            {showVideoModal && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-                    <div className="w-full max-w-sm bg-white rounded-xl shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
-                        {previewVideoUrl ? (
-                            <div className="flex flex-col h-full min-h-[400px]">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg font-bold text-gray-900">Preview</h3>
-                                    <button
-                                        onClick={() => setPreviewVideoUrl(null)}
-                                        className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 transition-colors"
-                                    >
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                    </button>
-                                </div>
-                                <div className="flex-1 bg-black rounded-lg overflow-hidden flex items-center justify-center relative shadow-inner w-full">
-                                    {(previewVideoUrl.includes("youtube.com") || previewVideoUrl.includes("youtu.be")) ? (
-                                        <iframe
-                                            src={`https://www.youtube.com/embed/${previewVideoUrl.split('v=')[1]?.split('&')[0] || previewVideoUrl.split('/').pop()}?autoplay=1&mute=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3`}
-                                            className="w-full h-full"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                            allowFullScreen
-                                        />
-                                    ) : (
-                                        <video
-                                            src={previewVideoUrl}
-                                            controls
-                                            autoPlay
-                                            className="w-full h-full object-contain max-h-[60vh]"
-                                        />
-                                    )}
-                                </div>
+                        {/* ACTION BUTTONS: Darker Gray Background */}
+                        <div className="mt-8 px-2 space-y-4">
+                            <div className="flex justify-between gap-4">
+                                <button className="flex-1 bg-[#E0E0E0] text-[#D00000] font-bold py-3 rounded-xl shadow-sm hover:bg-gray-300 transition-colors text-sm">
+                                    Add Video
+                                </button>
                                 <button
-                                    onClick={() => setPreviewVideoUrl(null)}
-                                    className="w-full mt-4 bg-gray-900 text-white font-bold py-3 rounded-lg shadow hover:bg-gray-800 transition-colors"
+                                    onClick={() => toggleForm('deep')}
+                                    className="flex-1 bg-[#E0E0E0] text-[#D00000] font-bold py-3 rounded-xl shadow-sm hover:bg-gray-300 transition-colors text-sm"
                                 >
-                                    Close Preview
+                                    Add Category
                                 </button>
                             </div>
-                        ) : (
-                            <>
-                                <h3 className="text-xl font-bold text-center text-gray-900 mb-6">Add Video</h3>
-                                <form onSubmit={handleVideoSubmit} className="space-y-4">
 
-                                    {/* Group Title Field */}
-                                    <div>
-                                        <div className="flex justify-between items-center mb-2">
-                                            <label className="block text-sm font-bold text-gray-700">Title</label>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs text-gray-500 font-medium">Visible</span>
+                            {/* Videos Label Button: Outlined Blue */}
+                            <div className="w-full">
+                                <button className="w-[100px] bg-white text-blue-950 font-bold py-2 rounded-lg border-2 border-blue-900 text-center text-sm shadow-sm">
+                                    Videos
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* VIDEO LIST - REFINED CARDS */}
+                        <div className="flex gap-4 overflow-x-auto px-2 pb-4 mt-2">
+                            {videos.length === 0 ? (
+                                <div className="text-gray-400 text-sm italic p-2">No videos added yet.</div>
+                            ) : (
+                                videos.map((video, idx) => (
+                                    <div key={video.id} className="min-w-[140px] w-[140px] h-[200px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative flex flex-col flex-shrink-0">
+                                        <div className="flex-1 w-full bg-white relative p-2 flex items-center justify-center">
+                                            {/* Thumbnail or Icon */}
+                                            <div className="w-full h-full flex items-center justify-center overflow-hidden group bg-black relative">
+                                                {video.url ? (
+                                                    <>
+                                                        {(() => {
+                                                            const cleanUrl = sanitizeUrl(video.url);
+                                                            const ytId = cleanUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/)?.[2];
+                                                            if (ytId) {
+                                                                return <img src={`https://img.youtube.com/vi/${ytId}/0.jpg`} className="w-full h-full object-cover" alt="Video" />;
+                                                            }
+                                                            return (
+                                                                <div className="w-full h-full relative">
+                                                                    <video src={cleanUrl} className="w-full h-full object-cover" preload="metadata" />
+                                                                </div>
+                                                            );
+                                                        })()}
+                                                        <div
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setPreviewVideoUrl(video.url || null);
+                                                            }}
+                                                            className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors flex items-center justify-center cursor-pointer"
+                                                        >
+                                                            <div className="h-8 w-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/50 text-white shadow-lg group-hover:scale-110 transition-transform">
+                                                                <span className="text-sm">▶</span>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="h-12 w-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-500">
+                                                        <span className="text-lg">▶</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* X Button */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setDeleteMediaInfo({
+                                                        type: 'videos',
+                                                        index: idx,
+                                                        dbIndex: video.dbIndex,
+                                                        title: video.title
+                                                    });
+                                                }}
+                                                className="absolute top-2 right-2 h-7 w-7 bg-white flex items-center justify-center border-2 border-blue-900 rounded-[4px] z-10 hover:bg-red-50"
+                                            >
+                                                <span className="text-sm font-bold text-red-600">X</span>
+                                            </button>
+                                        </div>
+                                        {/* Footer with Title and Visibility */}
+                                        <div className="w-full bg-[#666666] text-white py-1.5 px-2 flex items-center justify-between gap-1">
+                                            <div className="truncate font-mono text-[10px] flex-1" title={video.title}>
+                                                {video.title}
+                                            </div>
+                                            <div className="flex-shrink-0 scale-75 origin-right">
                                                 <OrangeToggle
-                                                    checked={videoGroupTitleVisible}
-                                                    onChange={() => setVideoGroupTitleVisible(!videoGroupTitleVisible)}
+                                                    checked={video.visible}
+                                                    onChange={() => handleToggleMediaVisibility("videos", idx, video.visible)}
                                                 />
                                             </div>
                                         </div>
-                                        <input
-                                            type="text"
-                                            value={videoGroupTitle}
-                                            onChange={(e) => setVideoGroupTitle(e.target.value)}
-                                            placeholder="Enter section title"
-                                            className="w-full border rounded p-2 text-sm focus:outline-none focus:border-blue-500"
-                                        />
                                     </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )
+            }
 
-                                    {/* UPLOAD THUMBNAIL SECTION */}
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Thumbnail</label>
-                                        <div className="relative">
-                                            <input
-                                                type="file"
-                                                multiple
-                                                accept="image/*"
-                                                onChange={handleVideoThumbnailSelect}
-                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                            />
-                                            <div className={`w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${pendingVideos.some(v => v.thumbnail || v.thumbnailUrl) ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:bg-gray-50 bg-gray-50"}`}>
-                                                <div className={`font-bold ${pendingVideos.some(v => v.thumbnail || v.thumbnailUrl) ? "text-blue-700" : "text-orange-600"}`}>
-                                                    {pendingVideos.some(v => v.thumbnail || v.thumbnailUrl) ? "✔ Thumbnails Selected" : "Choose Thumbnails"}
-                                                </div>
-                                                <p className={`text-xs mt-1 ${pendingVideos.some(v => v.thumbnail || v.thumbnailUrl) ? "text-blue-500" : "text-gray-400"}`}>
-                                                    {pendingVideos.some(v => v.thumbnail || v.thumbnailUrl) ? "Thumbnails ready to upload" : "Create entries from thumbnails"}
-                                                </p>
-                                            </div>
-                                        </div>
+            {/* SUB DEEP CHILD LIST VIEW */}
+            {
+                activeView === 'subDeepList' && (
+                    <div className="mb-8 pt-6">
+                        <div className="flex items-center gap-4 mb-8">
+                            <button onClick={handleBack} className="p-1 rounded-full hover:bg-gray-200">
+                                <ArrowLeft size={28} className="text-black" />
+                            </button>
+                            <h3 className="text-xl font-bold text-blue-950">
+                                {selectedDeepChildCategoryName}
+                            </h3>
+                        </div>
+                        {selectedDeepChildCategoryId && (
+                            <div className="space-y-4">
+                                <div className="flex justify-end">
+                                    <button
+                                        onClick={() => toggleForm('subDeep')}
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    >
+                                        <Plus size={20} />
+                                        Add Sub Deep Category
+                                    </button>
+                                </div>
+                                <CategoryList
+                                    type="subDeep"
+                                    filterId={selectedDeepChildCategoryId}
+                                    onDeleteClick={handleDeleteSubDeep}
+                                    onToggleVisibility={handleToggleSubDeep}
+                                    onEditClick={handleEditSubDeep}
+                                />
+                            </div>
+                        )}
+                    </div>
+                )
+            }
+
+
+            {
+                (activeView && activeForm) && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                        <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-xl">
+                            <button
+                                onClick={() => toggleForm(activeForm)}
+                                className="absolute right-4 top-4 p-2 text-gray-500 hover:text-gray-700 z-10"
+                            >
+                                <span className="text-2xl">&times;</span>
+                            </button>
+
+                            <div className="p-6">
+                                {activeForm === 'subDeep' && (
+                                    <SubDeepChildCategoryForm
+                                        initialDeepChildCategoryId={selectedDeepChildCategoryId || undefined}
+                                        editingCategory={editingSubDeepChildCategory}
+                                        onSuccess={() => {
+                                            if (selectedMainCategoryId && selectedChildCategoryId && selectedDeepChildCategoryId) {
+                                                fetchSubDeepChildCategories(selectedMainCategoryId, selectedChildCategoryId, selectedDeepChildCategoryId, selectedSubCategoryId);
+                                            }
+                                            toggleForm('subDeep');
+                                        }}
+                                    />
+                                )}
+                                {activeForm === 'main' && (
+                                    <MainCategoryForm
+                                        editingCategory={editingMainCategory}
+                                        onSuccess={() => {
+                                            fetchMainCategories();
+                                            toggleForm('main');
+                                        }}
+                                    />
+                                )}
+                                {activeForm === 'sub' && (
+                                    <SubCategoryForm
+                                        editingCategory={editingSubCategory}
+                                        onSuccess={() => {
+                                            if (selectedMainCategoryId) fetchSubCategories(selectedMainCategoryId);
+                                            toggleForm('sub');
+                                        }}
+                                    />
+                                )}
+                                {activeForm === 'child' && <ChildCategoryForm
+                                    editingCategory={editingChildCategory}
+                                    onSuccess={() => {
+                                        if (selectedMainCategoryId) fetchChildCategories(selectedMainCategoryId, selectedSubCategoryId);
+                                        toggleForm('child');
+                                    }} />}
+                                {activeForm === 'deep' && (
+                                    <DeepChildCategoryForm
+                                        initialChildCategoryId={selectedChildCategoryId || undefined}
+                                        editingCategory={editingDeepChildCategory}
+                                        onSuccess={() => {
+                                            if (selectedMainCategoryId && selectedChildCategoryId) {
+                                                fetchDeepChildCategories(selectedMainCategoryId, selectedChildCategoryId, selectedSubCategoryId);
+                                            }
+                                            toggleForm('deep');
+                                        }}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* ADD VIDEO MODAL */}
+            {
+                showVideoModal && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+                        <div className="w-full max-w-[400px] bg-white rounded-xl shadow-2xl p-4 relative max-h-[90vh] overflow-y-auto">
+                            {previewVideoUrl ? (
+                                <div className="flex flex-col">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-lg font-bold text-gray-900">Preview</h3>
+                                        <button
+                                            onClick={() => setPreviewVideoUrl(null)}
+                                            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 transition-colors"
+                                        >
+                                            <X size={20} />
+                                        </button>
                                     </div>
-
-                                    {/* UPLOAD VIDEO SECTION */}
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Upload Video (Max 5)</label>
-                                        <div className="relative">
-                                            <input
-                                                type="file"
-                                                multiple
-                                                accept="video/*"
-                                                onChange={handleVideoSelect}
-                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    <div className="w-full aspect-video bg-black rounded-lg overflow-hidden relative shadow-inner">
+                                        {(previewVideoUrl && (previewVideoUrl.includes("youtube.com") || previewVideoUrl.includes("youtu.be"))) ? (
+                                            <iframe
+                                                src={`https://www.youtube.com/embed/${previewVideoUrl.split('v=')[1]?.split('&')[0] || previewVideoUrl.split('/').pop()}?autoplay=1&mute=1&modestbranding=1&rel=0&iv_load_policy=3&controls=1&disablekb=1`}
+                                                className="w-full h-full border-0"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                allowFullScreen
                                             />
-                                            <div className={`w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${pendingVideos.some(v => v.file) ? "border-green-500 bg-green-50" : "border-gray-300 hover:bg-gray-50"}`}>
-                                                <div className={`font-bold ${pendingVideos.some(v => v.file) ? "text-green-600" : "text-blue-600"}`}>
-                                                    {pendingVideos.filter(v => v.file).length > 0
-                                                        ? `✔ ${pendingVideos.filter(v => v.file).length} Video${pendingVideos.filter(v => v.file).length > 1 ? 's' : ''} Selected`
-                                                        : "Choose Videos"}
-                                                </div>
-                                                <p className={`text-xs mt-1 ${pendingVideos.some(v => v.file) ? "text-green-600" : "text-gray-400"}`}>
-                                                    {pendingVideos.filter(v => v.file).length > 0
-                                                        ? `${5 - pendingVideos.filter(v => v.file).length} remaining`
-                                                        : "Select multiple videos to upload"}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* ADD VIDEO LINK SECTION */}
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Add Video Link</label>
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="text"
-                                                value={videoLinkInput}
-                                                onChange={(e) => setVideoLinkInput(e.target.value)}
-                                                placeholder="Paste video URL"
-                                                className="flex-1 border rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        if (videoLinkInput.trim()) {
-                                                            const newId = Math.random().toString(36).substr(2, 9);
-                                                            setPendingVideos(prev => [...prev, {
-                                                                id: newId,
-                                                                file: null,
-                                                                title: "Video Link",
-                                                                visible: true,
-                                                                url: videoLinkInput.trim(),
-                                                                previewUrl: videoLinkInput.trim()
-                                                            }]);
-                                                            setVideoLinkInput("");
-                                                        }
-                                                    }
-                                                }}
+                                        ) : (
+                                            <video
+                                                src={previewVideoUrl || ""}
+                                                controls
+                                                autoPlay
+                                                className="w-full h-full object-contain"
                                             />
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (videoLinkInput.trim()) {
-                                                        const newId = Math.random().toString(36).substr(2, 9);
-                                                        setPendingVideos(prev => [...prev, {
-                                                            id: newId,
-                                                            file: null,
-                                                            title: "Video Link",
-                                                            visible: true,
-                                                            url: videoLinkInput.trim(),
-                                                            previewUrl: videoLinkInput.trim()
-                                                        }]);
-                                                        setVideoLinkInput("");
-                                                    }
-                                                }}
-                                                className="bg-blue-600 text-white px-4 rounded-lg hover:bg-blue-700 transition-colors shadow-sm active:scale-95"
-                                            >
-                                                <Plus size={20} />
-                                            </button>
-                                        </div>
-                                        {/* Live Link Preview Container */}
-                                        {videoLinkInput && (
-                                            <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                                                <div
-                                                    className="relative bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center text-center w-full max-w-[140px] cursor-pointer hover:shadow-md transition-all hover:scale-105 active:scale-95"
-                                                    onClick={() => setPreviewVideoUrl(videoLinkInput)}
-                                                >
-                                                    <div className="relative w-full h-24 bg-gray-200 rounded-lg overflow-hidden group mb-2 shadow-inner border border-gray-300 flex items-center justify-center">
-                                                        {(videoLinkInput.includes("youtube.com") || videoLinkInput.includes("youtu.be")) ? (
-                                                            <>
-                                                                <img
-                                                                    src={`https://img.youtube.com/vi/${(videoLinkInput.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/)?.[2] || "")}/0.jpg`}
-                                                                    alt="Thumb"
-                                                                    className="w-full h-full object-cover"
-                                                                    onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }}
-                                                                />
-                                                                {/* Fallback Icon if Image Fails (hidden by default) */}
-                                                                <div className="hidden absolute inset-0 flex items-center justify-center bg-gray-100 text-4xl">🎥</div>
-                                                            </>
-                                                        ) : (
-                                                            <div className="text-4xl">🎥</div>
-                                                        )}
-
-                                                        {/* Play Overlay */}
-                                                        <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
-                                                            <div className="w-8 h-8 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-lg group-hover:bg-red-600/90 transition-colors">
-                                                                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-white ml-0.5">
-                                                                    <path d="M8 5v14l11-7z" />
-                                                                </svg>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-[10px] font-bold text-gray-600 truncate w-full px-1">
-                                                        Click to Preview
-                                                    </div>
-                                                </div>
-                                            </div>
                                         )}
                                     </div>
+                                    <button
+                                        onClick={() => setPreviewVideoUrl(null)}
+                                        className="w-full mt-4 bg-gray-900 text-white font-bold py-3 rounded-lg shadow hover:bg-gray-800 transition-colors"
+                                    >
+                                        Close Preview
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="text-xl font-bold text-blue-950">Add Videos</h3>
+                                        <button onClick={() => setShowVideoModal(false)} className="text-gray-400 hover:text-gray-600">
+                                            <X size={24} />
+                                        </button>
+                                    </div>
 
-                                    {/* PREVIEW LIST (Compact Grid) */}
-                                    {pendingVideos.length > 0 && (
-                                        <div className="grid grid-cols-3 gap-2 mt-4 border-t pt-2 max-h-[200px] overflow-y-auto">
-                                            {pendingVideos.map((video, index) => (
-                                                <div key={video.id} className="relative bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center text-center h-auto min-h-[140px] justify-between">
+                                    {/* Form Fields */}
+                                    <div className="space-y-4">
+                                        {/* 1. Section Title */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Section Title</label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={videoGroupTitle}
+                                                    onChange={(e) => setVideoGroupTitle(e.target.value)}
+                                                    placeholder="e.g., Installation Videos"
+                                                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                                                />
+                                                <div className="flex flex-col items-center">
+                                                    <span className="text-[10px] text-gray-500 mb-1">Visible</span>
+                                                    <OrangeToggle
+                                                        checked={videoGroupTitleVisible}
+                                                        onChange={() => setVideoGroupTitleVisible(!videoGroupTitleVisible)}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                                    {/* Delete (Absolute Top Right) */}
+                                        {/* 2. Add Thumbnail - HIDDEN FOR NOW */}
+                                        {/* 
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Add Thumbnail</label>
+                                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-purple-500 hover:bg-purple-50 cursor-pointer transition-all">
+                                            <span className="text-sm font-bold text-purple-600">Choose Thumbnail</span>
+                                            <input type="file" className="hidden" accept="image/*" multiple onChange={handleVideoThumbnailSelect} />
+                                        </label>
+                                    </div>
+                                    */}
+
+                                        {/* 3. Add Video (Upload or Link) */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Add Video</label>
+                                            <div className="space-y-3">
+                                                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-all">
+                                                    <span className="text-sm font-bold text-blue-600">Choose Video</span>
+                                                    <input type="file" className="hidden" accept="video/*" multiple onChange={handleVideoSelect} />
+                                                </label>
+
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={videoLinkInput}
+                                                        onChange={(e) => setVideoLinkInput(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && videoLinkInput.trim()) {
+                                                                setPendingVideos(prev => [...prev, {
+                                                                    id: Math.random().toString(36).substr(2, 9),
+                                                                    file: null,
+                                                                    title: "External Video",
+                                                                    visible: false,
+                                                                    url: videoLinkInput.trim()
+                                                                }]);
+                                                                setVideoLinkInput("");
+                                                            }
+                                                        }}
+                                                        placeholder="Paste YouTube or Video Link here..."
+                                                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+                                                    />
                                                     <button
-                                                        type="button"
-                                                        onClick={() => removePendingVideo(video.id)}
-                                                        className="absolute top-1 right-1 text-gray-400 hover:text-red-500 bg-white rounded-full h-5 w-5 flex items-center justify-center border border-gray-200 shadow-sm z-10"
+                                                        onClick={() => {
+                                                            if (videoLinkInput.trim()) {
+                                                                setPendingVideos(prev => [...prev, {
+                                                                    id: Math.random().toString(36).substr(2, 9),
+                                                                    file: null,
+                                                                    title: "External Video",
+                                                                    visible: false,
+                                                                    url: videoLinkInput.trim()
+                                                                }]);
+                                                                setVideoLinkInput("");
+                                                            }
+                                                        }}
+                                                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors"
                                                     >
-                                                        <span className="text-sm leading-none mb-[1px]">&times;</span>
+                                                        Add
                                                     </button>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                                    {/* Unified Media Area (Thumbnail + Video Status) */}
-                                                    <div className="relative w-full h-24 bg-gray-200 rounded-lg overflow-hidden group mb-2 shadow-inner border border-gray-300">
-
-                                                        {/* Background: Thumbnail or Placeholder */}
-                                                        {video.thumbnailUrl ? (
-                                                            <img src={video.thumbnailUrl} alt="Thumb" className="w-full h-full object-cover" />
+                                        {/* Pending & Preview Grid */}
+                                        <div className="grid grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-1 mt-2">
+                                            {/* 1. Live Link Draft Card (Shows immediately when typing/pasting) */}
+                                            {videoLinkInput && (
+                                                <div
+                                                    onClick={() => setPreviewVideoUrl(videoLinkInput)}
+                                                    className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-blue-400 shadow-md animate-pulse cursor-pointer group"
+                                                >
+                                                    {(() => {
+                                                        const ytId = videoLinkInput.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/)?.[2];
+                                                        return ytId ? (
+                                                            <img src={`https://img.youtube.com/vi/${ytId}/0.jpg`} className="w-full h-full object-cover opacity-70" alt="Draft" />
                                                         ) : (
-                                                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-100">
-                                                                <span className="text-2xl">🖼️</span>
-                                                                <span className="text-[9px]">No Thumb</span>
+                                                            <div className="w-full h-full flex items-center justify-center bg-blue-50">
+                                                                <div className="text-2xl opacity-40">🎥</div>
                                                             </div>
+                                                        );
+                                                    })()}
+                                                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <div className="bg-white/20 backdrop-blur-md p-1.5 rounded-full border border-white/50 text-white text-[10px] font-bold">Click to Preview</div>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setVideoLinkInput(""); }}
+                                                        className="absolute top-1 right-1 h-5 w-5 bg-white/90 rounded-full flex items-center justify-center shadow-sm hover:bg-red-500 hover:text-white transition-colors z-10"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* 2. Added Pending Videos */}
+                                            {pendingVideos.map((video, idx) => (
+                                                <div key={video.id} className="group relative aspect-video bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-all">
+                                                    {/* Thumbnail area */}
+                                                    <div
+                                                        onClick={() => setPreviewVideoUrl(video.url || video.previewUrl || null)}
+                                                        className="w-full h-full bg-black relative flex items-center justify-center cursor-pointer"
+                                                    >
+                                                        {video.url && (video.url.includes("youtube.com") || video.url.includes("youtu.be")) ? (
+                                                            <img
+                                                                src={`https://img.youtube.com/vi/${video.url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/)?.[2] || ""}/0.jpg`}
+                                                                className="w-full h-full object-cover"
+                                                                alt="Pending"
+                                                            />
+                                                        ) : video.previewUrl ? (
+                                                            <video src={video.previewUrl} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <div className="text-2xl text-white/50">▶</div>
                                                         )}
 
-                                                        {/* Edit Thumbnail Input (Hidden, triggers on click of background if no other interaction?) 
-                                                            Let's make a small edit icon for thumbnail specifically to avoid conflict with video actions 
-                                                        */}
-                                                        <label className="absolute top-1 left-1 p-1 bg-black/50 hover:bg-black/70 rounded-full cursor-pointer z-20" title="Change Thumbnail">
-                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                                                            <input
-                                                                type="file"
-                                                                accept="image/*"
-                                                                className="hidden"
-                                                                onChange={(e) => {
-                                                                    const file = e.target.files?.[0];
-                                                                    if (file) {
-                                                                        const url = URL.createObjectURL(file);
-                                                                        setPendingVideos(prev => prev.map(v =>
-                                                                            v.id === video.id ? { ...v, thumbnail: file, thumbnailUrl: url } : v
-                                                                        ));
-                                                                    }
-                                                                }}
-                                                            />
-                                                        </label>
-
-                                                        {/* Center Overlay: Action (Play or Add Video) */}
-                                                        <div className="absolute inset-0 flex items-center justify-center bg-black/10 transition-colors z-10">
-
-                                                            {video.file || video.url ? (
-                                                                /* Has Video -> Play Button */
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => {
-                                                                        e.preventDefault();
-                                                                        e.stopPropagation();
-                                                                        setPreviewVideoUrl(video.previewUrl || video.url || "");
-                                                                    }}
-                                                                    className="group/play flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
-                                                                >
-                                                                    <div className="w-10 h-10 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-lg group-hover/play:bg-red-600/90 transition-colors">
-                                                                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white ml-0.5">
-                                                                            <path d="M8 5v14l11-7z" />
-                                                                        </svg>
-                                                                    </div>
-                                                                </button>
-                                                            ) : (
-                                                                /* No Video -> Add Video Button */
-                                                                <label className="cursor-pointer group/add flex flex-col items-center justify-center gap-1 p-2 bg-white/90 hover:bg-white rounded-xl shadow-lg border border-red-100 transition-all hover:scale-105 hover:shadow-xl">
-                                                                    <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500 font-bold border border-red-200">
-                                                                        +
-                                                                    </div>
-                                                                    <span className="text-[9px] font-bold text-red-500 uppercase tracking-widest">Add Video</span>
-                                                                    <input
-                                                                        type="file"
-                                                                        accept="video/*"
-                                                                        className="hidden"
-                                                                        onChange={(e) => {
-                                                                            const file = e.target.files?.[0];
-                                                                            if (file) {
-                                                                                setPendingVideos(prev => prev.map(v =>
-                                                                                    v.id === video.id ? { ...v, file: file, title: v.title || file.name.replace(/\.[^/.]+$/, "") } : v
-                                                                                ));
-                                                                            }
-                                                                        }}
-                                                                    />
-                                                                </label>
-                                                            )}
+                                                        {/* Hover Overlay */}
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <div className="bg-white/20 backdrop-blur-md p-2 rounded-full border border-white/50 text-white">
+                                                                <div className="text-xs font-bold">Preview</div>
+                                                            </div>
                                                         </div>
 
-                                                        {/* Bottom Status Bar inside Image */}
-                                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 pt-4 flex justify-between items-end">
-                                                            <span className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded-sm bg-black/40 border border-white/20">
-                                                                {video.file || video.url ? "VIDEO READY" : "MISSING VIDEO"}
-                                                            </span>
-                                                        </div>
+                                                        {/* Delete Button */}
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setPendingVideos(prev => prev.filter((_, i) => i !== idx)); }}
+                                                            className="absolute top-1 right-1 h-6 w-6 bg-white/90 rounded-full flex items-center justify-center shadow-sm hover:bg-red-600 hover:text-white transition-colors z-10"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
                                                     </div>
 
-
-
-                                                    {/* Details Input */}
-                                                    <div className="w-full min-w-0 flex-1 flex flex-col justify-center">
+                                                    {/* Title Input Footer */}
+                                                    <div className="absolute bottom-0 left-0 right-0 bg-white/95 border-t border-gray-100 p-1.5 px-2">
                                                         <input
                                                             type="text"
                                                             value={video.title}
-                                                            onChange={(e) => updatePendingVideo(video.id, 'title', e.target.value)}
-                                                            placeholder="Title"
-                                                            className="w-full text-xs text-center border-b border-gray-300 bg-transparent focus:outline-none focus:border-blue-500 px-0.5 pb-0.5 truncate font-medium text-gray-800"
-                                                        />
-                                                    </div>
-
-                                                    {/* Visibility Toggle */}
-                                                    <div className="flex items-center gap-1 mt-2 scale-75 origin-bottom">
-                                                        <span className="text-[8px] font-bold text-gray-400 uppercase">Vis</span>
-                                                        <OrangeToggle
-                                                            checked={video.visible}
-                                                            onChange={() => updatePendingVideo(video.id, 'visible', !video.visible)}
+                                                            onChange={(e) => {
+                                                                const newItems = [...pendingVideos];
+                                                                newItems[idx].title = e.target.value;
+                                                                setPendingVideos(newItems);
+                                                            }}
+                                                            className="w-full text-[10px] font-bold text-gray-700 bg-transparent border-none p-0 focus:ring-0 truncate"
+                                                            placeholder="Enter title..."
                                                         />
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
-                                    )}
 
-                                    <button type="submit" className="w-full bg-[#E57355] text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2">
-                                        <span>Upload {pendingVideos.length > 0 ? `(${pendingVideos.length})` : ''}</span>
-                                    </button>
-                                    <button type="button" onClick={() => { setShowVideoModal(false); setPendingVideos([]); }} className="w-full text-gray-500 py-2">
-                                        Cancel
-                                    </button>
-                                </form>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
+                                        <button
+                                            onClick={async () => {
+                                                const videosToUpload = [...pendingVideos];
 
-            {/* PREVIEW VIDEO OVERLAY (Only show if NOT in Add Video Modal) */}
-            {(previewVideoUrl && !showVideoModal) && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setPreviewVideoUrl(null)}>
-                    <div
-                        className={`relative bg-black rounded-lg overflow-hidden shadow-2xl flex flex-col ${(previewVideoUrl.includes("youtube.com") || previewVideoUrl.includes("youtu.be"))
-                            ? "w-full max-w-4xl aspect-video"
-                            : "w-auto h-auto max-w-[90vw] max-h-[90vh]"
-                            }`}
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <button
-                            onClick={() => setPreviewVideoUrl(null)}
-                            className="absolute top-4 right-4 text-white hover:text-red-500 z-50 bg-black/50 rounded-full p-2 transition-colors"
-                        >
-                            <X size={24} />
-                        </button>
+                                                // Automatically include the link from input if user didn't press enter
+                                                if (videoLinkInput.trim()) {
+                                                    videosToUpload.push({
+                                                        id: Math.random().toString(36).substr(2, 9),
+                                                        file: null,
+                                                        title: "External Video",
+                                                        visible: false,
+                                                        url: videoLinkInput.trim()
+                                                    });
+                                                }
 
-                        {(() => {
-                            const cleanUrl = sanitizeUrl(previewVideoUrl);
-                            if (cleanUrl.includes("youtube.com") || cleanUrl.includes("youtu.be")) {
-                                const videoId = cleanUrl.split('v=')[1]?.split('&')[0] || cleanUrl.split('/').pop();
-                                return (
-                                    <iframe
-                                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3`}
-                                        className="w-full h-full border-0"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowFullScreen
-                                    />
-                                );
-                            } else if (cleanUrl.match(/\.(mp4|webm|ogg|mov)$/i) || cleanUrl.startsWith("blob:") || cleanUrl.includes("uploads/")) {
-                                return (
-                                    <video
-                                        src={cleanUrl}
-                                        controls
-                                        autoPlay
-                                        className="max-w-full max-h-[90vh] object-contain"
-                                        poster={pendingVideos.find(v => (v.url === previewVideoUrl || v.previewUrl === previewVideoUrl))?.thumbnailUrl || undefined}
-                                    >
-                                        Your browser does not support the video tag.
-                                    </video>
-                                );
-                            } else {
-                                return (
-                                    <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900 text-white min-w-[320px] min-h-[320px] p-10">
-                                        <p className="mb-4 text-center">External Link Preview</p>
-                                        <a
-                                            href={cleanUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold shadow-lg"
+                                                if (videosToUpload.length === 0) {
+                                                    alert("Please add at least one video or link first.");
+                                                    return;
+                                                }
+
+                                                try {
+                                                    for (const vid of videosToUpload) {
+                                                        await addChildCategoryMedia(
+                                                            selectedMainCategoryId!,
+                                                            "videos",
+                                                            {
+                                                                videoTitle: vid.title,
+                                                                url: vid.url,
+                                                                file: vid.file || undefined,
+                                                                visibility: vid.visible
+                                                            },
+                                                            selectedSubCategoryId || undefined
+                                                        );
+                                                    }
+
+                                                    // Group level metadata
+                                                    await updateChildCategoryMediaGroup(
+                                                        selectedMainCategoryId!,
+                                                        "videos",
+                                                        { name: videoGroupTitle, visibility: videoGroupTitleVisible },
+                                                        selectedSubCategoryId || undefined
+                                                    );
+
+                                                    alert("✅ Success! All videos uploaded.");
+                                                    setVideoLinkInput("");
+                                                    setPendingVideos([]);
+                                                    setShowVideoModal(false);
+                                                } catch (err) {
+                                                    console.error("❌ Failed to upload some videos:", err);
+                                                    alert("❌ Upload failed. Please check your connection and try again.");
+                                                }
+                                            }}
+                                            className="w-full bg-[#E57355] text-white font-bold py-3.5 rounded-xl shadow-lg mt-2"
                                         >
-                                            Open in New Tab ↗
-                                        </a>
+                                            Upload
+                                        </button>
                                     </div>
-                                );
-                            }
-                        })()}
+                                </>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-            {/* IMAGE PREVIEW OVERLAY */}
-            {previewImageUrl && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/20 p-4 backdrop-blur-none" onClick={() => setPreviewImageUrl(null)}>
-                    <div className="relative w-full max-w-4xl h-full max-h-[80vh] flex items-center justify-center" onClick={e => e.stopPropagation()}>
-                        <button
-                            onClick={() => setPreviewImageUrl(null)}
-                            className="absolute top-4 right-4 text-white hover:text-red-500 z-50 bg-black/50 rounded-full p-2 transition-colors"
-                        >
-                            <X size={24} />
-                        </button>
-                        <img
-                            src={previewImageUrl}
-                            alt="Full Preview"
-                            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-                        />
-                    </div>
-                </div>
-            )}
 
             {/* ADD IMAGE MODAL */}
-            {showImageModal && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-                    <div className="w-full max-w-sm bg-white rounded-xl shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
-                        <h3 className="text-xl font-bold text-center text-gray-900 mb-6">Add Image</h3>
-                        <form onSubmit={handleImageSubmit} className="space-y-4">
+            {
+                showImageModal && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+                        <div className="w-full max-w-[310px] bg-white rounded-xl shadow-2xl p-4 relative max-h-[90vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-blue-950">Add Images</h3>
+                                <button onClick={() => setShowImageModal(false)} className="text-gray-400 hover:text-gray-600">
+                                    <X size={24} />
+                                </button>
+                            </div>
 
-                            {/* Group Title Field */}
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-bold text-gray-700">Title</label>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Section Title</label>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-500 font-medium">Visible</span>
-                                        <OrangeToggle
-                                            checked={imageGroupTitleVisible}
-                                            onChange={() => setImageGroupTitleVisible(!imageGroupTitleVisible)}
+                                        <input
+                                            type="text"
+                                            value={imageGroupTitle}
+                                            onChange={(e) => setImageGroupTitle(e.target.value)}
+                                            placeholder="e.g., Photos"
+                                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
                                         />
                                     </div>
                                 </div>
-                                <input
-                                    type="text"
-                                    value={imageGroupTitle}
-                                    onChange={(e) => setImageGroupTitle(e.target.value)}
-                                    placeholder="Enter section title"
-                                    className="w-full border rounded p-2 text-sm focus:outline-none focus:border-blue-500"
-                                />
-                            </div>
 
-                            {/* Category Name Input */}
-                            {/* Category Selection Logic */}
+                                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-all">
+                                    <span className="text-sm font-bold text-blue-600">Choose Images</span>
+                                    <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => {
+                                        if (e.target.files) {
+                                            const newFiles = Array.from(e.target.files).map(file => ({
+                                                id: Math.random().toString(36).substr(2, 9),
+                                                file,
+                                                title: file.name.replace(/\.[^/.]+$/, ""),
+                                                visible: false, // Default to OFF
+                                                previewUrl: URL.createObjectURL(file)
+                                            }));
+                                            setPendingImages(prev => [...prev, ...newFiles]);
+                                        }
+                                    }} />
+                                </label>
 
-
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Upload Image (Max 5)</label>
-                                <div className="relative">
-                                    <input
-                                        type="file"
-                                        multiple
-                                        accept="image/*"
-                                        onChange={handleImageSelect}
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    />
-                                    <div className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors">
-                                        <div className="text-blue-600 font-bold">Choose Images</div>
-                                        <p className="text-xs text-gray-400 mt-1">Select multiple images to upload</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* PREVIEW LIST (Compact Grid) */}
-                            {pendingImages.length > 0 && (
-                                <div className="grid grid-cols-3 gap-2 mt-4 border-t pt-2 max-h-[200px] overflow-y-auto">
-                                    {pendingImages.map((img, index) => (
-                                        <div key={img.id} className="relative bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center text-center group">
-                                            {/* Thumbnail / Icon */}
-                                            <div
-                                                className="h-16 w-16 bg-gray-200 rounded-md overflow-hidden flex items-center justify-center mb-1 cursor-pointer border border-gray-300 shadow-sm hover:opacity-90 transition-opacity"
-                                                onClick={() => setPreviewImageUrl(img.previewUrl || img.url || "")}
-                                            >
-                                                {img.previewUrl || img.url ? (
-                                                    <img src={img.previewUrl || img.url} alt="Preview" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <span className="text-2xl">🖼️</span>
-                                                )}
+                                <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                                    {pendingImages.map((img, idx) => (
+                                        <div key={img.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
+                                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                <img
+                                                    src={img.previewUrl}
+                                                    className="h-8 w-8 object-cover rounded shadow-sm cursor-pointer hover:opacity-80"
+                                                    onClick={() => setPreviewImageUrl(img.previewUrl || null)}
+                                                    alt="preview"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={img.title}
+                                                    onChange={(e) => {
+                                                        const newI = [...pendingImages];
+                                                        newI[idx].title = e.target.value;
+                                                        setPendingImages(newI);
+                                                    }}
+                                                    className="bg-transparent text-xs font-bold w-full border-none p-0 focus:ring-0"
+                                                />
                                             </div>
-
-                                            {/* Details Input */}
-                                            <div className="w-full min-w-0">
-                                                <div className="text-xs font-medium text-gray-900 truncate">{img.title}</div>
-                                                <p className="text-[8px] text-gray-400 truncate">{img.file?.name || img.url || "File"}</p>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => setPendingImages(prev => prev.filter((_, i) => i !== idx))} className="text-red-500 p-1 hover:bg-red-50 rounded-full transition-colors">
+                                                    <Trash2 size={16} />
+                                                </button>
                                             </div>
-
-                                            {/* Delete */}
-                                            <button
-                                                type="button"
-                                                onClick={() => removePendingImage(img.id)}
-                                                className="absolute top-1 right-1 text-gray-400 hover:text-red-500 bg-white rounded-full h-4 w-4 flex items-center justify-center border border-gray-200 shadow-sm"
-                                            >
-                                                <span className="text-xs leading-none">&times;</span>
-                                            </button>
                                         </div>
                                     ))}
                                 </div>
-                            )}
 
-                            <button type="submit" className="w-full bg-[#E57355] text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2">
-                                <span>Upload {pendingImages.length > 0 ? `(${pendingImages.length})` : ''}</span>
-                            </button>
-                            <button type="button" onClick={() => { setShowImageModal(false); setPendingImages([]); }} className="w-full text-gray-500 py-2">
-                                Cancel
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-
-
-            {/* ADD MISSING SERVICES MODAL */}
-            {showAddMissingModal && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-                    <div className="w-full max-w-sm bg-white rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="p-6">
-                            <h3 className="text-xl font-bold text-center text-gray-900 mb-6">Add Missing Services</h3>
-
-                            <div className="space-y-6">
-                                {/* ALREADY SAVED */}
-                                <div>
-                                    <h4 className="text-gray-500 font-bold mb-3 text-lg">Already Saved:</h4>
-                                    <div className="space-y-2">
-                                        {REQUIRED_SERVICES.filter(svc =>
-                                            childCategories.some(cat => cat.name === svc)
-                                        ).map(svc => (
-                                            <div key={svc} className="flex items-center gap-2 text-green-500 font-medium text-lg">
-                                                <span>✓</span> {svc}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* ADD MISSING */}
-                                <div>
-                                    <h4 className="text-gray-500 font-bold mb-3 text-lg">Add Missing:</h4>
-                                    <div className="space-y-3">
-                                        {REQUIRED_SERVICES.filter(svc =>
-                                            !childCategories.some(cat => cat.name === svc)
-                                        ).length === 0 ? (
-                                            <p className="text-gray-400 italic">All services added</p>
-                                        ) : (
-                                            <>
-                                                {REQUIRED_SERVICES.filter(svc =>
-                                                    !childCategories.some(cat => cat.name === svc)
-                                                ).map(svc => (
-                                                    <div key={svc} className="text-gray-700 font-medium ml-2">• {svc}</div>
-                                                ))}
-                                                <button
-                                                    onClick={handleAddAllMissingServices}
-                                                    className="w-full mt-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-lg transition-colors uppercase"
-                                                >
-                                                    ADD SERVICES
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
+                                <button
+                                    onClick={async () => {
+                                        for (const img of pendingImages) {
+                                            await addChildCategoryMedia(
+                                                selectedMainCategoryId!,
+                                                "images",
+                                                {
+                                                    imageTitle: img.title,
+                                                    file: img.file || undefined,
+                                                    visibility: img.visible
+                                                },
+                                                selectedSubCategoryId || undefined
+                                            );
+                                        }
+                                        await updateChildCategoryMediaGroup(
+                                            selectedMainCategoryId!,
+                                            "images",
+                                            { name: imageGroupTitle, visibility: imageGroupTitleVisible },
+                                            selectedSubCategoryId || undefined
+                                        );
+                                        setShowImageModal(false);
+                                        setPendingImages([]);
+                                        fetchCurrentMedia();
+                                    }}
+                                    className="w-full bg-[#E57355] text-white font-bold py-3.5 rounded-xl shadow-lg mt-2 active:scale-[0.98] transition-all"
+                                >
+                                    Upload
+                                </button>
                             </div>
-
-                            <button
-                                onClick={() => setShowAddMissingModal(false)}
-                                className="mt-8 w-full bg-[#E57355] text-white font-bold py-3.5 rounded-full text-lg shadow-lg hover:bg-[#d6654a] transition-colors"
-                            >
-                                Close
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-        </div>
+            {/* OVERLAYS */}
+            {
+                previewVideoUrl && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4" onClick={() => setPreviewVideoUrl(null)}>
+                        <div className="relative w-full max-w-4xl max-h-screen aspect-video bg-black rounded-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => setPreviewVideoUrl(null)} className="absolute top-4 right-4 text-white z-50 bg-black/50 rounded-full p-2 hover:bg-red-600">
+                                <X size={24} />
+                            </button>
+                            {(() => {
+                                const cleanUrl = sanitizeUrl(previewVideoUrl);
+                                if (cleanUrl.includes("youtube.com") || cleanUrl.includes("youtu.be")) {
+                                    const videoId = cleanUrl.split('v=')[1]?.split('&')[0] || cleanUrl.split('/').pop();
+                                    return (
+                                        <iframe
+                                            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&modestbranding=1&rel=0&iv_load_policy=3&controls=1&disablekb=1`}
+                                            className="w-full h-full border-0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                        />
+                                    );
+                                } else {
+                                    return <video src={cleanUrl} controls autoPlay muted className="w-full h-full object-contain" />;
+                                }
+                            })()}
+                        </div>
+                    </div>
+                )
+            }
+
+            {
+                previewImageUrl && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4" onClick={() => setPreviewImageUrl(null)}>
+                        <div className="relative w-full max-w-4xl h-full flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => setPreviewImageUrl(null)} className="absolute top-4 right-4 text-white z-50 bg-black/50 rounded-full p-2 hover:bg-red-600">
+                                <X size={24} />
+                            </button>
+                            <img src={previewImageUrl} alt="Preview" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* ADD MISSING SERVICES MODAL */}
+            {
+                showAddMissingModal && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+                        <div className="w-full max-w-sm bg-white rounded-xl shadow-2xl p-6">
+                            <h3 className="text-xl font-bold text-blue-950 mb-4">Add Missing Services</h3>
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto mb-6">
+                                {REQUIRED_SERVICES.filter(svc => !childCategories.some(cat => cat.name.toLowerCase() === svc.toLowerCase())).map(svc => (
+                                    <div key={svc} className="p-3 bg-gray-50 rounded-lg border border-gray-100 font-bold text-gray-700">{svc}</div>
+                                ))}
+                            </div>
+                            <div className="flex gap-3">
+                                <button onClick={() => setShowAddMissingModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl">Cancel</button>
+                                <button
+                                    onClick={async () => {
+                                        const missing = REQUIRED_SERVICES.filter(svc => !childCategories.some(cat => cat.name.toLowerCase() === svc.toLowerCase()));
+                                        for (const svc of missing) {
+                                            await addChildCategory({ name: svc, mainCategoryId: selectedMainCategoryId || "", subCategoryId: selectedSubCategoryId || undefined, visible: false });
+                                        }
+                                        if (selectedMainCategoryId) fetchChildCategories(selectedMainCategoryId, selectedSubCategoryId);
+                                        setShowAddMissingModal(false);
+                                    }}
+                                    className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl"
+                                >
+                                    Add All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* DELETE MEDIA MODAL */}
+            {
+                deleteMediaInfo && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
+                        <div className="w-full max-w-xs bg-white rounded-2xl shadow-2xl p-6 text-center">
+                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Trash2 size={32} className="text-red-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Media?</h3>
+                            <p className="text-sm text-gray-500 mb-6">Are you sure you want to delete <br /><b>{deleteMediaInfo.title}</b>?</p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setDeleteMediaInfo(null)}
+                                    disabled={isDeletingMedia}
+                                    className={`flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl ${isDeletingMedia ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleConfirmDeleteMedia}
+                                    disabled={isDeletingMedia}
+                                    className={`flex-1 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 ${isDeletingMedia ? 'opacity-70 cursor-not-allowed' : 'hover:bg-red-700'}`}
+                                >
+                                    {isDeletingMedia ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Deleting...
+                                        </>
+                                    ) : (
+                                        'Delete'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 

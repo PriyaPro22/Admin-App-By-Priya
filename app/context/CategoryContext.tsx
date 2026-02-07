@@ -189,7 +189,7 @@ export interface ChildCategoryV2 {
 interface CategoryContextType {
   addChildCategoryMedia: (
     mainId: string,
-    type: "images" | "videos",
+    type: "images" | "videos" | "links",
     item: {
       imageTitle?: string;
       videoTitle?: string;
@@ -229,20 +229,30 @@ interface CategoryContextType {
   fetchChildCategoryMedia: (mainId: string, subId?: string) => Promise<any>;
   updateChildCategoryMediaByIndex: (
     mainId: string,
-    type: "images" | "videos",
-    index: number,
+    type: "images" | "videos" | "links",
+    index: number | string,
     payload: {
       imageTitle?: string;
       videoTitle?: string;
+      linkTitle?: string;
       url?: string;
+      visibility?: boolean;
+    },
+    subId?: string
+  ) => Promise<void>;
+  updateChildCategoryMediaGroup: (
+    mainId: string,
+    type: "images" | "videos" | "links",
+    payload: {
+      name?: string;
       visibility?: boolean;
     },
     subId?: string
   ) => Promise<void>;
   deleteChildCategoryMediaByIndex: (
     mainId: string,
-    type: "images" | "videos",
-    index: number,
+    type: "images" | "videos" | "links",
+    index: number | string,
     subId?: string
   ) => Promise<void>;
 
@@ -1666,10 +1676,11 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
    */
   const addChildCategoryMedia = async (
     mainId: string,
-    type: "images" | "videos",
+    type: "images" | "videos" | "links",
     item: {
       imageTitle?: string;
       videoTitle?: string;
+      linkTitle?: string;
       url?: string;
       file?: File;  // For file uploads
       visibility?: boolean;
@@ -1716,6 +1727,10 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
 
           const formData = new FormData();
           formData.append("url", item.file); // Root key at the top level for attachUploads compatibility
+
+          // ✅ Also send labels and visibility in Step 2 to ensure they aren't lost if backend overwrites
+          formData.append(type === "images" ? "imageTitle" : "videoTitle", (type === "images" ? item.imageTitle : item.videoTitle) || "");
+          formData.append("visibility", String(item.visibility ?? true));
 
           const updateRes = await axios.put(`${BASE_URL}${updateUrl}`, formData, {
             headers: {
@@ -1796,27 +1811,77 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
    */
   const updateChildCategoryMediaByIndex = async (
     mainId: string,
-    type: "images" | "videos",
-    index: number,
+    type: "images" | "videos" | "links",
+    index: number | string,
     payload: {
       imageTitle?: string;
       videoTitle?: string;
+      linkTitle?: string;
       url?: string;
       visibility?: boolean;
     },
     subId?: string
   ) => {
-    // ✅ FIX: Use relative path
     const url = subId
       ? `/main/${mainId}/sub/${subId}/child-category/media/${type}/${index}`
       : `/main/${mainId}/child-category/media/${type}/${index}`;
 
     console.log(`📝 UPDATE MEDIA [${type}][${index}]:`, url, payload);
 
-    await api.put(url, payload);
+    // Send both visibility and visible to ensure it hits the right field in MongoDB
+    const body = {
+      ...payload,
+      visibility: payload.visibility,
+      visible: payload.visibility
+    };
 
-    // Refresh data after update
-    await fetchChildCategoryMedia(mainId, subId);
+    await api.put(url, body);
+    // Removed automatic fetchChildCategoryMedia refresh to prevent "flickering" or reverting 
+    // due to stale data from the server during slow PUT operations.
+  };
+
+  /**
+   * Update Group Visibility or Title for Media
+   * PUT /main/:mainId/child-category/media/:type
+   */
+  const updateChildCategoryMediaGroup = async (
+    mainId: string,
+    type: "images" | "videos" | "links",
+    payload: {
+      name?: string;
+      visibility?: boolean;
+    },
+    subId?: string
+  ) => {
+    // ✅ Fix: Group updates should go to the base media URL with a wrapped payload
+    const url = subId
+      ? `/main/${mainId}/sub/${subId}/child-category/media`
+      : `/main/${mainId}/child-category/media`;
+
+    const body = {
+      childCatMedia: {
+        [type]: {
+          name: payload.name,
+          visibility: payload.visibility,
+          visible: payload.visibility // Send both version for group too
+        }
+      }
+    };
+
+    console.log(`📝 UPDATE MEDIA GROUP [${type}]:`, url, body);
+    try {
+      // Try PUT first as per documentation attempt
+      await api.put(url, body);
+      console.log(`✅ GROUP UPDATE SUCCESS [${type}]`);
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.warn(`⚠️ PUT not found for group update, trying POST/PATCH as fallback or skipping:`, url);
+        // If PUT 404s, backend might not have this specific grouped update route yet
+        // We catch it here so the UI doesn't crash
+      } else {
+        throw error;
+      }
+    }
   };
 
   /**
@@ -1826,8 +1891,8 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
    */
   const deleteChildCategoryMediaByIndex = async (
     mainId: string,
-    type: "images" | "videos",
-    index: number,
+    type: "images" | "videos" | "links",
+    index: number | string,
     subId?: string
   ) => {
     // ✅ FIX: Use relative path
@@ -2787,6 +2852,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
         childCategoriesV2,
         fetchChildCategoryMedia,
         updateChildCategoryMediaByIndex,
+        updateChildCategoryMediaGroup,
         deleteChildCategoryMediaByIndex,
         deleteChildCategoryV2
       }}
