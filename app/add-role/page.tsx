@@ -4,8 +4,12 @@ import React, { useState } from "react";
 import { Shield, Save, CheckSquare, Square } from "lucide-react";
 
 import { api } from "../utils/api";
+import { useTheme } from "../context/ThemeContext";
 
 export default function AddRole() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   const [roleName, setRoleName] = useState("");
   const [permissions, setPermissions] = useState({
     canManageUsers: false,
@@ -50,16 +54,22 @@ export default function AddRole() {
   };
 
   return (
-    <div className="mx-auto max-w-md animate-fade-in space-y-6">
-      <div className="rounded-lg bg-white p-6 shadow-lg border border-gray-100">
-        <div className="mb-6 flex items-center justify-center space-x-3 text-blue-900">
-          <h1 className="text-2xl font-bold">Add Role</h1>
+    <div className="mx-auto max-w-lg animate-fade-in p-2">
+      <div className={`rounded-3xl p-8 shadow-xl border ${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-gray-100'}`}>
+        <div className="mb-8 flex items-center gap-4">
+          <div className="p-3 bg-blue-600/10 rounded-2xl">
+            <Shield className="text-blue-600" size={32} />
+          </div>
+          <div>
+            <h1 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>Add Role</h1>
+            <p className="text-sm text-gray-400 font-medium">Define new access levels</p>
+          </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Role Name Input */}
-          <div className="space-y-2">
-            <label className="sr-only" htmlFor="roleName">
+          <div className="space-y-3">
+            <label className={`text-sm font-bold ml-1 ${isDark ? 'text-gray-400' : 'text-[#2B3674]'}`} htmlFor="roleName">
               Role Name
             </label>
             <input
@@ -67,73 +77,58 @@ export default function AddRole() {
               id="roleName"
               value={roleName}
               onChange={(e) => setRoleName(e.target.value)}
-              placeholder="Enter Role Name"
-              className="w-full rounded-md border border-gray-300 px-4 py-3 text-gray-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              placeholder="e.g. Sales Manager"
+              className={`w-full rounded-2xl border px-5 py-4 outline-none transition-all focus:ring-2 focus:ring-blue-500/20 ${isDark
+                ? 'bg-[#1B2559] border-gray-700 text-white placeholder-gray-500 focus:border-blue-500'
+                : 'bg-gray-50 border-gray-200 text-[#2B3674] placeholder-gray-400 focus:border-blue-600'
+                }`}
             />
           </div>
 
-          {/* Permissions Checkboxes */}
+          {/* Permissions Grid */}
           <div className="space-y-4 pt-2">
-            <label className="flex cursor-pointer items-center space-x-3 group">
-              <div
-                onClick={() => togglePermission("canManageUsers")}
-                className={`flex h-6 w-6 items-center justify-center rounded border transition-colors ${permissions.canManageUsers
-                  ? "border-blue-700 bg-blue-700 text-white"
-                  : "border-gray-400 bg-white group-hover:border-blue-500"
-                  }`}
-              >
-                {permissions.canManageUsers && <CheckSquare size={16} />}
-              </div>
-              <span
-                className="text-gray-700 select-none"
-                onClick={() => togglePermission("canManageUsers")}
-              >
-                Can Manage Users
-              </span>
-            </label>
-
-            <label className="flex cursor-pointer items-center space-x-3 group">
-              <div
-                onClick={() => togglePermission("canManageServices")}
-                className={`flex h-6 w-6 items-center justify-center rounded border transition-colors ${permissions.canManageServices
-                  ? "border-blue-700 bg-blue-700 text-white"
-                  : "border-gray-400 bg-white group-hover:border-blue-500"
-                  }`}
-              >
-                {permissions.canManageServices && <CheckSquare size={16} />}
-              </div>
-              <span
-                className="text-gray-700 select-none"
-                onClick={() => togglePermission("canManageServices")}
-              >
-                Can Manage Services
-              </span>
-            </label>
-
-            <label className="flex cursor-pointer items-center space-x-3 group">
-              <div
-                onClick={() => togglePermission("canManageInventory")}
-                className={`flex h-6 w-6 items-center justify-center rounded border transition-colors ${permissions.canManageInventory
-                  ? "border-blue-700 bg-blue-700 text-white"
-                  : "border-gray-400 bg-white group-hover:border-blue-500"
-                  }`}
-              >
-                {permissions.canManageInventory && <CheckSquare size={16} />}
-              </div>
-              <span
-                className="text-gray-700 select-none"
-                onClick={() => togglePermission("canManageInventory")}
-              >
-                Can Manage Inventory
-              </span>
-            </label>
+            <h3 className={`text-sm font-bold ml-1 mb-4 ${isDark ? 'text-gray-400' : 'text-[#2B3674]'}`}>Permissions</h3>
+            <div className="grid gap-3">
+              {[
+                { key: "canManageUsers", label: "Can Manage Users" },
+                { key: "canManageServices", label: "Can Manage Services" },
+                { key: "canManageInventory", label: "Can Manage Inventory" }
+              ].map((perm) => (
+                <label
+                  key={perm.key}
+                  className={`flex cursor-pointer items-center justify-between p-4 rounded-2xl border transition-all hover:scale-[1.01] ${isDark
+                    ? 'bg-[#111C44] border-gray-800 hover:bg-[#1B2559]'
+                    : 'bg-white border-gray-100 hover:shadow-md'
+                    }`}
+                >
+                  <span className={`font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{perm.label}</span>
+                  <div
+                    onClick={(e) => {
+                      e.preventDefault();
+                      togglePermission(perm.key as keyof typeof permissions);
+                    }}
+                    className={`flex h-7 w-7 items-center justify-center rounded-lg border-2 transition-all ${permissions[perm.key as keyof typeof permissions]
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : isDark ? "border-gray-700 bg-transparent" : "border-gray-200 bg-gray-50"
+                      }`}
+                  >
+                    {permissions[perm.key as keyof typeof permissions] && <CheckSquare size={18} strokeWidth={3} />}
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
 
           {/* Save Button */}
           <button
+            onClick={handleSave}
             disabled={loading}
-            className="bg-blue-900 text-white h-15 w-40 rounded-full"
+            className={`flex w-full items-center justify-center gap-3 rounded-2xl py-4 text-lg font-black transition-all active:scale-95 shadow-lg ${loading
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
+              }`}
           >
+            <Save size={20} />
             {loading ? "Saving Role..." : "Save Role"}
           </button>
         </div>

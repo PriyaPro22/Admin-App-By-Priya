@@ -13,6 +13,7 @@ import {
   ChevronUp
 } from "lucide-react";
 import { useCategory } from "../context/CategoryContext";
+import { useTheme } from "../context/ThemeContext";
 
 interface CategoryListProps {
   type: "main" | "sub" | "child" | "deep" | "subDeep";
@@ -65,14 +66,14 @@ const InfoField = ({
   item,
   onToggleVisibility
 }: any) => (
-  <div className="flex items-center justify-between rounded border-2 border-blue-900 bg-white px-2 py-2">
+  <div className="flex items-center justify-between rounded border-2 border-blue-900 px-2 py-2 transition-colors bg-white dark:bg-[#1B2559]">
     <div className="truncate text-sm flex-1 mr-2">
-      {prefix && <span className="font-semibold text-gray-500">{prefix}: </span>}
-      <span className="font-bold text-gray-800">{value || ""}</span>
+      {prefix && <span className="font-semibold text-gray-500 dark:text-gray-400">{prefix}: </span>}
+      <span className="font-bold text-gray-800 dark:text-white">{value || ""}</span>
     </div>
     {visibilityField && (
       <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="text-[10px] font-bold text-gray-900">Visibility</span>
+        <span className="text-[10px] font-bold text-gray-900 dark:text-gray-300">Visibility</span>
         <div onClick={(e) => e.stopPropagation()}>
           <OrangeToggle
             checked={visibilityValue}
@@ -102,6 +103,8 @@ const CategoryList: React.FC<CategoryListProps> = ({
     subDeepChildCategories,
     isLoadingSubDeep,
   } = useCategory();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   const dataMap: any = {
     main: mainCategories,
@@ -161,10 +164,10 @@ const CategoryList: React.FC<CategoryListProps> = ({
 
   if (!list.length && type !== "subDeep" && type !== "deep") {
     return (
-      <div className="rounded-2xl bg-gradient-to-br from-gray-50 to-white border-2 border-dashed border-gray-300 py-16 text-center">
-        <Folder className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-gray-700 mb-2">No categories found</h3>
-        <p className="text-gray-500">Add your first category to get started</p>
+      <div className={`rounded-2xl border-2 border-dashed py-16 text-center transition-all ${isDark ? 'bg-[#111C44]/50 border-gray-700' : 'bg-gradient-to-br from-gray-50 to-white border-gray-300'}`}>
+        <Folder className={`h-16 w-16 mx-auto mb-4 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
+        <h3 className={`text-xl font-bold mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>No categories found</h3>
+        <p className={`${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Add your first category to get started</p>
       </div>
     );
   }
@@ -186,15 +189,15 @@ const CategoryList: React.FC<CategoryListProps> = ({
             <div
               key={id}
               onClick={() => onItemClick?.(item)}
-              className="flex items-center justify-between rounded-2xl bg-gray-200 px-5 py-4 shadow-sm min-h-[90px] cursor-pointer hover:bg-gray-300 transition-colors"
+              className={`flex items-center justify-between rounded-2xl px-5 py-4 shadow-sm min-h-[90px] cursor-pointer transition-all duration-300 ${isDark ? 'bg-[#111C44] border border-gray-800 hover:bg-[#1B2559]' : 'bg-gray-200 hover:bg-gray-300'}`}
             >
-              <h3 className="text-2xl font-bold text-blue-950 ml-2">
+              <h3 className={`text-2xl font-bold ml-2 ${isDark ? 'text-white' : 'text-blue-950'}`}>
                 {item?.name || "Unnamed Child Category"}
               </h3>
 
               <div className="flex items-center gap-6 mr-2">
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-gray-900">Visibility</span>
+                  <span className={`text-xs font-bold ${isDark ? 'text-gray-400' : 'text-gray-900'}`}>Visibility</span>
                   <div onClick={(e) => e.stopPropagation()}>
                     <OrangeToggle
                       checked={isVisible}
@@ -238,7 +241,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
             <div
               key={item?.documentId ?? item?.id}
               onClick={() => onItemClick?.(item)}
-              className="relative flex gap-2 rounded-xl bg-white p-2 shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-all w-[240px]"
+              className={`relative flex gap-2 rounded-xl p-2 shadow-sm border overflow-hidden cursor-pointer hover:shadow-md transition-all w-[240px] ${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-gray-200'}`}
             >
               {/* 🔵 LEFT CURVED STRIP */}
               <div className="absolute left-0 top-0 h-full w-1 bg-blue-500 rounded-r-xl" />
@@ -294,7 +297,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
                   <div className="flex items-start justify-between gap-1 h-8">
                     <div className="flex flex-col min-w-0 justify-center">
                       <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-bold text-gray-900 leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
+                        <h2 className={`text-sm font-bold leading-tight whitespace-nowrap overflow-hidden text-ellipsis ${isDark ? 'text-white' : 'text-gray-900'}`}>
                           {item?.name}
                         </h2>
                         {/* Visibility Toggle (Controls isSubCategoryNameVisible) */}
@@ -317,11 +320,9 @@ const CategoryList: React.FC<CategoryListProps> = ({
                   </div>
                 </div>
 
-
-
                 {/* VISIBILITY BLOCK */}
-                <div className="h-6 rounded-md bg-gray-50 px-2 flex items-center justify-between mt-1">
-                  <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">
+                <div className={`h-6 rounded-md px-2 flex items-center justify-between mt-1 ${isDark ? 'bg-[#1B2559]' : 'bg-gray-50'}`}>
+                  <span className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-gray-500'}`}>
                     VISIBLE
                   </span>
                   <div onClick={(e) => e.stopPropagation()}>
@@ -378,7 +379,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
             <div
               key={item?._id ?? item?.id}
               onClick={() => onItemClick?.(item)}
-              className="relative rounded-xl bg-white p-2 shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-all"
+              className={`relative rounded-xl p-2 shadow-sm border overflow-hidden cursor-pointer hover:shadow-md transition-all ${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-gray-200'}`}
             >
               {/* 🔴 LEFT STRIP */}
               <div className="absolute left-0 top-0 h-full w-1 bg-red-500 rounded-r-xl" />
@@ -420,7 +421,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
                 <div className="flex-1">
                   {/* NAME + MAIN VISIBILITY */}
                   <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-bold text-gray-900 leading-tight">
+                    <h2 className={`text-sm font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
                       {item?.name}
                     </h2>
                     <div onClick={(e) => e.stopPropagation()}>
@@ -441,8 +442,8 @@ const CategoryList: React.FC<CategoryListProps> = ({
                   )}
 
                   {/* HAS SUB */}
-                  <div className="mt-2 rounded-md bg-gray-50 px-2 py-1.5 flex items-center justify-between">
-                    <span className="text-[9px] font-semibold text-gray-600">
+                  <div className={`mt-2 rounded-md px-2 py-1.5 flex items-center justify-between ${isDark ? 'bg-[#1B2559]' : 'bg-gray-50'}`}>
+                    <span className={`text-[9px] font-semibold ${isDark ? 'text-blue-400' : 'text-gray-600'}`}>
                       HAS SUB
                     </span>
                     <div onClick={(e) => e.stopPropagation()}>
@@ -456,8 +457,8 @@ const CategoryList: React.FC<CategoryListProps> = ({
                   </div>
 
                   {/* MAIN CAT */}
-                  <div className="mt-1 rounded-md bg-gray-50 px-2 py-1.5 flex items-center justify-between">
-                    <span className="text-[9px] font-semibold text-gray-600">
+                  <div className={`mt-1 rounded-md px-2 py-1.5 flex items-center justify-between ${isDark ? 'bg-[#1B2559]' : 'bg-gray-50'}`}>
+                    <span className={`text-[9px] font-semibold ${isDark ? 'text-blue-400' : 'text-gray-600'}`}>
                       MAIN CAT
                     </span>
                     <div onClick={(e) => e.stopPropagation()}>
@@ -553,7 +554,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
               <div
                 key={id}
                 onClick={() => toggleExpand(id)} // Clicking card toggles expand
-                className="rounded-lg bg-gray-100 p-2 border border-gray-300 hover:border-blue-400 transition-all cursor-pointer"
+                className={`rounded-lg p-2 border transition-all cursor-pointer ${isDark ? 'bg-[#111C44] border-gray-800 hover:border-blue-500' : 'bg-gray-100 border-gray-300 hover:border-blue-400'}`}
               >
                 {/* HEADER ROW: Index | Title | Toggle | View Button */}
                 {/* Matching Screenshot:
@@ -561,13 +562,13 @@ const CategoryList: React.FC<CategoryListProps> = ({
                   */}
                 <div className="flex items-center mb-3">
                   {/* Index */}
-                  <div className="h-10 w-10 flex-shrink-0 flex items-center justify-center rounded border-2 border-blue-900 bg-white text-blue-900 font-bold">
+                  <div className={`h-10 w-10 flex-shrink-0 flex items-center justify-center rounded border-2 border-blue-900 font-bold ${isDark ? 'bg-[#1B2559] text-blue-400' : 'bg-white text-blue-900'}`}>
                     {index + 1}
                   </div>
 
                   {/* Title & Toggle Box */}
-                  <div className="flex-1 ml-2 flex items-center justify-between rounded border-2 border-blue-900 bg-white px-3 h-10 overflow-hidden">
-                    <span className="font-bold text-blue-950 truncate mr-2 text-sm md:text-base">
+                  <div className={`flex-1 ml-2 flex items-center justify-between rounded border-2 border-blue-900 px-3 h-10 overflow-hidden ${isDark ? 'bg-[#1B2559]' : 'bg-white'}`}>
+                    <span className={`font-bold truncate mr-2 text-sm md:text-base ${isDark ? 'text-white' : 'text-blue-950'}`}>
                       {item.name || item.firstTitle || "Sub Deep Child Cat Visible"}
                     </span>
                     <div onClick={(e) => e.stopPropagation()}>
@@ -586,7 +587,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
                       e.stopPropagation();
                       toggleExpand(id);
                     }}
-                    className="ml-2 h-10 px-3 rounded bg-gray-200 text-red-600 font-bold text-xs whitespace-nowrap hover:bg-gray-300 transition-colors border border-gray-300"
+                    className={`ml-2 h-10 px-3 rounded font-bold text-xs whitespace-nowrap transition-colors border ${isDark ? 'bg-[#1B2559] text-red-400 border-gray-700 hover:bg-[#232D65]' : 'bg-gray-200 text-red-600 border-gray-300 hover:bg-gray-300'}`}
                   >
                     {expandedItems[id] ? "View Less" : "View More"}
                   </button>
@@ -599,7 +600,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
                       e.stopPropagation();
                       onEditClick?.(item);
                     }}
-                    className="flex-1 bg-white border py-2 text-green-600 font-bold rounded-md shadow-sm hover:bg-green-50 transition"
+                    className={`flex-1 border py-2 font-bold rounded-md shadow-sm transition ${isDark ? 'bg-[#1B2559] border-gray-700 text-green-400 hover:bg-[#232D65]' : 'bg-white text-green-600 hover:bg-green-50'}`}
                   >
                     Edit Category
                   </button>
@@ -608,7 +609,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
                       e.stopPropagation();
                       onDeleteClick?.(item);
                     }}
-                    className="flex-1 bg-white border py-2 text-red-600 font-bold rounded-md shadow-sm hover:bg-red-50 transition"
+                    className={`flex-1 border py-2 font-bold rounded-md shadow-sm transition ${isDark ? 'bg-[#1B2559] border-gray-700 text-red-400 hover:bg-[#232D65]' : 'bg-white text-red-600 hover:bg-red-50'}`}
                   >
                     Delete Category
                   </button>
@@ -618,13 +619,13 @@ const CategoryList: React.FC<CategoryListProps> = ({
                 {expandedItems[id] && (
                   <div className="space-y-2">
                     {/* Titles & Desc */}
-                    <div className="border-2 border-blue-900 rounded px-2 py-2 text-sm italic font-bold text-gray-800 bg-white">
+                    <div className={`border-2 border-blue-900 rounded px-2 py-2 text-sm italic font-bold transition-colors ${isDark ? 'bg-[#1B2559] text-white' : 'bg-white text-gray-800'}`}>
                       First Title: {item.firstTitle || "N/A"}
                     </div>
-                    <div className="border-2 border-blue-900 rounded px-2 py-2 text-sm italic font-bold text-gray-800 bg-white">
+                    <div className={`border-2 border-blue-900 rounded px-2 py-2 text-sm italic font-bold transition-colors ${isDark ? 'bg-[#1B2559] text-white' : 'bg-white text-gray-800'}`}>
                       Second Title: {item.secondTitle || "N/A"}
                     </div>
-                    <div className="border-2 border-blue-900 rounded px-2 py-2 text-sm italic font-bold text-gray-800 bg-white">
+                    <div className={`border-2 border-blue-900 rounded px-2 py-2 text-sm italic font-bold transition-colors ${isDark ? 'bg-[#1B2559] text-white' : 'bg-white text-gray-800'}`}>
                       Description: {item.description || "N/A"}
                     </div>
 
@@ -648,23 +649,23 @@ const CategoryList: React.FC<CategoryListProps> = ({
 
                       {/* GST & Price - Custom Layout */}
                       <div className="flex gap-2">
-                        <div className="flex-1 border-2 border-blue-900 rounded px-2 py-2 text-sm bg-white text-gray-700">
+                        <div className={`flex-1 border-2 border-blue-900 rounded px-2 py-2 text-sm transition-colors ${isDark ? 'bg-[#1B2559] text-gray-300' : 'bg-white text-gray-700'}`}>
                           Gst Percent: {item.gst || "0"}%
                         </div>
-                        <div className="flex-1 border-2 border-blue-900 rounded px-2 py-2 text-sm bg-white text-gray-700">
+                        <div className={`flex-1 border-2 border-blue-900 rounded px-2 py-2 text-sm transition-colors ${isDark ? 'bg-[#1B2559] text-gray-300' : 'bg-white text-gray-700'}`}>
                           Gst Type: {item.gstType || "Include"}
                         </div>
                       </div>
-                      <div className="border-2 border-blue-900 rounded px-2 py-2 text-sm bg-white text-gray-700">
+                      <div className={`border-2 border-blue-900 rounded px-2 py-2 text-sm transition-colors ${isDark ? 'bg-[#1B2559] text-gray-300' : 'bg-white text-gray-700'}`}>
                         Price After GST: ₹{item.priceAfterGst || "0.00"}
                       </div>
 
                       {/* Discount */}
                       <div className="flex gap-2">
-                        <div className="flex-1 border-2 border-blue-900 rounded px-2 py-2 text-sm bg-white text-gray-700">
+                        <div className={`flex-1 border-2 border-blue-900 rounded px-2 py-2 text-sm transition-colors ${isDark ? 'bg-[#1B2559] text-gray-300' : 'bg-white text-gray-700'}`}>
                           Discount Value: {item.discountValue || "0.0"}
                         </div>
-                        <div className="flex-1 border-2 border-blue-900 rounded px-2 py-2 text-sm bg-white text-gray-700">
+                        <div className={`flex-1 border-2 border-blue-900 rounded px-2 py-2 text-sm transition-colors ${isDark ? 'bg-[#1B2559] text-gray-300' : 'bg-white text-gray-700'}`}>
                           Discount Type: {item.discountType || "%"}
                         </div>
                       </div>
@@ -698,8 +699,8 @@ const CategoryList: React.FC<CategoryListProps> = ({
                       <div className="mt-4 bg-white rounded-xl">
                         <div className="flex justify-between items-start">
                           <div className="space-y-2 w-[60%]">
-                            <div className="flex items-center justify-between rounded border-2 border-blue-900 px-2 py-1.5 bg-white">
-                              <span className="text-sm font-bold text-blue-950">
+                            <div className={`flex items-center justify-between rounded border-2 border-blue-900 px-2 py-1.5 transition-colors ${isDark ? 'bg-[#1B2559]' : 'bg-white'}`}>
+                              <span className={`text-sm font-bold ${isDark ? 'text-blue-400' : 'text-blue-950'}`}>
                                 First Title Visibility
                               </span>
                               <div onClick={(e) => e.stopPropagation()}>
@@ -714,8 +715,8 @@ const CategoryList: React.FC<CategoryListProps> = ({
                                 />
                               </div>
                             </div>
-                            <div className="flex items-center justify-between rounded border-2 border-blue-900 px-2 py-1.5 bg-white">
-                              <span className="text-sm font-bold text-blue-950">
+                            <div className={`flex items-center justify-between rounded border-2 border-blue-900 px-2 py-1.5 transition-colors ${isDark ? 'bg-[#1B2559]' : 'bg-white'}`}>
+                              <span className={`text-sm font-bold ${isDark ? 'text-blue-400' : 'text-blue-950'}`}>
                                 Second Title Visibility
                               </span>
                               <div onClick={(e) => e.stopPropagation()}>
@@ -730,8 +731,8 @@ const CategoryList: React.FC<CategoryListProps> = ({
                                 />
                               </div>
                             </div>
-                            <div className="flex items-center justify-between rounded border-2 border-blue-900 px-2 py-1.5 bg-white">
-                              <span className="text-sm font-bold text-blue-950">
+                            <div className={`flex items-center justify-between rounded border-2 border-blue-900 px-2 py-1.5 transition-colors ${isDark ? 'bg-[#1B2559]' : 'bg-white'}`}>
+                              <span className={`text-sm font-bold ${isDark ? 'text-blue-400' : 'text-blue-950'}`}>
                                 Description Visibility
                               </span>
                               <div onClick={(e) => e.stopPropagation()}>
@@ -798,7 +799,7 @@ const CategoryList: React.FC<CategoryListProps> = ({
                             />
                           </div>
                         </div>
-                        <button className="px-6 py-1 border-2 border-blue-900 text-red-600 font-bold bg-white rounded shadow-sm hover:bg-gray-50 text-sm">
+                        <button className={`px-6 py-1 border-2 border-blue-900 font-bold rounded shadow-sm text-sm transition-colors ${isDark ? 'bg-[#1B2559] text-red-400 hover:bg-[#232D65]' : 'bg-white text-red-600 hover:bg-gray-50'}`}>
                           View videos
                         </button>
                       </div>
@@ -816,19 +817,19 @@ const CategoryList: React.FC<CategoryListProps> = ({
             <div
               key={id}
               onClick={() => isDeep ? onItemClick?.(item) : toggleExpand(id)}
-              className="rounded-lg bg-gray-100 p-2 border border-gray-300 hover:border-purple-400 transition-all cursor-pointer"
+              className={`rounded-lg p-2 border transition-all cursor-pointer ${isDark ? 'bg-[#111C44] border-gray-800 hover:border-purple-500' : 'bg-gray-100 border-gray-300 hover:border-purple-400'}`}
             >
               {/* HEADER */}
               <div
                 onClick={() => isDeep && onItemClick?.(item)}
-                className={`flex items-center justify-between bg-white rounded-md p-2 border mb-3 hover:bg-gray-50 transition-colors ${isDeep ? 'cursor-pointer' : ''}`}
+                className={`flex items-center justify-between rounded-md p-2 border mb-3 transition-colors ${isDeep ? 'cursor-pointer' : ''} ${isDark ? 'bg-[#1B2559] border-gray-700 hover:bg-[#232D65]' : 'bg-white border-gray-100 hover:bg-gray-50'}`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 flex items-center justify-center rounded border border-purple-900 text-purple-900 font-bold">
+                  <div className={`h-8 w-8 flex items-center justify-center rounded border border-purple-900 font-bold ${isDark ? 'bg-[#111C44] text-purple-400' : 'bg-white text-purple-900'}`}>
                     {index + 1}
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-bold text-purple-950">
+                    <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-purple-950'}`}>
                       {item.firstTitle || item.name || "Untitled"}
                     </span>
                     <span className="text-[10px] text-gray-500">

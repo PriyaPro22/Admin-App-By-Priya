@@ -1,10 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #F4F7FE;
   --foreground: #171717;
-  color-scheme: light;
-  /* Force light scheme */
+}
+
+.dark {
+  --background: #0B1437;
+  --foreground: #ffffff;
 }
 
 @theme inline {
@@ -17,5 +20,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', sans-serif;
 }

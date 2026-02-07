@@ -9,6 +9,7 @@ import {
     Handshake,
     Hourglass,
     CheckCircle2,
+    UserX,
     Search,
     Bell,
     User,
@@ -18,14 +19,12 @@ import {
     ChevronDown,
     ChevronLeft,
     ChevronRight,
-    CircleSlash,
+    UserCircle2,
     FileSpreadsheet,
     FileText,
-    UserX,
     Check
 } from "lucide-react";
-import { useTheme } from "../context/ThemeContext";
-import { useRouter } from "next/navigation";
+import { useTheme } from "../../context/ThemeContext";
 import Link from "next/link";
 
 interface Partner {
@@ -71,15 +70,14 @@ const StatusBadge = ({ status }: { status: Partner["approval"] }) => {
         case "Rejected": styles = "bg-[#FFF1F1] text-[#E31A1A]"; break;
     }
     return (
-        <span className={`px-5 py-2 rounded-full text-[12px] font-bold ${styles}`}>
+        <span className={`px-4 py-1.5 rounded-full text-[13px] font-bold ${styles}`}>
             {status}
         </span>
     );
 };
 
-export default function PartnerManagement() {
+export default function PartnersPage() {
     const { theme } = useTheme();
-    const router = useRouter();
     const isDark = theme === "dark";
     const [searchTerm, setSearchTerm] = useState("");
     const [isExportOpen, setIsExportOpen] = useState(false);
@@ -153,41 +151,41 @@ export default function PartnerManagement() {
 
             <div className="p-8">
 
-                {/* --- ACTION BUTTONS (SINGLE ROW) --- */}
-                <div className="flex justify-between items-center mb-10">
-                    <div className="flex gap-4">
-                        <Link
-                            href="/partner-management/partners/add"
-                            className="px-7 py-4 bg-[#0070f3] text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition-all flex items-center gap-3"
-                        >
-                            <div className="h-6 w-6 rounded-full border-2 border-white flex items-center justify-center">
-                                <Plus size={14} strokeWidth={4} />
-                            </div>
-                            Add New Partner
-                        </Link>
+                {/* --- ACTION BUTTONS --- */}
+                <div className="flex items-center gap-4 mb-8">
+                    <Link
+                        href="/partner-management/partners/add"
+                        className="px-6 py-4 bg-[#0070f3] text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition-all flex items-center gap-2.5"
+                    >
+                        <div className="h-5 w-5 rounded-full border-2 border-white flex items-center justify-center">
+                            <Plus size={12} strokeWidth={4} />
+                        </div>
+                        Add New Partner
+                    </Link>
 
-                        <button className={`${isDark ? 'bg-[#111C44] text-white border-gray-800 hover:bg-[#1B2559]' : 'bg-white text-[#2B3674] border-gray-100 hover:bg-gray-50'} px-7 py-4 font-bold rounded-2xl border shadow-sm transition-all flex items-center gap-3`}>
-                            <ClipboardList size={20} className="text-[#A3AED0]" strokeWidth={2.5} />
-                            Pending Approvals
-                        </button>
+                    <button className={`${isDark ? 'bg-[#111C44] text-white border-gray-800 hover:bg-[#1B2559]' : 'bg-white text-[#2B3674] border-gray-100 hover:bg-gray-50'} px-6 py-4 font-bold rounded-xl border shadow-sm transition-all flex items-center gap-2.5`}>
+                        <ClipboardList size={18} className="text-[#A3AED0]" strokeWidth={2.5} />
+                        Pending Approvals
+                    </button>
 
-                        <button className={`${isDark ? 'bg-[#111C44] text-white border-gray-800 hover:bg-[#1B2559]' : 'bg-white text-[#2B3674] border-gray-100 hover:bg-gray-50'} px-7 py-4 font-bold rounded-2xl border shadow-sm transition-all flex items-center gap-3`}>
-                            <Ban size={20} className="text-[#A3AED0]" strokeWidth={2.5} />
-                            Blocked Partners
-                        </button>
-                    </div>
+                    <button className={`${isDark ? 'bg-[#111C44] text-white border-gray-800 hover:bg-[#1B2559]' : 'bg-white text-[#2B3674] border-gray-100 hover:bg-gray-50'} px-6 py-4 font-bold rounded-xl border shadow-sm transition-all flex items-center gap-2.5`}>
+                        <Ban size={18} className="text-[#A3AED0]" strokeWidth={2.5} />
+                        Blocked Partners
+                    </button>
+
+                    <div className="flex-1"></div>
 
                     <div className="relative">
                         <button
                             onClick={() => setIsExportOpen(!isExportOpen)}
-                            className={`px-7 py-4 font-bold rounded-2xl border transition-all flex items-center gap-3 ${isExportOpen
+                            className={`px-6 py-4 font-bold rounded-xl border transition-all flex items-center gap-2.5 ${isExportOpen
                                 ? "bg-[#0070f3] text-white border-[#0070f3] shadow-lg shadow-blue-500/20"
                                 : (isDark ? "bg-[#111C44] text-white border-gray-800 hover:bg-[#1B2559]" : "bg-white text-[#2B3674] border-gray-100 hover:bg-gray-50")
                                 }`}
                         >
-                            <Download size={20} className={isExportOpen ? "text-white" : "text-[#A3AED0]"} strokeWidth={2.5} />
+                            <Download size={18} className={isExportOpen ? "text-white" : "text-[#A3AED0]"} strokeWidth={2.5} />
                             Export Data
-                            <ChevronDown size={16} className={`ml-1 transition-transform ${isExportOpen ? "rotate-180" : ""}`} />
+                            <ChevronDown size={14} className={`ml-0.5 transition-transform ${isExportOpen ? "rotate-180" : ""}`} />
                         </button>
 
                         {isExportOpen && (
@@ -218,7 +216,7 @@ export default function PartnerManagement() {
                 </div>
 
                 {/* --- STATS GRID --- */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <StatCard
                         label="Total Partners"
                         value={totalPartnersCount}
@@ -254,16 +252,16 @@ export default function PartnerManagement() {
                 </div>
 
                 {/* --- FILTER SECTION --- */}
-                <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-gray-50'} p-10 rounded-[32px] shadow-sm border mb-10`}>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-8">
+                <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-gray-50'} p-8 rounded-[24px] shadow-sm border mb-8`}>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
                         <div>
-                            <label className="block text-[12px] font-bold text-[#A3AED0] uppercase tracking-widest mb-3">SEARCH PARTNER</label>
+                            <label className="block text-[11px] font-bold text-[#A3AED0] uppercase tracking-wider mb-2 font-black">SEARCH PARTNER</label>
                             <div className="relative">
-                                <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-6 w-6 text-[#A3AED0]" />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A3AED0]" />
                                 <input
                                     type="text"
                                     placeholder="Name, ID, or Mobile number..."
-                                    className={`w-full pl-14 pr-5 py-4 ${isDark ? 'bg-[#1B2559] text-white' : 'bg-[#F4F7FE] text-[#2B3674]'} border-transparent rounded-2xl font-bold focus:outline-none transition-all placeholder:text-[#A3AED0]`}
+                                    className={`w-full pl-12 pr-4 py-3.5 ${isDark ? 'bg-[#1B2559] text-white' : 'bg-[#F4F7FE] text-[#2B3674]'} border-transparent rounded-xl font-bold focus:outline-none transition-all placeholder:text-[#A3AED0] placeholder:font-semibold`}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
@@ -271,94 +269,93 @@ export default function PartnerManagement() {
                         </div>
 
                         <div>
-                            <label className="block text-[12px] font-bold text-[#A3AED0] uppercase tracking-widest mb-3">STATUS</label>
+                            <label className="block text-[11px] font-bold text-[#A3AED0] uppercase tracking-wider mb-2 font-black">STATUS</label>
                             <div className="relative">
-                                <select className={`w-full pl-5 pr-12 py-4 ${isDark ? 'bg-[#1B2559] text-white' : 'bg-[#F4F7FE] text-[#2B3674]'} border-transparent rounded-2xl font-bold appearance-none focus:outline-none cursor-pointer`}>
+                                <select className={`w-full pl-4 pr-10 py-3.5 ${isDark ? 'bg-[#1B2559] text-white' : 'bg-[#F4F7FE] text-[#2B3674]'} border-transparent rounded-xl font-bold appearance-none focus:outline-none cursor-pointer`}>
                                     <option>All Status</option>
                                     <option>Approved</option>
                                     <option>Pending</option>
                                     <option>Blocked</option>
                                 </select>
-                                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 h-6 w-6 text-[#A3AED0] pointer-events-none" strokeWidth={3} />
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A3AED0] pointer-events-none" strokeWidth={3} />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-[12px] font-bold text-[#A3AED0] uppercase tracking-widest mb-3">CITY</label>
+                            <label className="block text-[11px] font-bold text-[#A3AED0] uppercase tracking-wider mb-2 font-black">CITY</label>
                             <div className="relative">
-                                <select className={`w-full pl-5 pr-12 py-4 ${isDark ? 'bg-[#1B2559] text-white' : 'bg-[#F4F7FE] text-[#2B3674]'} border-transparent rounded-2xl font-bold appearance-none focus:outline-none cursor-pointer`}>
+                                <select className={`w-full pl-4 pr-10 py-3.5 ${isDark ? 'bg-[#1B2559] text-white' : 'bg-[#F4F7FE] text-[#2B3674]'} border-transparent rounded-xl font-bold appearance-none focus:outline-none cursor-pointer`}>
                                     <option>New York</option>
                                     <option>London</option>
                                     <option>Mumbai</option>
                                 </select>
-                                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 h-6 w-6 text-[#A3AED0] pointer-events-none" strokeWidth={3} />
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A3AED0] pointer-events-none" strokeWidth={3} />
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-end gap-5">
-                        <div className="w-80 relative">
-                            <label className="block text-[12px] font-bold text-[#A3AED0] uppercase tracking-widest mb-3">JOIN DATE RANGE</label>
+                    <div className="flex items-end gap-4">
+                        <div className="w-64">
+                            <label className="block text-[11px] font-bold text-[#A3AED0] uppercase tracking-wider mb-2 font-black">JOIN DATE RANGE</label>
                             <div className="relative">
-                                <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 h-6 w-6 text-[#A3AED0]" />
+                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A3AED0]" />
                                 <input
                                     type="date"
-                                    className={`w-full pl-14 pr-5 py-4 ${isDark ? 'bg-[#1B2559] text-white' : 'bg-[#F4F7FE] text-[#2B3674]'} border-transparent rounded-2xl font-bold focus:outline-none transition-all cursor-pointer appearance-none`}
+                                    className={`w-full pl-12 pr-4 py-3.5 ${isDark ? 'bg-[#1B2559] text-white' : 'bg-[#F4F7FE] text-[#2B3674]'} border-transparent rounded-xl font-bold focus:outline-none transition-all cursor-pointer appearance-none`}
                                     onClick={(e) => (e.target as HTMLInputElement).showPicker()}
-                                    onChange={(e) => console.log(e.target.value)}
                                 />
                             </div>
                         </div>
-                        <button className="p-4 bg-[#EBF3FF] text-[#0070f3] rounded-2xl hover:bg-blue-100 transition-all shadow-sm">
-                            <Filter size={24} strokeWidth={3} />
+                        <button className="p-3.5 bg-[#EBF3FF] text-[#0070f3] rounded-xl hover:bg-blue-100 transition-all shadow-sm">
+                            <Filter size={20} strokeWidth={3} />
                         </button>
                     </div>
                 </div>
 
-                {/* --- TABLE --- */}
-                <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-gray-50'} rounded-[32px] shadow-sm border overflow-hidden`}>
+                {/* --- PARTNERS TABLE --- */}
+                <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-gray-50'} rounded-[24px] shadow-sm border overflow-hidden`}>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
                                 <tr className={`border-b ${isDark ? 'border-gray-800' : 'border-gray-50'}`}>
-                                    <th className="text-left py-8 px-10 text-[11px] font-bold text-[#A3AED0] uppercase tracking-[0.2em]">ID</th>
-                                    <th className="text-left py-8 px-10 text-[11px] font-bold text-[#A3AED0] uppercase tracking-[0.2em]">Partner Name</th>
-                                    <th className="text-left py-8 px-10 text-[11px] font-bold text-[#A3AED0] uppercase tracking-[0.2em]">Mobile</th>
-                                    <th className="text-left py-8 px-10 text-[11px] font-bold text-[#A3AED0] uppercase tracking-[0.2em]">City/Area</th>
-                                    <th className="text-left py-8 px-10 text-[11px] font-bold text-[#A3AED0] uppercase tracking-[0.2em]">Join Date</th>
-                                    <th className="text-center py-8 px-10 text-[11px] font-bold text-[#A3AED0] uppercase tracking-[0.2em]">Approval</th>
-                                    <th className="text-center py-8 px-10 text-[11px] font-bold text-[#A3AED0] uppercase tracking-[0.2em]">Active</th>
-                                    <th className="text-right py-8 px-10 text-[11px] font-bold text-[#A3AED0] uppercase tracking-[0.2em]">Actions</th>
+                                    <th className="text-left py-6 px-10 text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">ID</th>
+                                    <th className="text-left py-6 px-10 text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">PARTNER NAME</th>
+                                    <th className="text-left py-6 px-10 text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">MOBILE</th>
+                                    <th className="text-left py-6 px-10 text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">CITY/AREA</th>
+                                    <th className="text-left py-6 px-10 text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">JOIN DATE</th>
+                                    <th className="text-center py-6 px-10 text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">APPROVAL</th>
+                                    <th className="text-center py-6 px-10 text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">ACTIVE</th>
+                                    <th className="text-right py-6 px-10 text-[11px] font-black text-[#A3AED0] uppercase tracking-widest">ACTIONS</th>
                                 </tr>
                             </thead>
                             <tbody className={`divide-y ${isDark ? 'divide-gray-800' : 'divide-gray-50'}`}>
                                 {MOCK_PARTNERS.map((partner) => (
-                                    <tr key={partner.id} className={`${isDark ? 'hover:bg-[#1B2559]/30' : 'hover:bg-gray-50/50'} transition-colors`}>
-                                        <td className={`py-10 px-10 text-[15px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} whitespace-nowrap`}>{partner.code}</td>
-                                        <td className="py-10 px-10 whitespace-nowrap">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`h-11 w-11 min-w-[44px] rounded-full ${isDark ? 'bg-[#1B2559] text-blue-400 border-gray-700' : 'bg-[#EBF3FF] text-[#0070f3] border-white'} flex items-center justify-center font-bold text-[14px] border-2 shadow-sm`}>
+                                    <tr key={partner.id} className={`${isDark ? 'hover:bg-[#1B2559]/30' : 'hover:bg-gray-50/30'} transition-colors`}>
+                                        <td className={`py-6 px-10 text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} whitespace-nowrap`}>{partner.code}</td>
+                                        <td className="py-6 px-10 whitespace-nowrap">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`h-10 w-10 min-w-[40px] rounded-full ${isDark ? 'bg-[#1B2559] border-gray-700 text-blue-400' : 'bg-[#EBF3FF] border-white text-[#0070f3]'} flex items-center justify-center font-bold text-[13px] border-2 shadow-sm`}>
                                                     {partner.initials}
                                                 </div>
                                                 <span className={`font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} text-[15px]`}>{partner.name}</span>
                                             </div>
                                         </td>
-                                        <td className="py-10 px-10 text-[15px] text-[#707EAE] font-bold whitespace-nowrap">{partner.mobile}</td>
-                                        <td className="py-10 px-10 text-[15px] text-[#707EAE] font-bold whitespace-nowrap">{partner.city}</td>
-                                        <td className="py-10 px-10 text-[15px] text-[#707EAE] font-bold whitespace-nowrap">{partner.joinDate}</td>
-                                        <td className="py-10 px-10 text-center">
+                                        <td className="py-6 px-10 text-[14px] text-[#707EAE] font-bold whitespace-nowrap">{partner.mobile}</td>
+                                        <td className="py-6 px-10 text-[14px] text-[#707EAE] font-bold whitespace-nowrap">{partner.city}</td>
+                                        <td className="py-6 px-10 text-[14px] text-[#707EAE] font-bold whitespace-nowrap">{partner.joinDate}</td>
+                                        <td className="py-6 px-10 text-center">
                                             <StatusBadge status={partner.approval} />
                                         </td>
-                                        <td className="py-10 px-10 text-center">
+                                        <td className="py-6 px-10 text-center">
                                             <div className={`h-2.5 w-2.5 rounded-full mx-auto ${partner.active ? 'bg-[#42BE65]' : 'bg-[#A3AED0]'}`}></div>
                                         </td>
-                                        <td className="py-10 px-10 text-right">
+                                        <td className="py-6 px-10 text-right">
                                             <Link
                                                 href={`/partner-management/partners/${partner.id}`}
-                                                className="text-[#0070f3] font-bold text-[15px] hover:underline flex items-center justify-end gap-2 ml-auto group transition-all whitespace-nowrap"
+                                                className="text-[#0070f3] font-bold text-[14px] hover:underline flex items-center justify-end gap-2 ml-auto group transition-all whitespace-nowrap"
                                             >
                                                 View All Details
-                                                <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" strokeWidth={2.5} />
+                                                <ArrowRight size={18} strokeWidth={2.5} className="transition-transform group-hover:translate-x-1" />
                                             </Link>
                                         </td>
                                     </tr>
@@ -368,23 +365,23 @@ export default function PartnerManagement() {
                     </div>
 
                     {/* --- PAGINATION --- */}
-                    <div className={`p-10 flex flex-col md:flex-row items-center justify-between border-t ${isDark ? 'border-gray-800' : 'border-gray-50'} gap-6`}>
-                        <div className="flex items-center gap-8">
-                            <p className="text-[15px] text-[#A3AED0] font-semibold">
+                    <div className={`p-8 flex flex-col md:flex-row items-center justify-between border-t ${isDark ? 'border-gray-800' : 'border-gray-50'} gap-6`}>
+                        <div className="flex items-center gap-6">
+                            <p className="text-[14px] text-[#A3AED0] font-semibold">
                                 Showing <span className={`${isDark ? 'text-white' : 'text-[#2B3674]'} font-bold`}>1 to {itemsPerPage}</span> of <span className={`${isDark ? 'text-white' : 'text-[#2B3674]'} font-bold`}>1,240</span> partners
                             </p>
 
                             <div className="relative">
                                 <button
                                     onClick={() => setIsRowsPerPageOpen(!isRowsPerPageOpen)}
-                                    className={`flex items-center gap-2 px-4 py-2 ${isDark ? 'bg-[#1B2559] text-white hover:bg-[#232D65]' : 'bg-[#F4F7FE] text-[#2B3674] hover:bg-gray-100'} rounded-xl text-[14px] font-bold transition-all border border-transparent`}
+                                    className={`flex items-center gap-2 px-3.5 py-2 ${isDark ? 'bg-[#1B2559] text-white hover:bg-[#232D65]' : 'bg-[#F4F7FE] text-[#2B3674] hover:bg-gray-100'} rounded-lg text-[13px] font-bold transition-all`}
                                 >
                                     Show: {itemsPerPage}
                                     <ChevronDown size={14} className={`transition-transform duration-200 ${isRowsPerPageOpen ? 'rotate-180' : ''}`} />
                                 </button>
 
                                 {isRowsPerPageOpen && (
-                                    <div className={`absolute bottom-full left-0 mb-2 w-32 rounded-2xl shadow-2xl border p-2 z-[60] animate-in fade-in slide-in-from-bottom-2 duration-200 ${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-gray-50'}`}>
+                                    <div className={`absolute bottom-full left-0 mb-2 w-28 rounded-xl shadow-2xl border p-1.5 z-[60] animate-in fade-in slide-in-from-bottom-2 duration-200 ${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-gray-50'}`}>
                                         {[10, 20, 50, 100].map((num) => (
                                             <button
                                                 key={num}
@@ -392,25 +389,25 @@ export default function PartnerManagement() {
                                                     setItemsPerPage(num);
                                                     setIsRowsPerPageOpen(false);
                                                 }}
-                                                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-[14px] font-bold transition-all ${itemsPerPage === num ? 'bg-blue-50 text-[#0070f3]' : (isDark ? 'text-white hover:bg-[#1B2559]' : 'text-[#2B3674] hover:bg-gray-50')}`}
+                                                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] font-bold transition-all ${itemsPerPage === num ? 'bg-blue-50 text-[#0070f3]' : (isDark ? 'text-white hover:bg-[#1B2559]' : 'text-[#2B3674] hover:bg-gray-50')}`}
                                             >
                                                 {num}
-                                                {itemsPerPage === num && <Check size={14} strokeWidth={3} />}
+                                                {itemsPerPage === num && <Check size={12} strokeWidth={3} />}
                                             </button>
                                         ))}
                                     </div>
                                 )}
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <button className={`p-3 rounded-2xl border transition-all disabled:opacity-50 ${isDark ? 'border-gray-800 text-gray-500 hover:bg-[#1B2559]' : 'border-gray-100 text-[#A3AED0] hover:bg-gray-50'}`} disabled>
-                                <ChevronLeft size={24} />
+                        <div className="flex items-center gap-2">
+                            <button className={`p-2.5 rounded-xl border transition-all disabled:opacity-50 ${isDark ? 'border-gray-800 text-gray-500 hover:bg-[#1B2559]' : 'border-gray-100 text-[#A3AED0] hover:bg-gray-50'}`} disabled>
+                                <ChevronLeft size={20} />
                             </button>
-                            <button className="h-12 w-12 rounded-2xl bg-[#0070f3] text-white font-bold text-[15px] shadow-lg shadow-blue-500/20">1</button>
-                            <button className={`h-12 w-12 rounded-2xl font-bold text-[15px] border transition-all ${isDark ? 'bg-[#111C44] border-gray-800 text-gray-400 hover:bg-[#1B2559]' : 'bg-white text-[#707EAE] border-gray-100 hover:bg-gray-50'}`}>2</button>
-                            <button className={`h-12 w-12 rounded-2xl font-bold text-[15px] border transition-all ${isDark ? 'bg-[#111C44] border-gray-800 text-gray-400 hover:bg-[#1B2559]' : 'bg-white text-[#707EAE] border-gray-100 hover:bg-gray-50'}`}>3</button>
-                            <button className={`p-3 rounded-2xl border transition-all ${isDark ? 'border-gray-800 text-gray-500 hover:bg-[#1B2559]' : 'border-gray-100 text-[#A3AED0] hover:bg-gray-50'}`}>
-                                <ChevronRight size={24} />
+                            <button className="h-10 w-10 rounded-xl bg-[#0070f3] text-white font-bold text-[14px] shadow-lg shadow-blue-500/20">1</button>
+                            <button className={`h-10 w-10 rounded-xl font-bold text-[14px] border transition-all ${isDark ? 'bg-[#111C44] border-gray-800 text-gray-400 hover:bg-[#1B2559]' : 'bg-white text-[#707EAE] border-gray-100 hover:bg-gray-50'}`}>2</button>
+                            <button className={`h-10 w-10 rounded-xl font-bold text-[14px] border transition-all ${isDark ? 'bg-[#111C44] border-gray-800 text-gray-400 hover:bg-[#1B2559]' : 'bg-white text-[#707EAE] border-gray-100 hover:bg-gray-50'}`}>3</button>
+                            <button className={`p-2.5 rounded-xl border transition-all ${isDark ? 'border-gray-800 text-gray-500 hover:bg-[#1B2559]' : 'border-gray-100 text-[#A3AED0] hover:bg-gray-50'}`}>
+                                <ChevronRight size={20} />
                             </button>
                         </div>
                     </div>
