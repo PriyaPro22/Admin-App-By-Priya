@@ -97,62 +97,91 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {/* Sidebar Container */}
-      <aside
-        onMouseEnter={() => isCollapsed && onHoverChange(true)}
-        onMouseLeave={() => onHoverChange(false)}
-        className={`fixed top-0 left-0 z-50 h-screen transition-all duration-300 md:translate-x-0 flex flex-col ${isOpen ? "translate-x-0" : "-translate-x-full"
+      <aside 
+        className={`fixed  top-0 left-0 z-50 h-screen transition-all duration-300 md:translate-x-0 flex flex-col ${isOpen ? "translate-x-0" : "-translate-x-full"
           } ${isCollapsed && !isHovered ? "w-24" : "w-72"
           } ${isDark ? "bg-[#0b1437] border-r border-gray-800" : "bg-white border-r border-gray-100"
           } ${isHovered && isCollapsed ? 'shadow-2xl ring-1 ring-black/5' : 'shadow-xl'}`}
       >
         {/* Logo Section */}
-        <div className={`flex h-24 items-center ${(isCollapsed && !isHovered) ? 'justify-center' : 'px-8'} mt-4 relative transition-all duration-300`}>
-          <div className="flex items-center gap-4 cursor-pointer" onClick={() => isCollapsed && onToggleCollapse()}>
-            <div className={`flex items-center justify-center rounded-xl bg-[#0070f3] shadow-lg shadow-blue-500/20 transition-all duration-300 ${(isCollapsed && !isHovered) ? 'h-11 w-11' : 'h-12 w-12'}`}>
-              <Zap className="text-white fill-white" size={(isCollapsed && !isHovered) ? 20 : 24} />
-            </div>
-            {!(isCollapsed && !isHovered) && (
-              <span className={`text-2xl font-bold tracking-tight animate-in fade-in duration-300 ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-                BWA Admin
-              </span>
-            )}
-          </div>
+        <div
+  className={`flex items-center ${
+    (isCollapsed && !isHovered) ? 'justify-center' : 'px-8'
+  } mt-4 relative transition-all duration-300 overflow-visible`}
+>
+  {/* Logo + Title */}
+  <div
+    className="flex items-center gap-4 cursor-pointer"
+    onClick={() => isCollapsed && onToggleCollapse()}
+  >
+    <div
+      className={`flex items-center justify-center rounded-xl bg-[#0070f3]
+      shadow-lg shadow-blue-500/20 transition-all duration-300
+      ${(isCollapsed && !isHovered) ? 'h-11 w-11' : 'h-12 w-12'}`}
+    >
+      <Zap
+        className="text-white fill-white"
+        size={(isCollapsed && !isHovered) ? 20 : 24}
+      />
+    </div>
 
-          {!isCollapsed && (
-            <button
-              onClick={onClose}
-              className="ml-auto md:hidden text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors"
-            >
-              <X size={24} />
-            </button>
-          )}
+    {!(isCollapsed && !isHovered) && (
+      <span
+        className={`text-2xl font-bold tracking-tight animate-in fade-in duration-300
+        ${isDark ? 'text-white' : 'text-[#2B3674]'}`}
+      >
+        BWA Admin
+      </span>
+    )}
+  </div>
 
-          {/* Desktop Collapse Toggle - Refined Design */}
-          <button
-            onClick={onToggleCollapse}
-            className={`hidden md:flex absolute -right-5 bottom-12 h-10 w-10 rounded-full border-2 shadow-xl items-center justify-center transition-all z-50 group ${isDark
-              ? 'bg-[#111C44] border-gray-800 text-white hover:bg-[#1B2559]'
-              : 'bg-white border-gray-100 text-[#2B3674] hover:bg-gray-50'
-              }`}
-          >
-            <ChevronLeft
-              size={18}
-              strokeWidth={3}
-              className={`transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''} text-[#0070f3]`}
-            />
-          </button>
-        </div>
+  {/* Mobile Close Button */}
+  {!isCollapsed && (
+    <button
+      onClick={onClose}
+      className="ml-auto md:hidden relative z-50 text-gray-500
+      hover:bg-gray-100 p-1 rounded-full transition-colors
+      bg-white shadow-sm"
+    >
+      <X size={24} />
+    </button>
+  )}
+
+  {/* Desktop Collapse Toggle */}
+  <button
+    onClick={onToggleCollapse}
+    className={`hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2
+    h-10 w-10 rounded-full border-2 shadow-xl
+    items-center justify-center transition-all z-50
+    ${isDark
+      ? 'bg-[#111C44] border-gray-800 text-white hover:bg-[#1B2559]'
+      : 'bg-white border-gray-100 text-[#2B3674] hover:bg-gray-50'
+    }`}
+  >
+    <ChevronLeft
+      size={18}
+      strokeWidth={3}
+      className={`transition-transform duration-300
+      ${isCollapsed ? 'rotate-180' : ''} text-[#0070f3]`}
+    />
+  </button>
+</div>
+
 
         {/* Navigation Items */}
-        <nav className={`flex-1 overflow-y-auto ${(isCollapsed && !isHovered) ? 'px-3' : 'px-4'} py-6 custom-scrollbar transition-all duration-300`}>
+        <nav className={`flex-1 ${(isCollapsed && !isHovered) ? 'px-3 overflow-visible' : 'px-4 overflow-y-auto custom-scrollbar'} py-6 transition-all duration-300`}>
           <ul className="space-y-1">
             {menuItems.map((item) => {
               const hasSubItems = !!item.subItems;
-              const isExpanded = expandedMenus.includes(item.name) && !(isCollapsed && !isHovered);
               const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
 
+              // Ensure Partner Management isExpanded if we are on a details page
+              const isPartnerDetails = pathname.startsWith('/partner-management/partners/');
+              const isMenuExpanded = expandedMenus.includes(item.name) || (item.name === "Partner Management" && isPartnerDetails);
+              const isExpanded = isMenuExpanded && !(isCollapsed && !isHovered);
+
               return (
-                <li key={item.name} className="relative group">
+                <li key={item.name} className="relative group/item">
                   {/* Vertical active bar for main item */}
                   {isActive && !hasSubItems && (
                     <div className="absolute left-0 top-0 bottom-0 w-[5px] bg-[#0070f3] rounded-r-lg z-10" />
@@ -225,6 +254,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                       {!(isCollapsed && !isHovered) && <span className="flex-1 animate-in fade-in duration-300">{item.name}</span>}
                     </Link>
                   )}
+
+
+                  {/* Tooltip for Collapsed State */}
+                  {isCollapsed && !isHovered && (
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 z-[50] hidden group-hover/item:block">
+                      <div className={`${isDark ? 'bg-white text-[#1B2559]' : 'bg-[#1B2559] text-white'} px-3 py-1.5 rounded-lg shadow-xl text-sm font-medium whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-200 relative`}>
+                        {item.name}
+                        <div className={`absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 rotate-45 ${isDark ? 'bg-white' : 'bg-[#1B2559]'}`}></div>
+                      </div>
+                    </div>
+                  )}
                 </li>
               );
             })}
@@ -245,7 +285,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* Profile Footer */}
         <div className={`p-6 border-t transition-all duration-300 ${isDark ? 'border-gray-800 bg-[#0B1437]' : 'border-gray-100 bg-white'} ${(isCollapsed && !isHovered) ? 'flex justify-center' : ''}`}>
           <div className={`flex items-center ${(isCollapsed && !isHovered) ? 'flex-col gap-4' : 'justify-between w-full'}`}>
-            <div className={`flex items-center gap-3 cursor-pointer`} onClick={() => isCollapsed && onToggleCollapse()}>
+            <div className={`flex items-center gap-3 cursor-pointer relative group/profile`} onClick={() => isCollapsed && onToggleCollapse()}>
               <div className={`rounded-2xl overflow-hidden border-2 border-transparent hover:border-blue-500 transition-all ${(isCollapsed && !isHovered) ? 'h-10 w-10' : 'h-12 w-12'}`}>
                 <img
                   src="https://img.freepik.com/free-photo/portrait-white-man-isolated_53876-40306.jpg"
@@ -253,6 +293,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                   className="h-full w-full object-cover"
                 />
               </div>
+
+              {/* Profile Tooltip */}
+              {isCollapsed && !isHovered && (
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 z-[50] hidden group-hover/profile:block">
+                  <div className={`${isDark ? 'bg-white text-[#1B2559]' : 'bg-[#1B2559] text-white'} px-3 py-1.5 rounded-lg shadow-xl text-sm font-medium whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-200 relative`}>
+                    John Doe
+                    <div className={`absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 rotate-45 ${isDark ? 'bg-white' : 'bg-[#1B2559]'}`}></div>
+                  </div>
+                </div>
+              )}
+
               {!(isCollapsed && !isHovered) && (
                 <div className="animate-in fade-in duration-300">
                   <div className={`text-sm font-bold tracking-tight ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>John Doe</div>

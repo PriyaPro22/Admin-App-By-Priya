@@ -40,13 +40,7 @@ interface Partner {
     active: boolean;
 }
 
-const MOCK_PARTNERS: Partner[] = [
-    { id: "1", code: "#PRT-9921", name: "Alex Rivera", initials: "AR", mobile: "+1 555-0123", city: "Downtown / Zone A", joinDate: "Oct 12, 2023", approval: "Pending", active: true },
-    { id: "2", code: "#PRT-9854", name: "Sarah Lund", initials: "SL", mobile: "+1 555-4567", city: "Brooklyn / East", joinDate: "Sep 28, 2023", approval: "Approved", active: true },
-    { id: "3", code: "#PRT-9840", name: "Mark Davis", initials: "MD", mobile: "+1 555-8899", city: "Queens / West", joinDate: "Sep 20, 2023", approval: "Blocked", active: false },
-    { id: "4", code: "#PRT-9712", name: "Kim Kimble", initials: "KK", mobile: "+1 555-1122", city: "Jersey / Area 4", joinDate: "Aug 15, 2023", approval: "Rejected", active: false },
-    { id: "5", code: "#PRT-9601", name: "Tom Hanks", initials: "TH", mobile: "+1 555-3344", city: "Long Island / South", joinDate: "Aug 02, 2023", approval: "Approved", active: true },
-];
+
 
 const StatCard = ({ label, value, icon: Icon, bg, color, isDark }: any) => {
     return (
@@ -86,47 +80,115 @@ export default function PartnerManagement() {
     const [isRowsPerPageOpen, setIsRowsPerPageOpen] = useState(false);
     const [itemsPerPage, setItemsPerPage] = useState(50);
     const [selectedExportFormat, setSelectedExportFormat] = useState<"Excel" | "PDF">("Excel");
+
+    // Stats State
     const [totalPartnersCount, setTotalPartnersCount] = useState<number | string>("...");
     const [pendingPartnersCount, setPendingPartnersCount] = useState<number | string>("...");
     const [activePartnersCount, setActivePartnersCount] = useState<number | string>("...");
     const [blockedPartnersCount, setBlockedPartnersCount] = useState<number | string>("...");
 
+    // Partners Data State
+    const [partners, setPartners] = useState<Partner[]>([]);
+    const [isLoadingPartners, setIsLoadingPartners] = useState(true);
+
     useEffect(() => {
-        const fetchStats = async () => {
+        const fetchData = async () => {
             try {
                 const headers = { 'x-api-token': 'super_secure_token' };
 
-                // Fetch Total Partners Count
+                // Fetch Stats (Existing logic)
                 const totalRes = await fetch('https://api.bijliwalaaya.in/api/partner/stats/count', { headers });
                 const totalData = await totalRes.json();
                 if (totalData.success) setTotalPartnersCount(totalData.totalPartners);
 
-                // Fetch Pending Partners Count
                 const pendingRes = await fetch('https://api.bijliwalaaya.in/api/partner/admin/pending-count', { headers });
                 const pendingData = await pendingRes.json();
                 if (pendingData.success) setPendingPartnersCount(pendingData.pendingPartners);
 
-                // Fetch Active Partners Count
                 const activeRes = await fetch('https://api.bijliwalaaya.in/api/partner/admin/active-count', { headers });
                 const activeData = await activeRes.json();
                 if (activeData.success) setActivePartnersCount(activeData.activePartners);
 
-                // Fetch Blocked Partners Count
                 const blockedRes = await fetch('https://api.bijliwalaaya.in/api/partner/admin/block-count', { headers });
                 const blockedData = await blockedRes.json();
                 if (blockedData.success) setBlockedPartnersCount(blockedData.blockedPartners);
 
+                // Fetch All Partners List
+                const listRes = await fetch('https://api.bijliwalaaya.in/api/partner/admin/all-partners', { headers });
+                const listData = await listRes.json();
+
+                if (listData.success && Array.isArray(listData.data)) {
+                    console.log("API Data:", listData.data);
+                    const mappedPartners: Partner[] = listData.data.map((item: any) => {
+                        const details = item.personal_details || {};
+                        console.log("Mapping Item:", item._id, details.name);
+
+                        // Determine status/approval
+                        let approvalVal: Partner["approval"] = "Pending";
+                        let activeVal = false;
+
+                        const timerStatus = details.status?.toLowerCase();
+                        if (timerStatus === "active") {
+                            approvalVal = "Approved";
+                            activeVal = true;
+                        } else if (timerStatus === "blocked") {
+                            approvalVal = "Blocked";
+                            activeVal = false;
+                        } else if (timerStatus === "pending") {
+                            approvalVal = "Pending";
+                            activeVal = false;
+                        } else if (timerStatus === "rejected") {
+                            approvalVal = "Rejected";
+                            activeVal = false;
+                        }
+
+                        // Initials
+                        const nameParts = (details.name || "Unknown").split(" ");
+                        let initials = "??";
+                        if (nameParts.length > 0) {
+                            initials = nameParts[0][0];
+                            if (nameParts.length > 1) {
+                                initials += nameParts[nameParts.length - 1][0];
+                            }
+                        }
+                        initials = initials.toUpperCase();
+
+                        return {
+                            id: item._id || Math.random().toString(),
+                            code: details.partner_id || "N/A",
+                            name: details.name || "Unknown Partner",
+                            initials: initials,
+                            mobile: details.phone || "N/A",
+                            city: details.location || "N/A",
+                            joinDate: details.registration_date ? details.registration_date.split(" ")[0] : "N/A",
+                            approval: approvalVal,
+                            active: activeVal
+                        };
+                    });
+                    console.log("Mapped Partners:", mappedPartners);
+                    setPartners(mappedPartners);
+                }
+
+
             } catch (error) {
-                console.error("Error fetching partner stats:", error);
+                console.error("Error fetching data:", error);
                 if (totalPartnersCount === "...") setTotalPartnersCount(0);
                 if (pendingPartnersCount === "...") setPendingPartnersCount(0);
                 if (activePartnersCount === "...") setActivePartnersCount(0);
                 if (blockedPartnersCount === "...") setBlockedPartnersCount(0);
+            } finally {
+                setIsLoadingPartners(false);
             }
         };
 
-        fetchStats();
+        fetchData();
     }, []);
+
+    // Helper to truncate long location strings
+    const truncateLocation = (loc: string) => {
+        if (!loc) return "N/A";
+        return loc.length > 30 ? loc.substring(0, 30) + "..." : loc;
+    };
 
     return (
         <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0B1437]' : 'bg-[#F4F7FE]'}`}>
@@ -191,7 +253,7 @@ export default function PartnerManagement() {
                         </button>
 
                         {isExportOpen && (
-                            <div className={`absolute right-0 mt-3 w-56 rounded-[24px] shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in duration-200 origin-top-right p-2 ${isDark ? 'bg-[#111C44] border border-gray-800' : 'bg-white border border-gray-50'}`}>
+                            <div className={`absolute right-0 mt-3 w-56 rounded-[24px] shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in duration-200 origin-top-right p-2 ${isDark ? 'bg-[#111C44] border border-gray-800' : 'bg-white border-gray-50'}`}>
                                 <button
                                     onClick={() => setSelectedExportFormat("Excel")}
                                     className={`w-full flex items-center justify-between gap-3 px-5 py-3.5 rounded-xl text-[14px] font-bold transition-all ${selectedExportFormat === "Excel" ? "bg-blue-50 text-[#0070f3]" : (isDark ? "text-white hover:bg-[#1B2559]" : "text-[#2B3674] hover:bg-gray-50")}`}
@@ -332,37 +394,54 @@ export default function PartnerManagement() {
                                 </tr>
                             </thead>
                             <tbody className={`divide-y ${isDark ? 'divide-gray-800' : 'divide-gray-50'}`}>
-                                {MOCK_PARTNERS.map((partner) => (
-                                    <tr key={partner.id} className={`${isDark ? 'hover:bg-[#1B2559]/30' : 'hover:bg-gray-50/50'} transition-colors`}>
-                                        <td className={`py-10 px-10 text-[15px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} whitespace-nowrap`}>{partner.code}</td>
-                                        <td className="py-10 px-10 whitespace-nowrap">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`h-11 w-11 min-w-[44px] rounded-full ${isDark ? 'bg-[#1B2559] text-blue-400 border-gray-700' : 'bg-[#EBF3FF] text-[#0070f3] border-white'} flex items-center justify-center font-bold text-[14px] border-2 shadow-sm`}>
-                                                    {partner.initials}
-                                                </div>
-                                                <span className={`font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} text-[15px]`}>{partner.name}</span>
+                                {isLoadingPartners ? (
+                                    <tr>
+                                        <td colSpan={8} className="py-20 text-center">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#0070f3] mb-4"></div>
+                                                <p className={`font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>Loading partners...</p>
                                             </div>
                                         </td>
-                                        <td className="py-10 px-10 text-[15px] text-[#707EAE] font-bold whitespace-nowrap">{partner.mobile}</td>
-                                        <td className="py-10 px-10 text-[15px] text-[#707EAE] font-bold whitespace-nowrap">{partner.city}</td>
-                                        <td className="py-10 px-10 text-[15px] text-[#707EAE] font-bold whitespace-nowrap">{partner.joinDate}</td>
-                                        <td className="py-10 px-10 text-center">
-                                            <StatusBadge status={partner.approval} />
-                                        </td>
-                                        <td className="py-10 px-10 text-center">
-                                            <div className={`h-2.5 w-2.5 rounded-full mx-auto ${partner.active ? 'bg-[#42BE65]' : 'bg-[#A3AED0]'}`}></div>
-                                        </td>
-                                        <td className="py-10 px-10 text-right">
-                                            <Link
-                                                href={`/partner-management/partners/${partner.id}`}
-                                                className="text-[#0070f3] font-bold text-[15px] hover:underline flex items-center justify-end gap-2 ml-auto group transition-all whitespace-nowrap"
-                                            >
-                                                View All Details
-                                                <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" strokeWidth={2.5} />
-                                            </Link>
+                                    </tr>
+                                ) : partners.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} className="py-20 text-center">
+                                            <p className={`font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>No partners found.</p>
                                         </td>
                                     </tr>
-                                ))}
+                                ) : (
+                                    partners.map((partner) => (
+                                        <tr key={partner.id} className={`${isDark ? 'hover:bg-[#1B2559]/30' : 'hover:bg-gray-50/50'} transition-colors`}>
+                                            <td className={`py-10 px-10 text-[15px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} whitespace-nowrap`}>{partner.code}</td>
+                                            <td className="py-10 px-10 whitespace-nowrap">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`h-11 w-11 min-w-[44px] rounded-full ${isDark ? 'bg-[#1B2559] text-blue-400 border-gray-700' : 'bg-[#EBF3FF] text-[#0070f3] border-white'} flex items-center justify-center font-bold text-[14px] border-2 shadow-sm`}>
+                                                        {partner.initials}
+                                                    </div>
+                                                    <span className={`font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} text-[15px]`}>{partner.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-10 px-10 text-[15px] text-[#707EAE] font-bold whitespace-nowrap">{partner.mobile}</td>
+                                            <td className="py-10 px-10 text-[15px] text-[#707EAE] font-bold whitespace-nowrap max-w-[200px] truncate" title={partner.city}>{truncateLocation(partner.city)}</td>
+                                            <td className="py-10 px-10 text-[15px] text-[#707EAE] font-bold whitespace-nowrap">{partner.joinDate}</td>
+                                            <td className="py-10 px-10 text-center">
+                                                <StatusBadge status={partner.approval} />
+                                            </td>
+                                            <td className="py-10 px-10 text-center">
+                                                <div className={`h-2.5 w-2.5 rounded-full mx-auto ${partner.active ? 'bg-[#42BE65]' : 'bg-[#A3AED0]'}`}></div>
+                                            </td>
+                                            <td className="py-10 px-10 text-right">
+                                               <Link
+  href={`/partner-management/partners/${partner.code}`}
+  className="group inline-flex items-center gap-2 text-[#0070f3] font-bold"
+>
+                                                    View All Details
+                                                    <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" strokeWidth={2.5} />
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>

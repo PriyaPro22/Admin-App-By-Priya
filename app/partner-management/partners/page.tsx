@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -19,7 +20,6 @@ import {
     ChevronDown,
     ChevronLeft,
     ChevronRight,
-    UserCircle2,
     FileSpreadsheet,
     FileText,
     Check
@@ -38,14 +38,6 @@ interface Partner {
     approval: "Pending" | "Approved" | "Blocked" | "Rejected";
     active: boolean;
 }
-
-const MOCK_PARTNERS: Partner[] = [
-    { id: "1", code: "#PRT-9921", name: "Alex Rivera", initials: "AR", mobile: "+1 555-0123", city: "Downtown / Zone A", joinDate: "Oct 12, 2023", approval: "Pending", active: true },
-    { id: "2", code: "#PRT-9854", name: "Sarah Lund", initials: "SL", mobile: "+1 555-4567", city: "Brooklyn / East", joinDate: "Sep 28, 2023", approval: "Approved", active: true },
-    { id: "3", code: "#PRT-9840", name: "Mark Davis", initials: "MD", mobile: "+1 555-8899", city: "Queens / West", joinDate: "Sep 20, 2023", approval: "Blocked", active: false },
-    { id: "4", code: "#PRT-9712", name: "Kim Kimble", initials: "KK", mobile: "+1 555-1122", city: "Jersey / Area 4", joinDate: "Aug 15, 2023", approval: "Rejected", active: false },
-    { id: "5", code: "#PRT-9601", name: "Tom Hanks", initials: "TH", mobile: "+1 555-3344", city: "Long Island / South", joinDate: "Aug 02, 2023", approval: "Approved", active: true },
-];
 
 const StatCard = ({ label, value, icon: Icon, bg, color, isDark }: any) => {
     return (
@@ -79,6 +71,10 @@ const StatusBadge = ({ status }: { status: Partner["approval"] }) => {
 export default function PartnersPage() {
     const { theme } = useTheme();
     const isDark = theme === "dark";
+    
+    /* ✅ STATE */
+    const [partners, setPartners] = useState<Partner[]>([]);
+    const [loadingPartners, setLoadingPartners] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [isExportOpen, setIsExportOpen] = useState(false);
     const [isRowsPerPageOpen, setIsRowsPerPageOpen] = useState(false);
@@ -88,7 +84,8 @@ export default function PartnersPage() {
     const [pendingPartnersCount, setPendingPartnersCount] = useState<number | string>("...");
     const [activePartnersCount, setActivePartnersCount] = useState<number | string>("...");
     const [blockedPartnersCount, setBlockedPartnersCount] = useState<number | string>("...");
-
+    
+    /* ✅ FETCH STATS DATA */
     useEffect(() => {
         const fetchStats = async () => {
             try {
@@ -124,6 +121,65 @@ export default function PartnersPage() {
         };
 
         fetchStats();
+    }, []);
+
+    /* ✅ FETCH PARTNERS DATA */
+    useEffect(() => {
+        const fetchPartners = async () => {
+            try {
+                const res = await fetch(
+                    "https://api.bijliwalaaya.in/api/partner/admin/all-partners",
+                    {
+                        headers: { "x-api-token": "super_secure_token" },
+                    }
+                );
+
+                const json = await res.json();
+
+                if (json.success && Array.isArray(json.data)) {
+                    const mapped: Partner[] = json.data.map((item: any) => {
+                        const d = item.personal_details || {};
+
+                        const parts = (d.name || "U").split(" ");
+                        const initials =
+                            (parts[0]?.[0] || "") +
+                            (parts.length > 1 ? parts[parts.length - 1][0] : "");
+
+                        let approval: Partner["approval"] = "Pending";
+                        let active = false;
+
+                        if (d.status === "active") {
+                            approval = "Approved";
+                            active = true;
+                        } else if (d.status === "blocked") {
+                            approval = "Blocked";
+                        } else if (d.status === "rejected") {
+                            approval = "Rejected";
+                        }
+
+                        return {
+                            id: item._id,
+                            code: d.partner_id,
+                            name: d.name || "Unknown",
+                            initials: initials.toUpperCase(),
+                            mobile: d.phone || "N/A",
+                            city: d.location || "N/A",
+                            joinDate: d.registration_date || "N/A",
+                            approval,
+                            active,
+                        };
+                    });
+
+                    setPartners(mapped);
+                }
+            } catch (err) {
+                console.error("Failed to fetch partners", err);
+            } finally {
+                setLoadingPartners(false);
+            }
+        };
+
+        fetchPartners();
     }, []);
 
     return (
@@ -215,7 +271,7 @@ export default function PartnersPage() {
                     </div>
                 </div>
 
-                {/* --- STATS GRID --- */}
+                {/* --- STATS GRID (API DATA SET) --- */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <StatCard
                         label="Total Partners"
@@ -285,6 +341,7 @@ export default function PartnersPage() {
                             <label className="block text-[11px] font-bold text-[#A3AED0] uppercase tracking-wider mb-2 font-black">CITY</label>
                             <div className="relative">
                                 <select className={`w-full pl-4 pr-10 py-3.5 ${isDark ? 'bg-[#1B2559] text-white' : 'bg-[#F4F7FE] text-[#2B3674]'} border-transparent rounded-xl font-bold appearance-none focus:outline-none cursor-pointer`}>
+                                    <option>All Cities</option>
                                     <option>New York</option>
                                     <option>London</option>
                                     <option>Mumbai</option>
@@ -312,7 +369,7 @@ export default function PartnersPage() {
                     </div>
                 </div>
 
-                {/* --- PARTNERS TABLE --- */}
+                {/* --- PARTNERS TABLE (API DATA SET) --- */}
                 <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-gray-50'} rounded-[24px] shadow-sm border overflow-hidden`}>
                     <div className="overflow-x-auto">
                         <table className="w-full">
@@ -329,37 +386,96 @@ export default function PartnersPage() {
                                 </tr>
                             </thead>
                             <tbody className={`divide-y ${isDark ? 'divide-gray-800' : 'divide-gray-50'}`}>
-                                {MOCK_PARTNERS.map((partner) => (
-                                    <tr key={partner.id} className={`${isDark ? 'hover:bg-[#1B2559]/30' : 'hover:bg-gray-50/30'} transition-colors`}>
-                                        <td className={`py-6 px-10 text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} whitespace-nowrap`}>{partner.code}</td>
-                                        <td className="py-6 px-10 whitespace-nowrap">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`h-10 w-10 min-w-[40px] rounded-full ${isDark ? 'bg-[#1B2559] border-gray-700 text-blue-400' : 'bg-[#EBF3FF] border-white text-[#0070f3]'} flex items-center justify-center font-bold text-[13px] border-2 shadow-sm`}>
-                                                    {partner.initials}
-                                                </div>
-                                                <span className={`font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} text-[15px]`}>{partner.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="py-6 px-10 text-[14px] text-[#707EAE] font-bold whitespace-nowrap">{partner.mobile}</td>
-                                        <td className="py-6 px-10 text-[14px] text-[#707EAE] font-bold whitespace-nowrap">{partner.city}</td>
-                                        <td className="py-6 px-10 text-[14px] text-[#707EAE] font-bold whitespace-nowrap">{partner.joinDate}</td>
-                                        <td className="py-6 px-10 text-center">
-                                            <StatusBadge status={partner.approval} />
-                                        </td>
-                                        <td className="py-6 px-10 text-center">
-                                            <div className={`h-2.5 w-2.5 rounded-full mx-auto ${partner.active ? 'bg-[#42BE65]' : 'bg-[#A3AED0]'}`}></div>
-                                        </td>
-                                        <td className="py-6 px-10 text-right">
-                                            <Link
-                                                href={`/partner-management/partners/${partner.id}`}
-                                                className="text-[#0070f3] font-bold text-[14px] hover:underline flex items-center justify-end gap-2 ml-auto group transition-all whitespace-nowrap"
-                                            >
-                                                View All Details
-                                                <ArrowRight size={18} strokeWidth={2.5} className="transition-transform group-hover:translate-x-1" />
-                                            </Link>
+                                {loadingPartners ? (
+                                    <tr>
+                                        <td colSpan={8} className="py-10 text-center font-bold">
+                                            Loading partners...
                                         </td>
                                     </tr>
-                                ))}
+                                ) : partners.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} className="py-10 text-center font-bold">
+                                            No partners found
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    partners.map((partner) => (
+                                        <tr
+                                            key={partner.id}
+                                            className={`${isDark ? 'hover:bg-[#1B2559]/30' : 'hover:bg-gray-50/30'} transition-colors`}
+                                        >
+                                            {/* ID */}
+                                            <td className={`py-6 px-10 text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} whitespace-nowrap`}>
+                                                {partner.code}
+                                            </td>
+
+                                            {/* NAME */}
+                                            <td className="py-6 px-10 whitespace-nowrap">
+                                                <div className="flex items-center gap-3">
+                                                    <div
+                                                        className={`h-10 w-10 min-w-[40px] rounded-full ${
+                                                            isDark
+                                                                ? 'bg-[#1B2559] border-gray-700 text-blue-400'
+                                                                : 'bg-[#EBF3FF] border-white text-[#0070f3]'
+                                                        } flex items-center justify-center font-bold text-[13px] border-2 shadow-sm`}
+                                                    >
+                                                        {partner.initials}
+                                                    </div>
+                                                    <span className={`font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} text-[15px]`}>
+                                                        {partner.name}
+                                                    </span>
+                                                </div>
+                                            </td>
+
+                                            {/* MOBILE */}
+                                            <td className="py-6 px-10 text-[14px] text-[#707EAE] font-bold whitespace-nowrap">
+                                                {partner.mobile}
+                                            </td>
+
+                                            {/* CITY */}
+                                            <td className="py-6 px-10 text-[14px] text-[#707EAE] font-bold whitespace-nowrap">
+                                                {partner.city}
+                                            </td>
+
+                                            {/* JOIN DATE */}
+                                            <td className="py-6 px-10 text-[14px] text-[#707EAE] font-bold whitespace-nowrap">
+                                                {partner.joinDate}
+                                            </td>
+
+                                            {/* APPROVAL */}
+                                            <td className="py-6 px-10 text-center">
+                                                <StatusBadge status={partner.approval} />
+                                            </td>
+
+                                            {/* ACTIVE */}
+                                            <td className="py-6 px-10 text-center">
+                                                <div
+                                                    className={`h-2.5 w-2.5 rounded-full mx-auto ${
+                                                        partner.active ? 'bg-[#42BE65]' : 'bg-[#A3AED0]'
+                                                    }`}
+                                                ></div>
+                                            </td>
+
+                                            {/* ACTION */}
+                                            <td className="py-6 px-10 text-right">
+                                                {partner.code && (
+                                                    <Link
+                                                        href={`/partner-management/partners/${partner.code}`}
+                                                        className="text-[#0070f3] font-bold text-[14px] hover:underline flex items-center justify-end gap-2 ml-auto group transition-all whitespace-nowrap"
+                                                    >
+                                                        View All Details
+                                                        <ArrowRight
+                                                            size={18}
+                                                            strokeWidth={2.5}
+                                                            className="transition-transform group-hover:translate-x-1"
+                                                        />
+                                                    </Link>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+
                             </tbody>
                         </table>
                     </div>
@@ -368,7 +484,7 @@ export default function PartnersPage() {
                     <div className={`p-8 flex flex-col md:flex-row items-center justify-between border-t ${isDark ? 'border-gray-800' : 'border-gray-50'} gap-6`}>
                         <div className="flex items-center gap-6">
                             <p className="text-[14px] text-[#A3AED0] font-semibold">
-                                Showing <span className={`${isDark ? 'text-white' : 'text-[#2B3674]'} font-bold`}>1 to {itemsPerPage}</span> of <span className={`${isDark ? 'text-white' : 'text-[#2B3674]'} font-bold`}>1,240</span> partners
+                                Showing <span className={`${isDark ? 'text-white' : 'text-[#2B3674]'} font-bold`}>1 to {itemsPerPage}</span> of <span className={`${isDark ? 'text-white' : 'text-[#2B3674]'} font-bold`}>{totalPartnersCount}</span> partners
                             </p>
 
                             <div className="relative">
@@ -416,3 +532,5 @@ export default function PartnersPage() {
         </div>
     );
 }
+
+
