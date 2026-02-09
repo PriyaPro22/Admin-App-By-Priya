@@ -368,7 +368,7 @@ export default function PartnersPage() {
                         </button>
                     </div>
                 </div>
-
+{/*  hfdjhfkjd*/}
                 {/* --- PARTNERS TABLE (API DATA SET) --- */}
                 <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-gray-50'} rounded-[24px] shadow-sm border overflow-hidden`}>
                     <div className="overflow-x-auto">
