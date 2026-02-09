@@ -26,7 +26,9 @@ import {
   Briefcase,
   Wrench,
   Monitor,
-  Smartphone
+  Smartphone,
+  Minus,
+  Plus
 } from "lucide-react";
 import { useTheme } from "../../../context/ThemeContext";
 import { useRouter } from "next/navigation";
@@ -42,6 +44,60 @@ export default function PartnerDetailsPage({ params }: { params: { id: string } 
   const [loading, setLoading] = useState(true);
   const [verificationData, setVerificationData] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(6);
+const [kycData, setKycData] = useState<any>(null);
+// Kyc Data
+useEffect(() => {
+  const fetchKycDetails = async () => {
+    try {
+      const res = await fetch(
+        `https://api.bijliwalaaya.in/api/partner/kyc-details/${params.id}`,
+        {
+          headers: {
+            "x-api-token": "super_secure_token",
+          },
+        }
+      );
+
+      const json = await res.json();
+
+      if (json.success) {
+        setKycData(json.data);
+      }
+    } catch (err) {
+      console.error("KYC fetch error", err);
+    }
+  };
+
+  fetchKycDetails();
+}, [params.id]);
+
+const kycDetails = kycData?.kyc_details;
+const docStatus = kycData?.doc_verification?.verification_status;
+
+const aadhaarMatched = docStatus?.aadhaar_matched === true;
+const panMatched = docStatus?.pan_matched === true;
+const dlMatched = docStatus?.dl_matched === true;
+
+
+const aadhaarNumber = kycData?.doc_verification?.local_input?.aadhaarNumber;
+const panNumber = kycData?.doc_verification?.local_input?.panNumber;
+const dlNumber = kycData?.doc_verification?.local_input?.dlNumber;
+
+const verificationTime =
+  docStatus?.verification_timestamp || kycDetails?.completion_timestamp;
+
+
+// Component के top level पर state add करें
+const [attemptCount, setAttemptCount] = useState(0);
+
+// Handler functions
+const handleIncrement = () => {
+  setAttemptCount(prev => prev + 1);
+};
+
+const handleDecrement = () => {
+  setAttemptCount(prev => prev > 0 ? prev - 1 : 0);
+};
 
   const stepKeyMap = [
     "registration_done",        // REGISTRATION
@@ -54,14 +110,100 @@ export default function PartnerDetailsPage({ params }: { params: { id: string } 
     "bank_done",                // BANK
     "education_done",           // EDUCATION
     "address_done",             // ADDRESS
-    "kyc_success",              // KYC SUCCESS
+    "kyc_success",  
+    
+"documents_verification_attempts"
+            // KYC SUCCESS
   ];
 
-// ye hta skte h 
-const roles = {
-  technician: true,   // ya false
-  rider: false        // ya true
-};
+// Job Category
+const [roles, setRoles] = useState<{
+  technician: boolean;
+  rider: boolean;
+  selectedText: string;
+}>({
+  technician: false,
+  rider: false,
+  selectedText: "No Role Selected",
+});
+
+
+
+useEffect(() => {
+  const fetchJobCategory = async () => {
+    try {
+      const res = await fetch(
+        `https://api.bijliwalaaya.in/api/partner/job-category/${params.id}`,
+        {
+          headers: {
+            "x-api-token": "super_secure_token",
+          },
+        }
+      );
+
+      const json = await res.json();
+
+      if (json.success && json.job_category) {
+        setRoles({
+          technician: json.job_category.isTechnicians,
+          rider: json.job_category.isRider,
+          selectedText: json.job_category.selectedText,
+        });
+      }
+    } catch (error) {
+      console.error("Job category fetch error", error);
+    }
+  };
+
+  fetchJobCategory();
+}, [params.id]);
+
+// Payment
+const [paymentData, setPaymentData] = useState<any>(null);
+const [paymentLoading, setPaymentLoading] = useState(true);
+
+useEffect(() => {
+  const fetchPaymentDetails = async () => {
+    try {
+      const res = await fetch(
+        `https://api.bijliwalaaya.in/api/partner/payments/${params.id}`,
+        {
+          headers: {
+            "x-api-token": "super_secure_token",
+          },
+        }
+      );
+
+      const json = await res.json();
+
+      if (json.success && json.data) {
+        // API object ke andar first payment nikal lo
+        const payment = Object.values(json.data)[0];
+        setPaymentData(payment);
+      }
+    } catch (err) {
+      console.error("Payment fetch error", err);
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  fetchPaymentDetails();
+}, [params.id]);
+
+
+const paymentStatus = paymentData?.status;
+const isSuccess = paymentStatus === "SUCCESS";
+
+const paymentId = paymentData?.paymentId;
+const amount = paymentData?.amount;
+const currency = paymentData?.currency;
+const gateway = paymentData?.payment_gateway;
+const merchantRefId = paymentData?.merchant_reference_id;
+const paymentType = paymentData?.payment_type?.replace("_", " ");
+const timestamp = paymentData?.timestamp;
+
+
 
 
 
@@ -70,6 +212,27 @@ const roles = {
     state: string;
     district: string;
   } | null>(null);
+
+// Kyc Details
+const aadhaarData = kycDetails?.digilocker_response?.AADHAAR;
+const panData = kycDetails?.digilocker_response?.PAN;
+
+const aadhaarStatus = docStatus?.aadhaar_matched;
+const panStatus = docStatus?.pan_matched;
+const dlStatus = docStatus?.dl_matched;
+
+
+const aadhaarAddress = aadhaarData?.split_address
+  ? `${aadhaarData.split_address.house || ""} ${aadhaarData.split_address.street || ""},${aadhaarData.split_address.landmark || ""} , ${aadhaarData.split_address.vtc || ""},
+     ${aadhaarData.split_address.po}, ${aadhaarData.split_address.subdist},
+     ${aadhaarData.split_address.dist} - ${aadhaarData.split_address.state},
+     ${aadhaarData.split_address.pincode}`
+  : "—";
+
+
+
+
+
 
   //verification progress
   useEffect(() => {
@@ -88,6 +251,8 @@ const roles = {
 
         if (json.success) {
           setVerificationData(json.data);
+          console.log("Priya singh",setVerificationData);
+          console.log("Priya", json.data);
         }
       } catch (err) {
         console.error("Verification status error", err);
@@ -96,6 +261,58 @@ const roles = {
 
     fetchVerificationStatus();
   }, [params.id]);
+
+
+//   Job Services
+const [jobServices, setJobServices] = useState<Record<string, any[]>>({});
+
+const [loadingServices, setLoadingServices] = useState(true);
+
+
+useEffect(() => {
+  const fetchJobServices = async () => {
+    try {
+      const res = await fetch(
+        `https://api.bijliwalaaya.in/api/partner/job-services/${params.id}`,
+        {
+          headers: {
+            "x-api-token": "super_secure_token",
+          },
+        }
+      );
+
+      const json = await res.json();
+
+     if (json.success) {
+  setJobServices(json.job_services || {});
+}
+
+    } catch (err) {
+      console.error("Job services fetch error", err);
+    } finally {
+      setLoadingServices(false);
+    }
+  };
+
+  fetchJobServices();
+}, [params.id]);
+
+
+const categoryConfig: Record<string, any> = {
+  Home_Appliances: {
+    label: "Home Appliances",
+    icon: Wrench,
+  },
+  Computer: {
+    label: "Computer",
+    icon: Monitor,
+  },
+  Mobile: {
+    label: "Mobile",
+    icon: Smartphone,
+  },
+};
+
 
 
 
@@ -145,6 +362,8 @@ const roles = {
 
     fetchJobLocation();
   }, [params.id]);
+const backendAttempts =
+  verificationData?.documents_verification_attempts ?? 0;
 
 
   useEffect(() => {
@@ -379,517 +598,508 @@ const roles = {
         </div>
 
         {/* --- VERIFICATION PROGRESS --- */}
-        <div className={`${isDark ? 'bg-[#111C44]' : 'bg-white'} rounded-[32px] px-10 py-6 shadow-sm`}>
+       <div className={`${isDark ? 'bg-[#111C44]' : 'bg-white'} rounded-[32px] px-10 py-6 shadow-sm`}>
 
-          <h3
-            className={`text-[15px] font-black ${isDark ? 'text-white' : 'text-[#2B3674]'
-              } uppercase tracking-widest mb-12`}
-          >
-            Verification Progress
-          </h3>
+  <div className="flex justify-between items-start mb-12">
+    <h3
+      className={`text-[15px] font-black ${isDark ? 'text-white' : 'text-[#2B3674]'
+        } uppercase tracking-widest`}
+    >
+      Verification Progress
+    </h3>
 
-          <div className="relative pb-16">
-            {/* GREEN PROGRESS LINE */}
-            <div className="absolute top-5 left-8 right-8 h-1 bg-[#42BE65]"></div>
+    {/* Verification Attempt Counter - RIGHT SIDE */}
+    <div className="flex flex-col items-end">
+      <p className={`text-xs font-bold text-xl ${isDark ? 'text-gray-300' : 'text-[#2B3674]'} mb-2`}>
+        Verification Attempt
+      </p>
+      <div className="flex items-center gap-3">
+        {/* Minus Button */}
+        <button
+          onClick={() => handleDecrement()}
+          disabled={attemptCount === 0}
+          className={`h-8 w-8 rounded-full flex items-center justify-center ${attemptCount === 0
+              ? 'bg-gray-200 cursor-not-allowed text-gray-400'
+              : 'bg-[#0070f3] hover:bg-blue-600 text-white'
+            } transition-colors`}
+        >
+          <Minus size={16} />
+        </button>
+  {backendAttempts}
+        {/* Count Display */}
+        <div className={`h-10 w-12 flex items-center justify-center rounded-lg ${isDark
+            ? 'bg-gray-800 text-white'
+            : 'bg-gray-50 text-[#2B3674]'
+          } font-bold text-lg`}>
+        
+        </div>
 
-            <div className="relative flex justify-between">
-              {verificationSteps.map((step, i) => (
-                <div
-                  key={i}
-                  className="flex flex-col items-center relative w-full cursor-pointer transition-transform active:scale-95"
-                  onClick={() => handleStepClick(i + 1)}
-                >
-                  {/* Circle */}
-                  <div className="relative z-10 flex flex-col items-center">
-                    {step.status === "completed" ? (
-                      <div className="h-10 w-10 rounded-full bg-[#42BE65] flex items-center justify-center text-white shadow-lg ring-4 ring-white">
-                        <Check size={20} strokeWidth={4} />
-                      </div>
-                    ) : step.status === "failed" ? (
-                      <div className="h-10 w-10 rounded-full bg-[#E31A1A] flex items-center justify-center text-white shadow-lg ring-4 ring-white">
-                        <X size={20} strokeWidth={4} />
-                      </div>
-                    ) : step.status === "active" ? (
-                      <div className="h-10 w-10 rounded-full bg-[#0070f3] flex items-center justify-center text-white shadow-lg ring-4 ring-white font-black">
-                        {step.step}
-                      </div>
-                    ) : (
-                      <div
-                        className={`h-10 w-10 rounded-full ${isDark
-                          ? 'bg-gray-700 text-gray-300'
-                          : 'bg-gray-100 text-[#A3AED0]'
-                          } flex items-center justify-center text-sm font-black`}
-                      >
-                        {step.step}
-                      </div>
-                    )}
+        {/* Plus Button */}
+        <button
+          onClick={() => handleIncrement()}
+          className="h-8 w-8 rounded-full bg-[#0070f3] hover:bg-blue-600 text-white flex items-center justify-center transition-colors"
+        >
+          <Plus size={16} />
+        </button>
+      </div>
+    </div>
+  </div>
 
-                    {/* Label */}
-                    <div className="absolute top-[72px] w-36 text-center pointer-events-none px-1">
+  <div className="relative pb-16">
+    {/* GREEN PROGRESS LINE */}
+    <div className="absolute top-5 left-8 right-8 h-1 bg-[#42BE65]"></div>
 
-                      <p
-                        className={`text-[9px] font-black tracking-wider leading-tight uppercase ${step.status === "failed"
-                          ? 'text-[#E31A1A]'
-                          : step.status === "completed"
-                            ? 'text-[#42BE65]'
-                            : step.status === "active"
-                              ? 'text-[#0070f3]'
-                              : 'text-[#A3AED0]'
-                          }`}
-                      >
-                        {step.label.replace("_done", "").replace(/_/g, " ")}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+    <div className="relative flex justify-between">
+      {verificationSteps.map((step, i) => (
+        <div
+          key={i}
+          className="flex flex-col items-center relative w-full cursor-pointer transition-transform active:scale-95"
+          onClick={() => handleStepClick(i + 1)}
+        >
+          {/* Circle */}
+          <div className="relative z-10 flex flex-col items-center">
+            {step.status === "completed" ? (
+              <div className="h-10 w-10 rounded-full bg-[#42BE65] flex items-center justify-center text-white shadow-lg ring-4 ring-white">
+                <Check size={20} strokeWidth={4} />
+              </div>
+            ) : step.status === "failed" ? (
+              <div className="h-10 w-10 rounded-full bg-[#E31A1A] flex items-center justify-center text-white shadow-lg ring-4 ring-white">
+                <X size={20} strokeWidth={4} />
+              </div>
+            ) : step.status === "active" ? (
+              <div className="h-10 w-10 rounded-full bg-[#0070f3] flex items-center justify-center text-white shadow-lg ring-4 ring-white font-black">
+                {step.step}
+              </div>
+            ) : (
+              <div
+                className={`h-10 w-10 rounded-full ${isDark
+                    ? 'bg-gray-700 text-gray-300'
+                    : 'bg-gray-100 text-[#A3AED0]'
+                  } flex items-center justify-center text-sm font-black`}
+              >
+                {step.step}
+              </div>
+            )}
+
+            {/* Label */}
+            <div className="absolute top-[72px] w-36 text-center pointer-events-none px-1">
+              <p
+                className={`text-[9px] font-black tracking-wider leading-tight uppercase ${step.status === "failed"
+                    ? 'text-[#E31A1A]'
+                    : step.status === "completed"
+                      ? 'text-[#42BE65]'
+                      : step.status === "active"
+                        ? 'text-[#0070f3]'
+                        : 'text-[#A3AED0]'
+                  }`}
+              >
+                {step.label.replace("_done", "").replace(/_/g, " ")}
+              </p>
             </div>
           </div>
         </div>
+      ))}
+    </div>
+  </div>
+</div>
 
 
 
         {/* --- JOB ROLE & KYC SUMMARY --- */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          {/* JOB ROLE & SERVICES */}
-          <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[32px] p-8 shadow-sm border xl:col-span-2`}>
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <div className={`h-10 w-10 rounded-full ${isDark ? 'bg-[#1B254B] text-blue-400' : 'bg-blue-50 text-[#0070f3]'} flex items-center justify-center`}>
-                  <Briefcase size={20} strokeWidth={2.5} />
-                </div>
-                <h3 className={`text-xl font-black ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-                  Job Role & Services
-                </h3>
-              </div>
-             <div className="flex gap-3">
-  {/* Technician */}
-  <span
-    className={`px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider
-      ${
-        roles.technician
-          ? 'bg-[#EEFBF3] text-[#42BE65]'
-          : 'bg-[#FFF1F1] text-[#E31A1A]'
-      }`}
-  >
-    Technician
-  </span>
-
-  {/* Rider */}
-  <span
-    className={`px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider
-      ${
-        roles.rider
-          ? 'bg-[#EEFBF3] text-[#42BE65]'
-          : 'bg-[#FFF1F1] text-[#E31A1A]'
-      }`}
-  >
-    Rider
-  </span>
-</div>
-
-            </div>
-
-            <div className="space-y-4">
-
-  {/* ROW */}
-  <div className={`flex items-center rounded-xl px-5 py-3 ${
-    isDark ? 'bg-[#1B254B]' : 'bg-[#F4F7FE]'
-  }`}>
-    <div className="flex items-center gap-2 w-[220px] text-[#A3AED0]">
-      <Wrench size={14} />
-      <span className="text-[11px] font-black uppercase tracking-widest">
-        Home Appliances
-      </span>
-    </div>
-
-    <div className={`text-[13px] font-bold ${
-      isDark ? 'text-gray-200' : 'text-[#2B3674]'
-    }`}>
-      AC Repair, Washing Machine, Refrigerator
-    </div>
-  </div>
-
-  {/* ROW */}
-  <div className={`flex items-center rounded-xl px-5 py-3 ${
-    isDark ? 'bg-[#1B254B]' : 'bg-[#F4F7FE]'
-  }`}>
-    <div className="flex items-center gap-2 w-[220px] text-[#A3AED0]">
-      <Monitor size={14} />
-      <span className="text-[11px] font-black uppercase tracking-widest">
-        Computer
-      </span>
-    </div>
-
-    <div className={`text-[13px] font-bold ${
-      isDark ? 'text-gray-200' : 'text-[#2B3674]'
-    }`}>
-      Desktop Repair, Data Recovery
-    </div>
-  </div>
-
-  {/* ROW */}
-  <div className={`flex items-center rounded-xl px-5 py-3 ${
-    isDark ? 'bg-[#1B254B]' : 'bg-[#F4F7FE]'
-  }`}>
-    <div className="flex items-center gap-2 w-[220px] text-[#A3AED0]">
-      <Smartphone size={14} />
-      <span className="text-[11px] font-black uppercase tracking-widest">
-        Mobile
-      </span>
-    </div>
-
-    <div className="text-[13px] font-bold text-[#A3AED0]">
-      No services selected
-    </div>
-  </div>
-
-</div>
-
+  {/* --- MAIN CONTENT AREA --- */}
+<div className="grid grid-cols-1 xl:grid-cols-3 gap-8 pb-12">
+  {/* LEFT COLUMN - ALL LEFT SIDE CONTENT (2/3 width) */}
+  <div className="xl:col-span-2 space-y-8">
+    {/* SECTION 1: JOB ROLE & SERVICES */}
+    <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[32px] p-8 shadow-sm border`}>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className={`h-10 w-10 rounded-full ${isDark ? 'bg-[#1B254B] text-blue-400' : 'bg-blue-50 text-[#0070f3]'} flex items-center justify-center`}>
+            <Briefcase size={20} strokeWidth={2.5} />
           </div>
+          <h3 className={`text-xl font-black ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
+            Job Role & Services
+          </h3>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex gap-3">
+            <span className={`px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider ${roles.technician ? 'bg-[#EEFBF3] text-[#42BE65]' : 'bg-[#FFF1F1] text-[#E31A1A]'}`}>
+              Technician
+            </span>
+            <span className={`px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider ${roles.rider ? 'bg-[#EEFBF3] text-[#42BE65]' : 'bg-[#FFF1F1] text-[#E31A1A]'}`}>
+              Rider
+            </span>
+          </div>
+          <p className="text-[11px] font-bold text-[#A3AED0] uppercase tracking-wider">
+            {roles.selectedText}
+          </p>
+        </div>
+      </div>
 
-          {/* KYC Summary (New Design) */}
-         <div
-  className={`${
-    isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-gray-100'
-  } rounded-[24px] p-6 shadow-sm border`}
->
-  {/* Header */}
-  <div className="flex items-center gap-3 mb-6">
-    <div
-      className={`h-10 w-10 rounded-xl flex items-center justify-center ${
-        isDark ? 'bg-[#1B254B]' : 'bg-blue-50'
-      }`}
-    >
-      <CheckCircle2 size={20} className="text-[#0070f3]" />
+      <div className="space-y-4">
+        {loadingServices ? (
+          <p className="text-[13px] font-bold text-[#A3AED0]">
+            Loading services...
+          </p>
+        ) : (
+          Object.keys(categoryConfig).map((categoryKey) => {
+            const servicesArray = jobServices[categoryKey] || [];
+            const servicesText = servicesArray.length > 0
+              ? servicesArray.map((s: any) => s.name).join(", ")
+              : "No services selected";
+            const Icon = categoryConfig[categoryKey].icon;
+
+            return (
+              <div key={categoryKey} className={`flex items-center rounded-xl px-5 py-3 ${isDark ? "bg-[#1B254B]" : "bg-[#F4F7FE]"}`}>
+                <div className="flex items-center gap-2 w-[220px] text-[#A3AED0]">
+                  <Icon size={14} />
+                  <span className="text-[11px] font-black uppercase tracking-widest">
+                    {categoryConfig[categoryKey].label}
+                  </span>
+                </div>
+                <div className={`text-[13px] font-bold ${servicesArray.length === 0 ? "text-[#A3AED0]" : isDark ? "text-gray-200" : "text-[#2B3674]"}`}>
+                  {servicesText}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
-    <h4
-      className={`text-lg font-black ${
-        isDark ? 'text-white' : 'text-[#2B3674]'
-      }`}
-    >
-      KYC Summary
-    </h4>
-  </div>
 
-  {/* KYC DETAILS */}
-  <div className="space-y-5">
-    {/* Aadhaar */}
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-[11px] font-black uppercase text-[#A3AED0]">
-          Aadhaar Number
-        </p>
-        <p
-          className={`text-[14px] font-bold ${
-            isDark ? 'text-white' : 'text-[#2B3674]'
-          }`}
+    {/* SECTION 2: DOCUMENT VERIFICATION */}
+    <div  className="bg-white border-transparent">
+      <div className="flex items-center   gap-3 mb-6">
+        <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center    justify-center text-[#0070f3]">
+          <FileText size={20} strokeWidth={2.5} />
+        </div>
+        <h3 className={`text-xl font-black ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
+          Document Verification
+        </h3>
+      </div>
+
+      {/* AADHAAR CARD */}
+      <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-8 shadow-sm border relative overflow-hidden group hover:shadow-lg transition-all duration-300 mb-8`}>
+        <div className="absolute top-0 right-0 p-6">
+          <span className="bg-[#EEFBF3] text-[#42BE65] px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
+            <CheckCircle2 size={14} strokeWidth={3} /> Approved
+          </span>
+        </div>
+
+        <div className="flex items-start gap-5 mb-8">
+          <div className="h-14 w-14 rounded-2xl bg-blue-50 flex items-center justify-center text-[#0070f3] flex-shrink-0">
+            <CreditCard size={28} strokeWidth={2} />
+          </div>
+          <div>
+            <h4 className={`text-lg font-black ${isDark ? 'text-white' : 'text-[#2B3674]'} mb-1`}>Aadhaar Card</h4>
+            <p className={`text-[13px] font-medium ${isDark ? 'text-gray-400' : 'text-[#A3AED0]'}`}>Identity Proof</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12 mb-8 pr-32">
+          <div>
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">NAME</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>  {aadhaarData?.name || "—"}</p>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">UID</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>   {aadhaarData?.uid || "—"}</p>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">GENDER</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>  {aadhaarData?.gender || "—"}</p>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">DOB</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>{aadhaarData?.dob || "—"}</p>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">ADDRESS</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} leading-relaxed`}>
+                {aadhaarAddress}
+            </p>
+          </div>
+        </div>
+
+        <div className="hidden md:flex flex-col gap-3 absolute top-24 right-8 w-32">
+          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-[#0070f3] transition-all" />
+          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-[#0070f3] transition-all" />
+          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-[#0070f3] transition-all" />
+        </div>
+      </div>
+
+      {/* PAN CARD */}
+      <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-8 shadow-sm border relative overflow-hidden group hover:shadow-lg transition-all duration-300 mb-8`}>
+        <div className="absolute top-0 right-0 p-6">
+          <span className="bg-[#EEFBF3] text-[#42BE65] px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
+            <CheckCircle2 size={14} strokeWidth={3} /> Approved
+          </span>
+        </div>
+
+        <div className="flex items-start gap-5 mb-8">
+          <div className="h-14 w-14 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 flex-shrink-0">
+            <FileText size={28} strokeWidth={2} />
+          </div>
+          <div>
+            <h4 className={`text-lg font-black ${isDark ? 'text-white' : 'text-[#2B3674]'} mb-1`}>PAN Card</h4>
+            <p className={`text-[13px] font-medium ${isDark ? 'text-gray-400' : 'text-[#A3AED0]'}`}>Tax Identity</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-8 mb-8 pr-32">
+          <div>
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">NAME</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} uppercase`}>{panData?.name_pan_card || "—"}</p>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">PAN NUMBER</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>{panData?.pan || panNumber || "—"}</p>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">DOB</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>{panData?.dob || "—"}</p>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">TYPE</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>{panData?.type || "—"}</p>
+          </div>
+        </div>
+
+        <div className="hidden md:flex flex-col gap-3 absolute top-24 right-8 w-32">
+          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-purple-500 transition-all flex items-center justify-center">
+            <FileText size={20} className="text-gray-300" />
+          </div>
+        </div>
+      </div>
+
+      {/* DRIVING LICENSE */}
+      <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px]  h-95   p-8 shadow-sm border relative overflow-hidden group hover:shadow-lg transition-all duration-300 mb-8`}>
+        <div className="absolute top-0 right-0 p-6">
+          <span className="bg-[#FFF8E7] text-[#FFB800] px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
+            <Clock size={14} strokeWidth={3} /> Pending Review
+          </span>
+        </div>
+
+        <div className="flex items-start gap-5 mb-8">
+          <div className="h-14 w-14 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-500 flex-shrink-0">
+            <Car size={28} strokeWidth={2} />
+          </div>
+          <div>
+            <h4 className={`text-lg font-black ${isDark ? 'text-white' : 'text-[#2B3674]'} mb-1`}>Driving License</h4>
+            <p className={`text-[13px] font-medium ${isDark ? 'text-gray-400' : 'text-[#A3AED0]'}`}>Vehicle Authorization</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-8 mb-8 pr-32">
+          <div>
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">NAME</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} uppercase`}>Priya</p>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">DL NO</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}></p>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">DOB</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>13-07-2003</p>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">EXPIRY</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>12-07-2043</p>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">VEHICLE CLASSES</label>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>LMV, MCWG</p>
+          </div>
+        </div>
+
+        <div className="hidden md:flex flex-col gap-3 absolute top-24 right-8 w-32">
+          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-orange-400 transition-all flex items-center justify-center">
+            <Car size={20} className="text-gray-300" />
+          </div>
+          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-orange-400 transition-all flex items-center justify-center">
+            <User size={20} className="text-gray-300" />
+          </div>
+          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-orange-400 transition-all flex items-center justify-center">
+            <User size={20} className="text-gray-300" />
+          </div>
+        </div>
+      </div>
+
+      {/* DOCUMENT VERIFICATION ACTIONS */}
+      <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-6 shadow-sm border flex items-center gap-4`}>
+        <button
+          onClick={() => setShowApproveModal(true)}
+          className="flex-1 bg-[#0070f3] text-white py-4 rounded-xl font-bold text-[14px] hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] uppercase tracking-wider"
         >
-          860578036645
-        </p>
-      </div>
-      <span className="flex items-center gap-1.5 bg-[#EEFBF3] text-[#42BE65] px-3 py-1.5 rounded-lg text-[11px] font-black uppercase">
-        <CheckCircle2 size={14} />
-        Verified
-      </span>
-    </div>
-
-    {/* PAN */}
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-[11px] font-black uppercase text-[#A3AED0]">
-          PAN Number
-        </p>
-        <p
-          className={`text-[14px] font-bold ${
-            isDark ? 'text-white' : 'text-[#2B3674]'
-          }`}
+          Approve
+        </button>
+        <button
+          onClick={() => setShowRejectModal(true)}
+          className={`flex-1 ${isDark ? 'bg-transparent border-gray-700 text-red-400' : 'bg-transparent border-red-100 text-red-500'} border py-4 rounded-xl font-bold text-[14px] hover:bg-red-50 transition-all active:scale-[0.98] uppercase tracking-wider`}
         >
-          HFRPM8350C
-        </p>
+          Reject
+        </button>
       </div>
-      <span className="flex items-center gap-1.5 bg-[#EEFBF3] text-[#42BE65] px-3 py-1.5 rounded-lg text-[11px] font-black uppercase">
-        <CheckCircle2 size={14} />
-        Verified
-      </span>
-    </div>
-
-    {/* Driving License */}
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-[11px] font-black uppercase text-[#A3AED0]">
-          Driving License
-        </p>
-        <p className="text-[14px] font-bold text-[#A3AED0]">—</p>
-      </div>
-      <span className="flex items-center gap-1.5 bg-[#FFF1F1] text-[#E31A1A] px-3 py-1.5 rounded-lg text-[11px] font-black uppercase">
-        <XCircle size={14} />
-        Not Verified
-      </span>
     </div>
   </div>
- 
-  {/* Divider */}
-  <div className="my-6 h-px bg-gray-100 dark:bg-gray-800"></div>
-{/* Timestamp */}
-  <div className="mt-4">
-  {/* Label */}
-  <p className="text-[11px] font-black uppercase tracking-wider text-[#A3AED0] mb-1">
-    Verification Timestamp
-  </p>
 
-  {/* Date Row */}
-  <div className="flex items-center gap-2 text-[13px] font-bold text-[#2B3674] dark:text-gray-300">
-    <Calendar size={14} className="text-[#A3AED0]" />
-    <span>05-02-2026 14:05:21</span>
+  {/* RIGHT COLUMN - ALL RIGHT SIDE CONTENT (1/3 width) */}
+  <div className="xl:col-span-1 flex flex-col gap-8 sticky top-8 h-fit">
+    {/* SECTION 1: PAYMENT DETAILS */}
+   {/* SECTION 1: PAYMENT DETAILS */}
+<div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-6 shadow-sm border`}>
+  <div className="flex items-center gap-2 mb-6">
+    <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-[#0070f3]">
+      💳
+    </div>
+    <h3 className={`text-[16px] font-black ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
+      Payment Details
+    </h3>
   </div>
+
+  {paymentLoading ? (
+    <p className="text-[13px] font-bold text-[#A3AED0]">Loading payment...</p>
+  ) : paymentData ? (
+    <>
+      {/* STATUS */}
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px] font-black uppercase text-[#A3AED0]">Status</p>
+        <span
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase
+          ${isSuccess ? 'bg-[#EEFBF3] text-[#42BE65]' : 'bg-[#FFF1F1] text-[#E31A1A]'}`}
+        >
+          <span className={`h-2 w-2 rounded-full ${isSuccess ? 'bg-[#42BE65]' : 'bg-[#E31A1A]'}`} />
+          {paymentStatus}
+        </span>
+      </div>
+
+      {/* PAYMENT ID */}
+      <div className="mb-4">
+        <p className="text-[11px] font-black uppercase text-[#A3AED0] mb-1">
+          Payment ID
+        </p>
+        <div className={`${isDark ? 'bg-[#1B254B] text-gray-300' : 'bg-[#F4F7FE] text-[#2B3674]'} px-3 py-2 rounded-lg text-[12px] font-bold break-all`}>
+          {paymentId}
+        </div>
+      </div>
+
+      {/* AMOUNT + GATEWAY */}
+      <div className="grid grid-cols-2 gap-6 mb-4">
+        <div>
+          <p className="text-[11px] font-black uppercase text-[#A3AED0] mb-1">Amount</p>
+          <p className={`text-[14px] font-black ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
+            {amount} {currency}
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] font-black uppercase text-[#A3AED0] mb-1">Gateway</p>
+          <p className={`text-[14px] font-black ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
+            {gateway}
+          </p>
+        </div>
+      </div>
+
+      {/* MERCHANT REF ID */}
+      <div className="mb-4">
+        <p className="text-[11px] font-black uppercase text-[#A3AED0] mb-1">
+          Merchant Reference ID
+        </p>
+        <p className={`text-[12px] font-bold ${isDark ? 'text-gray-300' : 'text-[#2B3674]'} break-all`}>
+          {merchantRefId}
+        </p>
+      </div>
+
+      {/* TYPE + TIME */}
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <p className="text-[11px] font-black uppercase text-[#A3AED0] mb-1">
+            Payment Type
+          </p>
+          <span className={`inline-block px-2.5 py-1 rounded-md ${isDark ? 'bg-[#1B254B] text-blue-400' : 'bg-[#EBF3FF] text-[#0070f3]'} text-[11px] font-black uppercase`}>
+            {paymentType}
+          </span>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-black uppercase text-[#A3AED0] mb-1">
+            Timestamp
+          </p>
+          <p className={`text-[12px] font-bold ${isDark ? 'text-gray-300' : 'text-[#2B3674]'}`}>
+            {timestamp}
+          </p>
+        </div>
+      </div>
+    </>
+  ) : (
+    <p className="text-[13px] font-bold text-[#A3AED0]">
+      No payment found
+    </p>
+  )}
 </div>
 
-</div>
 
+    {/* SECTION 2: KYC SUMMARY */}
+    <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-6 shadow-sm border`}>
+      <div className="flex items-center gap-3 mb-6">
+        <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-[#1B254B]' : 'bg-blue-50'}`}>
+          <CheckCircle2 size={20} className="text-[#0070f3]" />
         </div>
-
-
-        {/* --- DOCUMENT VERIFICATION & SIDEBAR --- */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8  pb-12">
-  {/* LEFT COLUMN - VERIFICATION CARDS */}
-  <div className="xl:col-span-2 bg-white space-y-8">
-    <div className="flex items-center gap-3 mb-6">
-      <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center text-[#0070f3]">
-        <FileText size={20} strokeWidth={2.5} />
-      </div>
-      <h3 className={`text-xl font-black ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-        Document Verification
-      </h3>
-    </div>
-
-    {/* --- AADHAAR CARD --- */}
-    <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-8 shadow-sm border relative overflow-hidden group hover:shadow-lg transition-all duration-300`}>
-      <div className="absolute top-0 right-0 p-6">
-        <span className="bg-[#EEFBF3] text-[#42BE65] px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
-          <CheckCircle2 size={14} strokeWidth={3} />
-          Approved
-        </span>
+        <h4 className={`text-lg font-black ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>KYC Summary</h4>
       </div>
 
-      <div className="flex items-start gap-5 mb-8">
-        <div className="h-14 w-14 rounded-2xl bg-blue-50 flex items-center justify-center text-[#0070f3] flex-shrink-0">
-          <CreditCard size={28} strokeWidth={2} />
+      <div className="space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-black uppercase text-[#A3AED0]">Aadhaar Number</p>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>860578036645</p>
+          </div>
+          <span className="flex items-center gap-1.5 bg-[#EEFBF3] text-[#42BE65] px-3 py-1.5 rounded-lg text-[11px] font-black uppercase">
+            <CheckCircle2 size={14} /> Verified
+          </span>
         </div>
-        <div>
-          <h4 className={`text-lg font-black ${isDark ? 'text-white' : 'text-[#2B3674]'} mb-1`}>
-            Aadhaar Card
-          </h4>
-          <p className={`text-[13px] font-medium ${isDark ? 'text-gray-400' : 'text-[#A3AED0]'}`}>
-            Identity Proof
-          </p>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12 mb-8 pr-32">
-        <div>
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">NAME</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-            UKVK Services Technology
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-black uppercase text-[#A3AED0]">PAN Number</p>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>HFRPM8350C</p>
+          </div>
+          <span className="flex items-center gap-1.5 bg-[#EEFBF3] text-[#42BE65] px-3 py-1.5 rounded-lg text-[11px] font-black uppercase">
+            <CheckCircle2 size={14} /> Verified
+          </span>
         </div>
-        <div>
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">UID</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-            xxxx xxxx 6645
-          </p>
-        </div>
-        <div>
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">GENDER</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-            M
-          </p>
-        </div>
-        <div>
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">DOB</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-            01-01-1900
-          </p>
-        </div>
-        <div className="md:col-span-2">
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">ADDRESS</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} leading-relaxed`}>
-            140A, Rajiv Nagar, Harihar Nagar, Kamta, Lucknow, Uttar Pradesh 226016, India
-          </p>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-black uppercase text-[#A3AED0]">Driving License</p>
+            <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>—</p>
+          </div>
+          <span className="flex items-center gap-1.5 bg-[#FFF1F1] text-[#E31A1A] px-3 py-1.5 rounded-lg text-[11px] font-black uppercase">
+            <XCircle size={14} /> Not Verified
+          </span>
         </div>
       </div>
 
-      {/* Document Previews (Right Side Absolute on Desktop) */}
-      <div className="hidden md:flex flex-col gap-3 absolute top-24 right-8 w-32">
-        <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-[#0070f3] transition-all">
-          {/* Mock Image */}
-        </div>
-        <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-[#0070f3] transition-all">
-          {/* Mock Image */}
-        </div>
-        <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-[#0070f3] transition-all">
-          {/* Mock Image */}
+      <div className="my-6 h-px bg-gray-100 dark:bg-gray-800"></div>
+
+      <div className="mt-4">
+        <p className="text-[11px] font-black uppercase tracking-wider text-[#A3AED0] mb-1">
+          Verification Timestamp
+        </p>
+        <div className="flex items-center gap-2 text-[13px] font-bold text-[#2B3674] dark:text-gray-300">
+          <Calendar size={14} className="text-[#A3AED0]" />
+          <span>09-02-2026 16:35:59</span>
         </div>
       </div>
     </div>
 
-    {/* --- PAN CARD --- */}
-    <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-8 shadow-sm border relative overflow-hidden group hover:shadow-lg transition-all duration-300`}>
-      <div className="absolute top-0 right-0 p-6">
-        <span className="bg-[#EEFBF3] text-[#42BE65] px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
-          <CheckCircle2 size={14} strokeWidth={3} />
-          Approved
-        </span>
-      </div>
-
-      <div className="flex items-start gap-5 mb-8">
-        <div className="h-14 w-14 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 flex-shrink-0">
-          <FileText size={28} strokeWidth={2} />
-        </div>
-        <div>
-          <h4 className={`text-lg font-black ${isDark ? 'text-white' : 'text-[#2B3674]'} mb-1`}>
-            PAN Card
-          </h4>
-          <p className={`text-[13px] font-medium ${isDark ? 'text-gray-400' : 'text-[#A3AED0]'}`}>
-            Tax Identity
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-8 mb-8 pr-32">
-        <div>
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">NAME</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} uppercase`}>
-            Priya Singh
-          </p>
-        </div>
-        <div>
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">PAN NUMBER</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-            HFRPM8350C
-          </p>
-        </div>
-        <div>
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">DOB</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-            17-10-2002
-          </p>
-        </div>
-        <div>
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">TYPE</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-            Individual
-          </p>
-        </div>
-      </div>
-
-      {/* Document Previews */}
-      <div className="hidden md:flex flex-col gap-3 absolute top-24 right-8 w-32">
-        <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-purple-500 transition-all flex items-center justify-center">
-          <FileText size={20} className="text-gray-300" />
-        </div>
-      </div>
-    </div>
-
-    {/* --- DRIVING LICENSE --- */}
-    <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-8 shadow-sm border relative overflow-hidden group hover:shadow-lg transition-all duration-300`}>
-      <div className="absolute top-0 right-0 p-6">
-        <span className="bg-[#FFF8E7] text-[#FFB800] px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
-          <Clock size={14} strokeWidth={3} />
-          Pending Review
-        </span>
-      </div>
-
-      <div className="flex items-start gap-5 mb-8">
-        <div className="h-14 w-14 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-500 flex-shrink-0">
-          <Car size={28} strokeWidth={2} />
-        </div>
-        <div>
-          <h4 className={`text-lg font-black ${isDark ? 'text-white' : 'text-[#2B3674]'} mb-1`}>
-            Driving License
-          </h4>
-          <p className={`text-[13px] font-medium ${isDark ? 'text-gray-400' : 'text-[#A3AED0]'}`}>
-            Vehicle Authorization
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-8 mb-8 pr-32">
-        <div>
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">NAME</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'} uppercase`}>
-            VIVEK KUMAR
-          </p>
-        </div>
-        <div>
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">DL NO</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-            UP34 20240012003
-          </p>
-        </div>
-        <div>
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">DOB</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-            13-07-2003
-          </p>
-        </div>
-        <div>
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">EXPIRY</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-            12-07-2043
-          </p>
-        </div>
-        <div className="md:col-span-2">
-          <label className="block text-[10px] font-black text-[#A3AED0] uppercase tracking-widest mb-1.5">VEHICLE CLASSES</label>
-          <p className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-            LMV, MCWG
-          </p>
-        </div>
-      </div>
-
-      {/* Document Previews */}
-      <div className="hidden md:flex flex-col gap-3 absolute top-24 h-50 right-8 w-32">
-        <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-orange-400 transition-all flex items-center justify-center">
-          <Car size={20} className="text-gray-300" />
-        </div>
-        <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-orange-400 transition-all flex items-center justify-center">
-          <User size={20} className="text-gray-300" />
-        </div>
-        <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-orange-400 transition-all flex items-center justify-center">
-          <User size={20} className="text-gray-300" />
-        </div>
-        
-      </div>
-    </div>
-
-    {/* DOCUMENT VERIFICATION ACTIONS */}
-    <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-6 shadow-sm border flex items-center gap-4`}>
-      <button
-        onClick={() => setShowApproveModal(true)}
-        className="flex-1 bg-[#0070f3] text-white py-4 rounded-xl font-bold text-[14px] hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] uppercase tracking-wider"
-      >
-        Approve
-      </button>
-      <button
-        onClick={() => setShowRejectModal(true)}
-        className={`flex-1 ${isDark ? 'bg-transparent border-gray-700 text-red-400' : 'bg-transparent border-red-100 text-red-500'} border py-4 rounded-xl font-bold text-[14px] hover:bg-red-50 transition-all active:scale-[0.98] uppercase tracking-wider`}
-      >
-        Reject
-      </button>
-    </div>
-  </div>
-
-  {/* RIGHT COLUMN - BANK DETAILS ONLY */}
-  <div className="flex flex-col  bg-white gap-8">
-    {/* Bank Details - Separate Div */}
-    <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-8  shadow-sm border`}>
+    {/* SECTION 3: BANK DETAILS */}
+    <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-6 shadow-sm border`}>
       <div className="flex items-center gap-3 mb-6">
         <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-[#0070f3]">
           <Landmark size={20} strokeWidth={2.5} />
         </div>
-        <h4 className={`text-lg font-black ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-          Bank Details
-        </h4>
+        <h4 className={`text-lg font-black ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>Bank Details</h4>
       </div>
 
       <div className={`p-6 rounded-2xl ${isDark ? 'bg-[#1B254B] border-gray-700' : 'bg-white border-blue-100'} border mb-4 relative overflow-hidden`}>
@@ -918,9 +1128,6 @@ const roles = {
         </p>
       </div>
     </div>
-
-    {/* Empty div for spacing or future content */}
-    <div className="flex-1"></div>
   </div>
 </div>
       </div>
