@@ -60,25 +60,54 @@ const Sidebar: React.FC<SidebarProps> = ({
     });
   }, [pathname]);
 
-  const menuItems = [
-    { name: "Dashboard", icon: LayoutDashboard, href: "/" },
-    { name: "User Management", icon: Users, href: "/user-management" },
-    {
-      name: "Partner Management",
-      icon: Handshake,
-      href: "/partner-management",
-      subItems: [
-        { name: "Partner App", href: "/partner-management/partner-app" },
-        { name: "Partners", href: "/partner-management/partners" },
-        { name: "Dealer Panel", href: "/partner-management/dealer-panel" }
-      ]
-    },
-    { name: "Service Management", icon: Power, href: "/service-booking" },
-    { name: "Inventory Management", icon: Package, href: "/inventory-management" },
-    { name: "Utilities", icon: Settings, href: "/utilities" },
-    { name: "Finance", icon: Banknote, href: "/finance" },
-    { name: "Roles & Permission", icon: ShieldCheck, href: "/add-role" },
-  ];
+  // const menuItems = [
+  //   { name: "Dashboard", icon: LayoutDashboard, href: "/" },
+  //   { name: "User Management", icon: Users, href: "/user-management" },
+  //   {
+  //     name: "Partner Management",
+  //     icon: Handshake,
+  //     href: "/partner-management",
+  //     subItems: [
+  //       { name: "Partner App", href: "/partner-management/partner-app" },
+  //       { name: "Partners", href: "/partner-management/partners" },
+  //       { name: "Dealer Panel", href: "/partner-management/dealer-panel" }
+  //     ]
+  //   },
+  //   { name: "Service Management", icon: Power, href: "/service-booking" },
+  //   { name: "Inventory Management", icon: Package, href: "/inventory-management" },
+  //   { name: "Utilities", icon: Settings, href: "/utilities" },
+  //   { name: "Finance", icon: Banknote, href: "/finance" },
+  //   { name: "Roles & Permission", icon: ShieldCheck, href: "/add-role" },
+  // ];
+const menuItems = [
+  { name: "Dashboard", icon: LayoutDashboard, href: "/" },
+  { name: "User Management", icon: Users, href: "/user-management" },
+  {
+    name: "Partner Management",
+    icon: Handshake,
+    href: "/partner-management",
+    subItems: [
+      { name: "Partner App", href: "/partner-management/partner-app" },
+      { name: "Partners", href: "/partner-management/partners" },
+      { name: "Dealer Panel", href: "/partner-management/dealer-panel" }
+    ]
+  },
+  { name: "Service Management", icon: Power, href: "/service-booking" },
+  { name: "Inventory Management", icon: Package, href: "/inventory-management" },
+  { name: "Utilities", icon: Settings, href: "/utilities" },
+  { name: "Finance", icon: Banknote, href: "/finance" },
+  { name: "Roles & Permission", icon: ShieldCheck, href: "/add-role" },
+];
+
+React.useEffect(() => {
+  menuItems.forEach(item => {
+    if (item.subItems?.some(sub => pathname === sub.href)) {
+      setExpandedMenus(prev =>
+        prev.includes(item.name) ? prev : [...prev, item.name]
+      );
+    }
+  });
+}, [pathname]);
 
   const toggleMenu = (name: string) => {
     setExpandedMenus(prev =>
