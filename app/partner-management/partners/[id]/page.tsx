@@ -6,6 +6,7 @@ import {
   Star,
   Check,
   X,
+  Bike,
   CheckCircle2,
   XCircle,
   User,
@@ -14,6 +15,7 @@ import {
   Calendar,
   MapPin,
   Clock,
+  Shield,
   ShieldCheck,
   FileText,
   CreditCard,
@@ -28,8 +30,10 @@ import {
   Monitor,
   Smartphone,
   Minus,
-  Plus
+  Plus,
+  Image
 } from "lucide-react";
+
 import { useTheme } from "../../../context/ThemeContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -44,7 +48,41 @@ export default function PartnerDetailsPage({ params }: { params: { id: string } 
   const [loading, setLoading] = useState(true);
   const [verificationData, setVerificationData] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(6);
+
+const [showConfirm, setShowConfirm] = useState(false);
+// Image modal
+const [previewImage, setPreviewImage] = useState<string | null>(null);
+// Aadhar Modal
+// ✅ FIRST declare kycData
 const [kycData, setKycData] = useState<any>(null);
+
+
+
+// Aadhaar modal
+const [docPreview, setDocPreview] = useState<string | null>(null);
+
+// ✅ NOW safely use kycData
+const aadhaarImages =
+  kycData?.kyc_details?.image_urls
+    ? [
+        kycData.kyc_details.image_urls.AADHAAR_FRONT,
+        kycData.kyc_details.image_urls.AADHAAR_BACK,
+        kycData.kyc_details.image_urls.AADHAAR_photo,
+      ].filter(Boolean)
+    : [];
+const panImage =
+  kycData?.kyc_details?.image_urls?.PAN || null;
+  const dlImages =
+  kycData?.kyc_details?.image_urls
+    ? [
+        kycData.kyc_details.image_urls.DL_FRONT,
+        kycData.kyc_details.image_urls.DL_BACK,
+      ].filter(Boolean)
+    : [];
+
+
+
+
 // Kyc Data
 useEffect(() => {
   const fetchKycDetails = async () => {
@@ -91,9 +129,62 @@ const verificationTime =
 const [attemptCount, setAttemptCount] = useState(0);
 
 // Handler functions
-const handleIncrement = () => {
-  setAttemptCount(prev => prev + 1);
+const handleIncrement = async () => {
+  try {
+    const res = await fetch(
+      `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-token": "super_secure_token",
+        },
+        body: JSON.stringify({
+          documents_verification_attempts: backendAttempts + 1,
+        }),
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.success) {
+      // ✅ modal band karo
+      setShowConfirm(false);
+
+      // ✅ verification status dubara lao
+      // taaki UI updated value dikhaye
+      fetchVerificationStatus(); // (same function jo useEffect me hai)
+    }
+  } catch (error) {
+    console.error("Increment failed", error);
+    alert("Failed to update verification attempt");
+  }
 };
+
+
+const fetchVerificationStatus=async ()=>{
+  try {
+    const res =await fetch(
+      `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+      {
+        headers:{
+          "x-api-token":"super_secure_token",
+        },
+      }
+    );
+    const json =await res.json();
+    if(json.success){
+      setVerificationData(json.data);
+    }
+  } catch (error) {
+    console.error("Verification status fetch error ",error);
+  }
+};
+
+// Reject
+const [showRejectReason, setShowRejectReason] = useState(false);
+const [rejectReason, setRejectReason] = useState("");
+
 
 const handleDecrement = () => {
   setAttemptCount(prev => prev > 0 ? prev - 1 : 0);
@@ -112,7 +203,7 @@ const handleDecrement = () => {
     "address_done",             // ADDRESS
     "kyc_success",  
     
-"documents_verification_attempts"
+
             // KYC SUCCESS
   ];
 
@@ -202,6 +293,149 @@ const gateway = paymentData?.payment_gateway;
 const merchantRefId = paymentData?.merchant_reference_id;
 const paymentType = paymentData?.payment_type?.replace("_", " ");
 const timestamp = paymentData?.timestamp;
+
+
+// Rc & Non RC Tab
+const [activeTab, setActiveTab] = useState<"rc" | "nonrc">("rc");
+const [approveContext, setApproveContext] = useState<
+  "partner" | "vehicle" | null
+>(null);
+
+
+type FieldProps = {
+  label: string;
+  value?: string | number;
+  blue?: boolean;
+};
+
+const Field = ({ label, value, blue }: FieldProps) => {
+  return (
+    <div>
+      <p className="text-gray-400 font-bold mb-1">{label}</p>
+      <p
+        className={`font-bold ${
+          blue ? "text-blue-600" : "text-[#2B3674]"
+        }`}
+      >
+        {value || "—"}
+      </p>
+    </div>
+  );
+};
+
+
+const [rcVehicle, setRcVehicle] = useState<any>(null);
+const [rcLoading, setRcLoading] = useState(true);
+
+useEffect(() => {
+  const fetchRcVehicle = async () => {
+    try {
+      setRcLoading(true);
+
+      const res = await fetch(
+        `https://api.bijliwalaaya.in/api/partner/vehicle-details/${params.id}/RC`,
+        {
+          headers: {
+            "x-api-token": "super_secure_token",
+          },
+        }
+      );
+
+      const json = await res.json();
+
+      if (json.success) {
+        setRcVehicle(json.data);
+      }
+    } catch (error) {
+      console.error("RC vehicle fetch error", error);
+    } finally {
+      setRcLoading(false);
+    }
+  };
+
+  fetchRcVehicle();
+}, [params.id]);
+
+// Non Rc Vehicle
+const [nonRcVehicle, setNonRcVehicle] = useState<any>(null);
+const [nonRcLoading, setNonRcLoading] = useState(false);
+
+
+const fetchNonRcVehicle = async () => {
+  try {
+    setNonRcLoading(true);
+
+    const res = await fetch(
+      `https://api.bijliwalaaya.in/api/partner/vehicle-details/${params.id}/NONRC`,
+      {
+        headers: {
+          "x-api-token": "super_secure_token",
+        },
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.success) {
+      setNonRcVehicle(json.data);
+    }
+  } catch (error) {
+    console.error("Non-RC vehicle fetch error", error);
+  } finally {
+    setNonRcLoading(false);
+  }
+};
+
+
+const getStatusStyles = (status?: string) => {
+  if (!status) return "bg-gray-200 text-gray-600";
+
+  switch (status.toUpperCase()) {
+    case "VALID":
+      return "bg-green-100 text-green-700";
+    case "INVALID":
+      return "bg-red-100 text-red-700";
+    case "PENDING":
+      return "bg-yellow-100 text-yellow-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+};
+
+
+const [bankDetails, setBankDetails] = useState<any>(null);
+const [bankLoading, setBankLoading] = useState(true);
+
+useEffect(() => {
+  const fetchBankDetails = async () => {
+    try {
+      setBankLoading(true);
+
+      const res = await fetch(
+        `https://api.bijliwalaaya.in/api/partner/bank-details/${params.id}`,
+        {
+          headers: {
+            "x-api-token": "super_secure_token",
+          },
+        }
+      );
+
+      const json = await res.json();
+      if (json.success) {
+        setBankDetails(json.data);
+      }
+    } catch (err) {
+      console.error("Bank fetch error", err);
+    } finally {
+      setBankLoading(false);
+    }
+  };
+
+  fetchBankDetails();
+}, [params.id]);
+
+
+
 
 
 
@@ -440,6 +674,10 @@ const backendAttempts =
     );
   }
 
+
+
+
+
   const { personal_details } = partner;
   const profileImage = personal_details.profile_url?.startsWith('http')
     ? personal_details.profile_url
@@ -582,9 +820,8 @@ const backendAttempts =
 
           {/* Quick Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-5">
-            {stats.map((stat, i) => (
-              <div
-                key={i}
+           {stats.map((stat) => (
+  <div key={stat.label}
                 className={`${stat.active ? 'bg-[#EBF3FF] border-[#0070f3]' : (isDark ? 'bg-[#1B254B] border-transparent' : 'bg-[#F8FAFC] border-transparent')} p-5 rounded-2xl border transition-all flex flex-col justify-center`}
               >
                 <p className={`text-[9px] font-black ${isDark ? 'text-[#8F9BBA]' : 'text-[#A3AED0]'} uppercase tracking-wider mb-2`}>{stat.label}</p>
@@ -609,50 +846,50 @@ const backendAttempts =
     </h3>
 
     {/* Verification Attempt Counter - RIGHT SIDE */}
-    <div className="flex flex-col items-end">
-      <p className={`text-xs font-bold text-xl ${isDark ? 'text-gray-300' : 'text-[#2B3674]'} mb-2`}>
-        Verification Attempt
-      </p>
-      <div className="flex items-center gap-3">
-        {/* Minus Button */}
-        <button
-          onClick={() => handleDecrement()}
-          disabled={attemptCount === 0}
-          className={`h-8 w-8 rounded-full flex items-center justify-center ${attemptCount === 0
-              ? 'bg-gray-200 cursor-not-allowed text-gray-400'
-              : 'bg-[#0070f3] hover:bg-blue-600 text-white'
-            } transition-colors`}
-        >
-          <Minus size={16} />
-        </button>
-  {backendAttempts}
-        {/* Count Display */}
-        <div className={`h-10 w-12 flex items-center justify-center rounded-lg ${isDark
-            ? 'bg-gray-800 text-white'
-            : 'bg-gray-50 text-[#2B3674]'
-          } font-bold text-lg`}>
-        
-        </div>
+      <div className="flex flex-col items-end">
+        <p className={`text-xs font-bold text-xl ${isDark ? 'text-gray-300' : 'text-[#2B3674]'} mb-2`}>
+          Verification Attempt
+        </p>
+        <div className="flex items-center gap-3">
+          {/* Minus Button */}
+          <button
+            onClick={() => handleDecrement()}
+            disabled={attemptCount === 0}
+            className={`h-8 w-8 rounded-full flex items-center justify-center ${attemptCount === 0
+                ? 'bg-gray-200 cursor-not-allowed text-gray-400'
+                : 'bg-[#0070f3] hover:bg-blue-600 text-white'
+              } transition-colors`}
+          >
+            <Minus size={16} />
+          </button>
+   
+          {/* Count Display */}
+          <div className={`h-10 w-12 flex items-center justify-center rounded-lg ${isDark
+              ? 'bg-gray-800 text-white'
+              : 'bg-gray-50 text-[#2B3674]'
+            } font-bold text-lg`}>
+           {backendAttempts}
+          </div>
 
-        {/* Plus Button */}
-        <button
-          onClick={() => handleIncrement()}
-          className="h-8 w-8 rounded-full bg-[#0070f3] hover:bg-blue-600 text-white flex items-center justify-center transition-colors"
-        >
-          <Plus size={16} />
-        </button>
+          {/* Plus Button */}
+          <button
+            onClick={() => setShowConfirm(true)}
+            className="h-8 w-8 rounded-full bg-[#0070f3] hover:bg-blue-600 text-white flex items-center justify-center transition-colors"
+          >
+            <Plus size={16} />
+          </button>
+          
+        </div>
       </div>
     </div>
-  </div>
 
   <div className="relative pb-16">
     {/* GREEN PROGRESS LINE */}
     <div className="absolute top-5 left-8 right-8 h-1 bg-[#42BE65]"></div>
 
     <div className="relative flex justify-between">
-      {verificationSteps.map((step, i) => (
-        <div
-          key={i}
+     {verificationSteps.map((step) => (
+  <div key={step.label}
           className="flex flex-col items-center relative w-full cursor-pointer transition-transform active:scale-95"
           onClick={() => handleStepClick(i + 1)}
         >
@@ -821,11 +1058,71 @@ const backendAttempts =
           </div>
         </div>
 
-        <div className="hidden md:flex flex-col gap-3 absolute top-24 right-8 w-32">
-          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-[#0070f3] transition-all" />
-          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-[#0070f3] transition-all" />
-          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-[#0070f3] transition-all" />
-        </div>
+       {/* ================= AADHAAR IMAGES ================= */}
+<div className="hidden md:flex flex-col gap-3 absolute top-24 right-8 w-32">
+  {aadhaarImages.length > 0 ? (
+    aadhaarImages.map((img, index) => (
+      <div
+        key={index}
+        onClick={() => setDocPreview(img)}
+        className="h-20 rounded-lg overflow-hidden border border-gray-200
+                   cursor-pointer bg-gray-100 hover:ring-2 ring-[#0070f3] transition-all"
+      >
+        <img
+          src={img}
+          alt="Aadhaar Preview"
+          className="w-full h-full object-cover"
+        />
+      </div>
+    ))
+  ) : (
+    <p className="text-sm text-gray-400">No images</p>
+  )}
+</div>
+
+{docPreview && (
+  <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    
+    {/* BACKDROP */}
+    <div
+      className="absolute inset-0"
+      onClick={() => setDocPreview(null)}
+    />
+
+    {/* MODAL */}
+    <div className="relative bg-white rounded-2xl p-4 max-w-3xl w-[90%] z-10 shadow-2xl">
+      
+      {/* CLOSE */}
+      <button
+        onClick={() => setDocPreview(null)}
+        className="absolute top-3 right-3 h-9 w-9 rounded-full
+        bg-black/70 text-white flex items-center justify-center hover:bg-black"
+      >
+        ✕
+      </button>
+
+      {/* IMAGE */}
+      <img
+        src={docPreview}
+        alt="Aadhaar Preview"
+        className="max-h-[70vh] w-full object-contain rounded-xl"
+      />
+
+      {/* DOWNLOAD */}
+      <div className="mt-4 flex justify-end">
+        <a
+          href={docPreview}
+          download
+          className="px-5 py-2 bg-[#0070f3] text-white rounded-lg
+          font-bold text-sm hover:bg-blue-600 transition"
+        >
+          ⬇ Download
+        </a>
+      </div>
+    </div>
+  </div>
+)}
+
       </div>
 
       {/* PAN CARD */}
@@ -865,11 +1162,28 @@ const backendAttempts =
           </div>
         </div>
 
-        <div className="hidden md:flex flex-col gap-3 absolute top-24 right-8 w-32">
-          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-purple-500 transition-all flex items-center justify-center">
-            <FileText size={20} className="text-gray-300" />
-          </div>
-        </div>
+      {/* ================= PAN IMAGE ================= */}
+<div className="hidden md:flex flex-col gap-3 absolute top-24 right-8 w-32">
+  {panImage ? (
+    <div
+      onClick={() => setDocPreview(panImage)}
+      className="h-20 rounded-lg overflow-hidden border border-gray-200
+      cursor-pointer bg-gray-100 hover:ring-2 ring-purple-500 transition-all"
+    >
+      <img
+        src={panImage}
+        alt="PAN Card"
+        className="h-full w-full object-cover"
+      />
+    </div>
+  ) : (
+    <div className="h-20 flex items-center justify-center text-xs text-gray-400 bg-gray-100 rounded-lg">
+      No Image
+    </div>
+  )}
+</div>
+
+
       </div>
 
       {/* DRIVING LICENSE */}
@@ -913,17 +1227,30 @@ const backendAttempts =
           </div>
         </div>
 
-        <div className="hidden md:flex flex-col gap-3 absolute top-24 right-8 w-32">
-          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-orange-400 transition-all flex items-center justify-center">
-            <Car size={20} className="text-gray-300" />
-          </div>
-          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-orange-400 transition-all flex items-center justify-center">
-            <User size={20} className="text-gray-300" />
-          </div>
-          <div className="h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:ring-2 ring-orange-400 transition-all flex items-center justify-center">
-            <User size={20} className="text-gray-300" />
-          </div>
-        </div>
+       {/* ================= DRIVING LICENSE IMAGES ================= */}
+<div className="hidden md:flex flex-col gap-3 absolute top-24 right-8 w-32">
+  {dlImages.length > 0 ? (
+    dlImages.map((img, index) => (
+      <div
+        key={index}
+        onClick={() => setDocPreview(img)}
+        className="h-20 rounded-lg overflow-hidden border border-gray-200
+        cursor-pointer bg-gray-100 hover:ring-2 ring-orange-400 transition-all"
+      >
+        <img
+          src={img}
+          alt="DL Preview"
+          className="w-full h-full object-cover"
+        />
+      </div>
+    ))
+  ) : (
+    <div className="h-20 flex items-center justify-center text-xs text-gray-400 bg-gray-100 rounded-lg">
+      No Image
+    </div>
+  )}
+</div>
+
       </div>
 
       {/* DOCUMENT VERIFICATION ACTIONS */}
@@ -942,6 +1269,321 @@ const backendAttempts =
         </button>
       </div>
     </div>
+    {/* Section 3:Vehicle Verification */}
+   {/* ================= VEHICLE VERIFICATION ================= */}
+<div className="bg-white rounded-2xl border p-6">
+  {/* HEADER */}
+  <div className="flex items-center gap-2 mb-4">
+    <Car className="text-blue-600" size={22} />
+    <h3 className="text-[16px] font-bold text-[#2B3674]">
+      Vehicle Verification
+    </h3>
+  </div>
+
+  {/* TABS */}
+  <div className="flex gap-8 border-b mb-6 text-sm font-bold">
+  <button
+    onClick={() => setActiveTab("rc")}
+    className={`pb-2 ${
+      activeTab === "rc"
+        ? "text-blue-600 border-b-2 border-blue-600"
+        : "text-gray-400"
+    }`}
+  >
+    RC Vehicle
+  </button>
+
+  <button
+  onClick={() => {
+    setActiveTab("nonrc");
+    if (!nonRcVehicle) {
+      fetchNonRcVehicle();
+    }
+  }}
+  className={`pb-2 ${
+    activeTab === "nonrc"
+      ? "text-blue-600 border-b-2 border-blue-600"
+      : "text-gray-400"
+  }`}
+>
+  Non-RC Vehicle
+</button>
+
+</div>
+
+
+  {/* CONTENT */}
+  
+  <div className="w-full">
+
+    {/* LEFT – RC DETAILS */}
+    {/* RC LOADING */}
+{activeTab === "rc" && rcLoading && (
+  <p className="text-sm text-gray-400">
+    Loading RC vehicle details...
+  </p>
+)}
+
+{/* RC DATA – FULL WIDTH */}
+{activeTab === "rc" && rcVehicle && (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6 text-sm">
+
+    <Field label="REG NO" value={rcVehicle.reg_no} blue />
+    <Field label="OWNER" value={rcVehicle.owner} />
+
+    <Field label="MANUFACTURER" value={rcVehicle.manufacturer} />
+    <Field label="MANUFACTURER DATE" value={rcVehicle.manufacturing_date} />
+
+    <div className="md:col-span-2">
+      <Field label="MODEL" value={rcVehicle.model} />
+    </div>
+
+    <Field label="COLOR" value={rcVehicle.color} />
+    <Field label="FUEL TYPE" value={rcVehicle.fuel_type} />
+
+    <Field label="ENGINE NO" value={rcVehicle.engine} />
+    <Field label="CHASSIS NO" value={rcVehicle.chassis} />
+
+    <Field label="RC EXPIRY" value={rcVehicle.rc_expiry_date} />
+    <Field label="RC STATUS" value={rcVehicle.rc_status} />
+
+    <Field label="VEHICLE CATEGORY" value={rcVehicle.vehicle_category} />
+    <Field label="VERIFICATION TIME" value={rcVehicle.verification_timestamp} />
+
+    <div className="md:col-span-2">
+      <Field label="PRESENT ADDRESS" value={rcVehicle.present_address} />
+    </div>
+
+    <Field label="REGISTRATION AUTHORITY" value={rcVehicle.reg_authority} />
+
+    {/* INSURANCE */}
+    <div className="md:col-span-2 bg-gray-50 rounded-xl p-4 flex justify-between items-center mt-2">
+      <div>
+        <p className="text-xs font-bold text-gray-400">
+          INSURANCE INFORMATION
+        </p>
+        <p className="font-bold text-sm">
+          {rcVehicle.insurance_company}
+        </p>
+        <p className="text-xs text-gray-500">
+          Valid Upto: {rcVehicle.insurance_upto}
+        </p>
+      </div>
+
+      <span className="bg-green-100 text-green-600 text-xs font-bold px-3 py-1 rounded-md">
+        ACTIVE
+      </span>
+    </div>
+
+  </div>
+)}
+
+
+    {/* RIGHT – NON RC SUMMARY */}
+   {activeTab === "nonrc" && nonRcVehicle && (
+  <div className="bg-blue-50 rounded-xl p-5 text-sm">
+    <h4 className="text-blue-600 font-bold mb-4">
+      NON-RC VEHICLE SUMMARY
+    </h4>
+
+    <div className="grid grid-cols-2 gap-y-5 gap-x-6">
+      <div>
+        <p className="text-gray-400 font-bold">UNIQUE MARKER</p>
+        <p className="font-bold">{nonRcVehicle.unique_marker}</p>
+      </div>
+
+      <div>
+        <p className="text-gray-400 font-bold">MODEL</p>
+        <p className="font-bold">{nonRcVehicle.model}</p>
+      </div>
+
+      <div>
+        <p className="text-gray-400 font-bold">COLOR</p>
+        <p className="font-bold">{nonRcVehicle.color}</p>
+      </div>
+
+      <div>
+        <p className="text-gray-400 font-bold">VEHICLE TYPE</p>
+        <p className="font-bold">{nonRcVehicle.vehicle_type}</p>
+      </div>
+
+      <div>
+        <p className="text-gray-400 font-bold">BRAND</p>
+        <p className="font-bold">{nonRcVehicle.brand}</p>
+      </div>
+
+      <div>
+        <p className="text-gray-400 font-bold">GENERATED ID</p>
+        <p className="font-bold">{nonRcVehicle.generated_id}</p>
+      </div>
+
+      <div>
+        <p className="text-gray-400 font-bold">VERIFICATION TYPE</p>
+        <p className="font-bold capitalize">
+          {nonRcVehicle.verification_type.replace("_", " ")}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-gray-400 font-bold">APPROVAL CHANCE</p>
+        <p className="font-bold text-orange-500">
+          {nonRcVehicle.approval_chance}
+        </p>
+      </div>
+
+      <div className="col-span-2">
+        <p className="text-gray-400 font-bold">VERIFICATION TIME</p>
+        <p className="font-bold">{nonRcVehicle.verification_timestamp}</p>
+      </div>
+
+      <div className="col-span-2">
+        <p className="text-gray-400 font-bold">SUBMISSION DATE</p>
+        <p className="font-bold">{nonRcVehicle.submission_date}</p>
+      </div>
+
+      {/* ================= FRONT IMAGE ================= */}
+     {/* ================= FRONT IMAGE ================= */}
+{/* ================= FRONT IMAGE ================= */}
+<div>
+  <p className="text-gray-400 font-bold mb-2">FRONT IMAGE</p>
+
+  <div
+    onClick={() => nonRcVehicle.front_url && setPreviewImage(nonRcVehicle.front_url)}
+    className="w-full h-44 rounded-xl border border-dashed border-blue-300
+    bg-white flex items-center justify-center overflow-hidden cursor-pointer
+    hover:ring-2 hover:ring-blue-400 transition"
+  >
+    {nonRcVehicle.front_url ? (
+      <img
+        src={nonRcVehicle.front_url}
+        alt="Front View"
+        className="h-full w-full object-cover"
+      />
+    ) : (
+      <span className="text-xs text-gray-400">No Image</span>
+    )}
+  </div>
+</div>
+
+{/* ================= SIDE IMAGE ================= */}
+<div>
+  <p className="text-gray-400 font-bold mb-2">SIDE IMAGE</p>
+
+  <div
+    onClick={() => nonRcVehicle.side_url && setPreviewImage(nonRcVehicle.side_url)}
+    className="w-full h-44 rounded-xl border border-dashed border-blue-300
+    bg-white flex items-center justify-center overflow-hidden cursor-pointer
+    hover:ring-2 hover:ring-blue-400 transition"
+  >
+    {nonRcVehicle.side_url ? (
+      <img
+        src={nonRcVehicle.side_url}
+        alt="Side View"
+        className="h-full w-full object-cover"
+      />
+    ) : (
+      <span className="text-xs text-gray-400">No Image</span>
+    )}
+  </div>
+</div>
+{/* Image Modal */}
+{/* Image Modal */}
+{previewImage && (
+  <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-md">
+    
+    {/* Backdrop */}
+    <div
+      className="absolute inset-0"
+      onClick={() => setPreviewImage(null)}
+    />
+
+    {/* Modal */}
+    <div
+      className="relative bg-white rounded-3xl p-6
+      max-w-5xl w-[95%] shadow-2xl z-10"
+    >
+      
+      {/* Close Button */}
+      <button
+        onClick={() => setPreviewImage(null)}
+        className="absolute top-4 right-4 h-10 w-10 rounded-full
+        bg-black/80 text-white flex items-center justify-center
+        hover:bg-black transition text-lg"
+      >
+        ✕
+      </button>
+
+      {/* Image */}
+      <img
+        src={previewImage}
+        alt="Preview"
+        className="max-h-[85vh] w-full object-contain rounded-2xl"
+      />
+
+      {/* Download Button */}
+      <div className="mt-5 flex justify-end">
+        <a
+          href={previewImage}
+          download
+          className="px-6 py-2.5 bg-blue-600 text-white
+          rounded-xl font-bold text-sm hover:bg-blue-700 transition"
+        >
+          ⬇ Download Image
+        </a>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
+
+      {/* STATUS */}
+      <div className="col-span-2 flex justify-end">
+        <span className="bg-orange-100 text-orange-600 text-xs font-bold px-3 py-1 rounded-md uppercase">
+          {nonRcVehicle.status}
+        </span>
+      </div>
+    </div>
+  </div>
+)}
+
+  </div>
+  
+
+  {/* ACTION BUTTONS */}
+ <div className="flex gap-6 mt-10">
+  {/* APPROVE VEHICLE */}
+  <button
+    onClick={() => {
+      setApproveContext("vehicle");
+      setShowApproveModal(true);
+    }}
+    className="flex-1 bg-blue-600 text-white py-4 rounded-xl font-bold
+    flex items-center justify-center gap-2"
+  >
+    <CheckCircle2 size={18} />
+    Approve Vehicle
+  </button>
+
+  {/* REJECT VEHICLE */}
+  <button
+    onClick={() => {
+      setApproveContext("vehicle");
+      setShowRejectModal(true);
+    }}
+    className="flex-1 border border-red-300 text-red-500 py-4 rounded-xl
+    font-bold flex items-center justify-center gap-2"
+  >
+    <XCircle size={18} />
+    Reject
+  </button>
+</div>
+
+</div>
+
+
+
   </div>
 
   {/* RIGHT COLUMN - ALL RIGHT SIDE CONTENT (1/3 width) */}
@@ -1094,131 +1736,622 @@ const backendAttempts =
     </div>
 
     {/* SECTION 3: BANK DETAILS */}
-    <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-6 shadow-sm border`}>
-      <div className="flex items-center gap-3 mb-6">
-        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-[#0070f3]">
+{/* SECTION 3: BANK DETAILS */}
+{bankLoading ? (
+  <div className="text-sm text-gray-400 p-6">
+    Loading bank details...
+  </div>
+) : !bankDetails ? (
+  <div className="text-sm text-red-500 p-6">
+    Bank details not available
+  </div>
+) : (
+  <div
+    className={`rounded-[24px] p-6 border shadow-sm
+    ${isDark ? "bg-[#111C44] border-gray-800" : "bg-white border-gray-200"}`}
+  >
+    {/* Header */}
+    <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
           <Landmark size={20} strokeWidth={2.5} />
         </div>
-        <h4 className={`text-lg font-black ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>Bank Details</h4>
+        <h4
+          className={`text-lg font-extrabold ${
+            isDark ? "text-white" : "text-[#2B3674]"
+          }`}
+        >
+          Bank Details
+        </h4>
       </div>
 
-      <div className={`p-6 rounded-2xl ${isDark ? 'bg-[#1B254B] border-gray-700' : 'bg-white border-blue-100'} border mb-4 relative overflow-hidden`}>
-        <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full -mr-10 -mt-10 opacity-50 pointer-events-none"></div>
+      <span
+        className={`px-3 py-1 text-xs font-bold rounded-full
+        ${getStatusStyles(bankDetails.accountStatus)}`}
+      >
+        {bankDetails.accountStatus}
+      </span>
+    </div>
 
-        <label className="block text-[10px] font-black text-[#0070f3] uppercase tracking-widest mb-4">PRIMARY BANK ACCOUNT</label>
+    {/* Account Holder */}
+    <div className="mb-4">
+      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+        Account Holder Name
+      </p>
+      <p
+        className={`text-[15px] font-extrabold ${
+          isDark ? "text-white" : "text-[#2B3674]"
+        }`}
+      >
+        {bankDetails.nameAtBank}
+      </p>
+    </div>
 
-        <p className={`text-[11px] font-bold text-[#A3AED0] uppercase tracking-wider mb-1`}>HDFC BANK LTD</p>
-        <p className={`text-[18px] font-black ${isDark ? 'text-white' : 'text-[#2B3674]'} mb-4 tracking-widest`}>
-          XXXX XXXX 5521
-        </p>
+    {/* Bank Card */}
+    <div
+      className={`rounded-2xl p-5 border mb-4
+      ${isDark ? "bg-[#1B254B] border-gray-700" : "bg-[#F9FBFF] border-blue-100"}`}
+    >
+      <p className="text-[11px] font-extrabold text-blue-600 uppercase tracking-widest mb-2">
+        {bankDetails.bankName}
+      </p>
 
-        <div className="flex justify-between items-end">
-          <div>
-            <label className="block text-[9px] font-black text-[#A3AED0] uppercase tracking-widest mb-0.5">IFSC CODE</label>
-            <p className={`text-[13px] font-bold ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>HDFC0001202</p>
-          </div>
-          <span className="text-[12px] font-bold text-[#0070f3]">Savings</span>
+      <p
+        className={`text-[20px] font-black tracking-widest mb-4
+        ${isDark ? "text-white" : "text-[#2B3674]"}`}
+      >
+        {bankDetails.accountNumber}
+      </p>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">
+            IFSC Code
+          </p>
+          <p
+            className={`text-[13px] font-bold ${
+              isDark ? "text-white" : "text-[#2B3674]"
+            }`}
+          >
+            {bankDetails.ifscCode}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">
+            Branch
+          </p>
+          <p
+            className={`text-[13px] font-bold ${
+              isDark ? "text-white" : "text-[#2B3674]"
+            }`}
+          >
+            {bankDetails.branchName}
+          </p>
         </div>
       </div>
+    </div>
 
-      <div className="flex gap-3 items-start p-3 rounded-xl bg-blue-50 text-blue-600">
-        <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-        <p className="text-[11px] font-bold leading-relaxed">
-          Payments are processed every Friday for the previous week's billing.
+    {/* City / State */}
+    <div className="grid grid-cols-2 gap-4 mb-4">
+      <div>
+        <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">
+          City
+        </p>
+        <p
+          className={`text-[13px] font-bold ${
+            isDark ? "text-white" : "text-[#2B3674]"
+          }`}
+        >
+          {bankDetails.city}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">
+          State
+        </p>
+        <p
+          className={`text-[13px] font-bold ${
+            isDark ? "text-white" : "text-[#2B3674]"
+          }`}
+        >
+          {bankDetails.ifscDetails?.state || "—"}
         </p>
       </div>
     </div>
+
+    {/* Address */}
+    <div className="mb-4">
+      <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">
+        Full Address
+      </p>
+      <p
+        className={`text-[13px] font-semibold leading-relaxed ${
+          isDark ? "text-gray-200" : "text-[#2B3674]"
+        }`}
+      >
+        {bankDetails.ifscDetails?.address || "—"}
+      </p>
+    </div>
+
+    {/* Info Box */}
+    <div className="flex gap-3 items-start p-3 rounded-xl bg-blue-50 text-blue-700">
+      <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+      <p className="text-[11px] font-bold leading-relaxed">
+        Payments are processed every Friday for the previous week's billing.
+      </p>
+    </div>
+   <div className="flex gap-2 mt-2">
+  {/* APPROVED */}
+ <button
+    onClick={() => setShowRejectModal(true)}
+    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all
+    ${
+      isDark
+        ? "bg-[#1B254B] text-red-400 hover:bg-[#232D65]"
+        : "bg-red-50 text-red-500 hover:bg-red-100"
+    }`}
+  >
+    REJECT
+  </button>
+
+  {/* REJECT */}
+  
+  <button
+    onClick={() => setShowApproveModal(true)}
+    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all
+    ${
+      isDark
+        ? "bg-[#1B254B] text-blue-400 hover:bg-[#232D65]"
+        : "bg-blue-50 text-white-600 hover:bg-green-100"
+    }`}
+  >
+    APPROVE
+  </button>
+</div>
+
+  </div>
+)}
+
+{/* Section 4 */}
+{/* ================= EDUCATION DETAILS ================= */}
+<div
+  className={`rounded-[24px] p-6 border shadow-sm mt-8
+  ${isDark ? "bg-[#111C44] border-gray-800" : "bg-white border-gray-200"}`}
+>
+  {/* Header */}
+  <div className="flex items-center gap-3 mb-6">
+    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+      🎓
+    </div>
+    <h4
+      className={`text-lg font-extrabold ${
+        isDark ? "text-white" : "text-[#2B3674]"
+      }`}
+    >
+      Education Details
+    </h4>
+  </div>
+
+  {/* Qualification */}
+  <div className="mb-4">
+    <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+      Highest Qualification
+    </p>
+    <p
+      className={`text-[15px] font-extrabold ${
+        isDark ? "text-white" : "text-[#2B3674]"
+      }`}
+    >
+      ITI / Diploma
+    </p>
+  </div>
+
+  {/* Status */}
+  <div className="mb-4">
+    <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+      Status
+    </p>
+    <span className="inline-block bg-green-100 text-green-600 text-xs font-bold px-3 py-1 rounded-md">
+      COMPLETED
+    </span>
+  </div>
+
+  {/* Upload Time */}
+  <div className="mb-6">
+    <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+      Upload Timestamp
+    </p>
+    <p
+      className={`text-[13px] font-bold ${
+        isDark ? "text-gray-300" : "text-[#2B3674]"
+      }`}
+    >
+      09/02/2026 06:16:13 PM
+    </p>
+  </div>
+
+  {/* Document Preview */}
+  <div className="mb-6">
+    <div
+      className={`w-full h-36 rounded-xl border border-dashed
+      ${isDark ? "border-gray-600 bg-[#1B254B]" : "border-gray-300 bg-gray-50"}
+      flex items-center justify-center overflow-hidden`}
+    >
+      {/* IMAGE PREVIEW */}
+      {/* agar image URL ho to <img /> use karna */}
+      <span className="text-xs text-gray-400">
+        Uploaded Document Preview
+      </span>
+    </div>
+  </div>
+
+  {/* Action Buttons */}
+  <div className="flex gap-4">
+    <button
+      onClick={() => setShowApproveModal(true)}
+      className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl
+      font-bold text-sm hover:bg-blue-600 transition-all"
+    >
+      Approve
+    </button>
+
+    <button
+      onClick={() => setShowRejectModal(true)}
+      className="flex-1 border border-red-300 text-red-500 py-3
+      rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
+    >
+      Reject
+    </button>
+  </div>
+</div>
+{/* Residential Proof */}
+{/* ================= RESIDENTIAL PROOF ================= */}
+<div
+  className={`rounded-[24px] p-6 border shadow-sm mt-8
+  ${isDark ? "bg-[#111C44] border-gray-800" : "bg-white border-gray-200"}`}
+>
+  {/* Header */}
+  <div className="flex items-center gap-3 mb-6">
+    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+      📍
+    </div>
+    <h4
+      className={`text-lg font-extrabold ${
+        isDark ? "text-white" : "text-[#2B3674]"
+      }`}
+    >
+      Residential Proof
+    </h4>
+  </div>
+
+  {/* BASIC DETAILS */}
+  <div className="grid grid-cols-2 gap-y-4 gap-x-6 mb-4">
+    <div>
+      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+        City
+      </p>
+      <p
+        className={`text-[14px] font-bold ${
+          isDark ? "text-white" : "text-[#2B3674]"
+        }`}
+      >
+        Azamgarh
+      </p>
+    </div>
+
+    <div>
+      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+        State
+      </p>
+      <p
+        className={`text-[14px] font-bold ${
+          isDark ? "text-white" : "text-[#2B3674]"
+        }`}
+      >
+        Uttar Pradesh
+      </p>
+    </div>
+
+    <div>
+      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+        Pin Code
+      </p>
+      <p
+        className={`text-[14px] font-bold ${
+          isDark ? "text-white" : "text-[#2B3674]"
+        }`}
+      >
+        276124
+      </p>
+    </div>
+
+    <div>
+      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+        Aadhaar
+      </p>
+      <p className="text-[14px] font-bold text-blue-600">
+        True
+      </p>
+    </div>
+  </div>
+
+  {/* FULL ADDRESS */}
+  <div className="mb-4">
+    <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+      Full Address
+    </p>
+    <p
+      className={`text-[14px] font-semibold leading-relaxed ${
+        isDark ? "text-gray-200" : "text-[#2B3674]"
+      }`}
+    >
+      Guru Govind Nagar N.P. Azmatgarh, Azamgarh, Uttar Pradesh
+    </p>
+  </div>
+
+  {/* SAVED TIMESTAMP */}
+  <div className="mb-6">
+    <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+      Saved Timestamp
+    </p>
+    <p
+      className={`text-[13px] font-bold ${
+        isDark ? "text-gray-300" : "text-[#2B3674]"
+      }`}
+    >
+      06-02-2026 16:18:18
+    </p>
+  </div>
+
+  {/* DOCUMENT PREVIEW */}
+  <div className="mb-6">
+    <div
+      className={`w-full h-40 rounded-xl
+      ${isDark ? "bg-[#1B254B]" : "bg-gray-300"}
+      flex items-center justify-center text-white font-bold text-sm`}
+    >
+      VIEW DOCUMENT
+    </div>
+  </div>
+
+  {/* ACTION BUTTONS */}
+  <div className="flex gap-4">
+    <button
+      onClick={() => setShowApproveModal(true)}
+      className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl
+      font-bold text-sm hover:bg-blue-600 transition-all"
+    >
+      Approve
+    </button>
+
+    <button
+      onClick={() => setShowRejectModal(true)}
+      className="flex-1 border border-red-300 text-red-500 py-3
+      rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
+    >
+      Reject
+    </button>
+  </div>
+</div>
+
+
   </div>
 </div>
       </div>
 
       {/* --- APPROVE CONFIRMATION MODAL --- */}
-      {showApproveModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-            onClick={() => setShowApproveModal(false)}
-          ></div>
+{/* --- APPROVE / REJECT CHOICE MODAL --- */}
+{showApproveModal && (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    {/* Backdrop */}
+    <div
+      className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      onClick={() => setShowApproveModal(false)}
+    />
 
-          {/* Modal Content */}
-          <div className={`relative w-full max-w-[340px] transform overflow-hidden rounded-[28px] ${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white'} p-6 shadow-2xl transition-all border animate-in fade-in zoom-in duration-200 text-center`}>
-            <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${isDark ? 'bg-[#1B254B]' : 'bg-blue-50'}`}>
-              <ShieldCheck size={28} className="text-[#0070f3]" />
-            </div>
+    {/* Modal */}
+    <div
+      className={`relative w-full max-w-[360px] rounded-[28px] p-6 shadow-2xl border text-center
+      ${isDark ? "bg-[#111C44] border-gray-800" : "bg-white"}`}
+    >
+      {/* Icon */}
+      <div
+        className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full
+        ${isDark ? "bg-[#1B254B]" : "bg-blue-50"}`}
+      >
+        <ShieldCheck size={28} className="text-[#0070f3]" />
+      </div>
 
-            <h3 className={`text-xl font-black mb-2 ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-              Approve Partner
-            </h3>
-            <p className={`text-[13px] font-medium mb-8 leading-relaxed ${isDark ? 'text-gray-400' : 'text-[#707EAE]'}`}>
-              Are you sure you want to approve partners?
-            </p>
+      {/* Title */}
+      <h3 className={`text-xl font-black mb-2 ${
+  isDark ? "text-white" : "text-[#2B3674]"
+}`}>
+  {approveContext === "vehicle"
+    ? "Approve Vehicle"
+    : "Approve Partner"}
+</h3>
 
-            <div className="flex flex-col gap-2.5">
-              <button
-                onClick={() => {
-                  // Handle approval logic here
-                  setShowApproveModal(false);
-                }}
-                className="w-full py-3 text-[13px] font-black bg-[#0070f3] text-white rounded-2xl shadow-lg shadow-blue-500/25 hover:bg-blue-600 active:scale-[0.98] transition-all uppercase tracking-wider"
-              >
-                Approved
-              </button>
-              <button
-                onClick={() => setShowApproveModal(false)}
-                className={`w-full py-3 text-[13px] font-black rounded-2xl transition-all uppercase tracking-wider ${isDark ? 'bg-[#1B254B] text-white hover:bg-[#232D65]' : 'bg-gray-100 text-[#2B3674] hover:bg-gray-200'
-                  }`}
-              >
-                Review Again
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* --- REJECT CONFIRMATION MODAL --- */}
-      {showRejectModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-            onClick={() => setShowRejectModal(false)}
-          ></div>
+      {/* Description */}
+      <p
+        className={`text-[13px] mb-8 ${
+          isDark ? "text-gray-400" : "text-[#707EAE]"
+        }`}
+      >
+        Choose an action for this partner
+      </p>
 
-          {/* Modal Content */}
-          <div className={`relative w-full max-w-[340px] transform overflow-hidden rounded-[28px] ${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white'} p-6 shadow-2xl transition-all border animate-in fade-in zoom-in duration-200 text-center`}>
-            <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
-              <XCircle size={28} className="text-red-500" />
-            </div>
+      {/* BUTTON ROW */}
+      <div className="flex gap-3">
+        {/* REVIEW */}
+        <button
+          onClick={() => {
+            // 👉 future me review flow / notes screen
+            setShowApproveModal(false);
+          }}
+          className={`flex-1 py-3 rounded-2xl font-black text-[13px] uppercase
+          ${
+            isDark
+              ? "bg-[#1B254B] text-white hover:bg-[#232D65]"
+              : "bg-gray-100 text-[#2B3674] hover:bg-gray-200"
+          } transition-all`}
+        >
+          REVIEW
+        </button>
 
-            <h3 className={`text-xl font-black mb-2 ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
-              Reject Partner
-            </h3>
-            <p className={`text-[13px] font-medium mb-8 leading-relaxed ${isDark ? 'text-gray-400' : 'text-[#707EAE]'}`}>
-              Are you sure you want to reject this partner?
-            </p>
+        {/* APPROVE */}
+        <button
+          onClick={() => {
+            // 🔥 APPROVE API YAHAN CALL HOGI
+            setShowApproveModal(false);
+          }}
+          className="flex-1 py-3 rounded-2xl font-black text-[13px]
+          bg-[#0070f3] text-white hover:bg-blue-600 transition-all uppercase"
+        >
+          APPROVE
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
-            <div className="flex flex-col gap-2.5">
-              <button
-                onClick={() => {
-                  // Handle rejection logic here
-                  setShowRejectModal(false);
-                }}
-                className="w-full py-3 text-[13px] font-black bg-red-500 text-white rounded-2xl shadow-lg shadow-red-500/25 hover:bg-red-600 active:scale-[0.98] transition-all uppercase tracking-wider"
-              >
-                Reject
-              </button>
-              <button
-                onClick={() => setShowRejectModal(false)}
-                className={`w-full py-3 text-[13px] font-black rounded-2xl transition-all uppercase tracking-wider ${isDark ? 'bg-[#1B254B] text-white hover:bg-[#232D65]' : 'bg-gray-100 text-[#2B3674] hover:bg-gray-200'
-                  }`}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
+
+
+{/* --- REJECT CONFIRMATION MODAL --- */}
+{showRejectModal && (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    {/* Backdrop */}
+    <div
+      className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      onClick={() => {
+        setShowRejectModal(false);
+        setRejectReason("");
+      }}
+    ></div>
+
+    {/* Modal */}
+    <div
+      className={`relative w-full max-w-[360px] rounded-[28px] p-6 shadow-2xl border text-center
+      ${isDark ? "bg-[#111C44] border-gray-800" : "bg-white"}`}
+    >
+      <div
+        className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full
+        ${isDark ? "bg-red-900/20" : "bg-red-50"}`}
+      >
+        <XCircle size={28} className="text-red-500" />
+      </div>
+
+      <h3
+        className={`text-xl font-black mb-2 ${
+          isDark ? "text-white" : "text-[#2B3674]"
+        }`}
+      >
+        Reject Partner
+      </h3>
+
+      <p
+        className={`text-[13px] mb-4 ${
+          isDark ? "text-gray-400" : "text-[#707EAE]"
+        }`}
+      >
+        Please provide a reason for rejection
+      </p>
+
+      <textarea
+        value={rejectReason}
+        onChange={(e) => setRejectReason(e.target.value)}
+        placeholder="Enter rejection reason..."
+        rows={4}
+        className={`w-full p-3 rounded-xl text-[13px] font-medium mb-6 resize-none outline-none
+        ${
+          isDark
+            ? "bg-[#1B254B] text-white placeholder-gray-400"
+            : "bg-gray-100 text-[#2B3674] placeholder-gray-500"
+        }`}
+      />
+
+      {/* BUTTON ROW */}
+      <div className="flex gap-3">
+        {/* BACK – LEFT */}
+        <button
+          onClick={() => {
+            setShowRejectModal(false);
+            setRejectReason("");
+          }}
+          className={`flex-1 py-3 rounded-2xl font-black text-[13px]
+          ${isDark ? "bg-[#1B254B] text-white" : "bg-gray-100 text-[#2B3674]"}`}
+        >
+          BACK
+        </button>
+
+        {/* REJECT – RIGHT */}
+        <button
+          disabled={!rejectReason.trim()}
+          onClick={() => {
+            console.log("Reject Reason:", rejectReason);
+            // 🔥 REJECT API YAHAN LAGEGI
+            setShowRejectModal(false);
+            setRejectReason("");
+          }}
+          className={`flex-1 py-3 rounded-2xl font-black text-[13px]
+          ${
+            rejectReason.trim()
+              ? "bg-red-500 text-white hover:bg-red-600"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+          }`}
+        >
+          REJECT
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
+      {showConfirm && (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    {/* Backdrop */}
+    <div
+      className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      onClick={() => setShowConfirm(false)}
+    ></div>
+
+    {/* Modal */}
+    <div className={`relative w-full max-w-[340px] rounded-[28px] p-6 shadow-2xl border text-center
+      ${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white'}`}>
+
+      <h3 className={`text-xl font-black mb-2 ${isDark ? 'text-white' : 'text-[#2B3674]'}`}>
+        Confirmation
+      </h3>
+
+      <p className={`text-[13px] mb-8 ${isDark ? 'text-gray-400' : 'text-[#707EAE]'}`}>
+        Are you sure you want to increase verification attempt?
+      </p>
+
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={handleIncrement}
+          className="w-full py-3 bg-[#0070f3] text-white rounded-2xl font-black hover:bg-blue-600"
+        >
+          Confirm
+        </button>
+
+        <button
+          onClick={() => setShowConfirm(false)}
+          className={`w-full py-3 rounded-2xl font-black
+            ${isDark ? 'bg-[#1B254B] text-white' : 'bg-gray-100 text-[#2B3674]'}`}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }

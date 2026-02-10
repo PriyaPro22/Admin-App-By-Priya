@@ -527,7 +527,7 @@ const InventoryDashboard = () => {
         if (!selectedMainCategoryId) return;
 
         // ✅ Ensure we fetch media with correct subId if present
-        await fetchCurrentMedia(selectedMainCategoryId, selectedSubCategoryId);
+        // await fetchDeepChildCategories(selectedMainCategoryId,setSelectedChildCategoryId ,selectedSubCategoryId);
 
         setActiveView("deepList");
     };
