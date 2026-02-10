@@ -30,14 +30,23 @@ export default function ClientLayoutWrapper({
         <CategoryProvider>
             <div className={`flex min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0B1437]' : 'bg-[#F4F7FE]'}`}>
                 {/* Sidebar */}
-                <Sidebar
+                {/* <Sidebar
                     isOpen={isSidebarOpen}
                     onClose={() => setIsSidebarOpen(false)}
                     isCollapsed={isSidebarCollapsed}
                     onToggleCollapse={toggleCollapse}
                     isHovered={isSidebarHovered}
                     onHoverChange={setIsSidebarHovered}
-                />
+                /> */}
+                <Sidebar
+  isOpen={isSidebarOpen}
+  onClose={() => setIsSidebarOpen(false)}
+  isCollapsed={isSidebarCollapsed}
+  onToggleCollapse={toggleCollapse}
+  isHovered={isSidebarHovered}
+  onHoverChange={setIsSidebarHovered}
+/>
+
 
                 {/* Main Content Area */}
                 <main className={`flex-1 transition-all duration-300 ${isSidebarCollapsed && !isSidebarHovered ? 'md:ml-24' : 'md:ml-72'} overflow-hidden`}>
