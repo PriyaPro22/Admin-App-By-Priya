@@ -132,18 +132,25 @@ const ChildCategoryV2Form = ({ onSuccess }: { onSuccess?: () => void }) => {
         }
     };
 
-    const handleDelete = async () => {
-        if (!selectedMainId) return;
-        if (!confirm("Are you sure you want to delete ALL media for this category?")) return;
+   const handleDelete = async () => {
+  if (!selectedMainId) return;
 
-        try {
-            await deleteChildCategoryV2(selectedMainId);
-            alert("Deleted successfully");
-            handleLoad();
-        } catch (err) {
-            alert("Delete failed");
-        }
-    };
+  if (!confirm("Are you sure you want to delete ALL media for this category?")) {
+    return;
+  }
+
+  try {
+    await deleteChildCategoryV2(selectedMainId, "images");
+    await deleteChildCategoryV2(selectedMainId, "videos");
+
+    alert("Deleted successfully");
+    handleLoad();
+  } catch (err) {
+    console.error(err);
+    alert("Delete failed");
+  }
+};
+
 
     // Helper to update items in list
     const UpdateItem = (list: any[], setList: any, idx: number, key: string, value: any) => {
