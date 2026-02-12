@@ -56,6 +56,9 @@ const [previewImage, setPreviewImage] = useState<string | null>(null);
 // ✅ FIRST declare kycData
 const [kycData, setKycData] = useState<any>(null);
 
+const [showStepModal, setShowStepModal] = useState(false);
+const [stepAction, setStepAction] = useState<"approve" | "reject" | null>(null);
+const [selectedStep, setSelectedStep] = useState<any>(null);
 
 
 // Aadhaar modal
@@ -158,6 +161,55 @@ const handleIncrement = async () => {
   } catch (error) {
     console.error("Increment failed", error);
     alert("Failed to update verification attempt");
+  }
+};
+
+
+
+const updateStepStatus = async () => {
+  if (!selectedStep || !stepAction) return;
+
+  const stepKey = selectedStep.label; 
+  // ex: registration_done
+
+  const value = stepAction === "approve";
+
+  try {
+    const res = await fetch(
+      `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-token": "super_secure_token",
+        },
+        body: JSON.stringify({
+          [stepKey]: value,
+          [`${stepKey}_at`]: value
+            ? new Date().toLocaleString("en-IN")
+            : "",
+        }),
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.success) {
+      // 🔥 UI ko manually update karo (no refetch)
+      setVerificationData((prev: any) => ({
+        ...prev,
+        [stepKey]: value,
+        [`${stepKey}_at`]: value
+          ? new Date().toLocaleString("en-IN")
+          : "",
+      }));
+
+      setShowStepModal(false);
+       setSelectedStep(null);
+  setStepAction(null);
+    }
+  } catch (error) {
+    console.error("Step update failed", error);
   }
 };
 
@@ -551,26 +603,51 @@ const categoryConfig: Record<string, any> = {
 
 
   //verification steps 
-  const verificationSteps = stepKeyMap.map((label, i) => {
-    let status: "completed" | "failed" | "pending" | "active" = "pending";
+  // const verificationSteps = stepKeyMap.map((label, i) => {
+  //   let status: "completed" | "failed" | "pending" | "active" = "pending";
 
-    if (verificationData) {
-      const key = stepKeyMap[i];
-      const value = verificationData[key];
+  //   if (verificationData) {
+  //     const key = stepKeyMap[i];
+  //     const value = verificationData[key];
 
-      if (value === true) {
-        status = "completed";
-      } else if (value === false) {
-        status = "failed";
-      }
+  //     if (value === true) {
+  //       status = "completed";
+  //     } else if (value === false) {
+  //       status = "failed";
+  //     }
+  //   }
+
+  //   return {
+  //     label,
+  //     step: i + 1,
+  //     status,
+  //   };
+  // });
+const verificationSteps = stepKeyMap.map((key, i) => {
+  let status: "completed" | "failed" | "pending" = "pending";
+  let timestamp: string | null = null;
+
+  if (verificationData) {
+    const value = verificationData[key];
+    const timeKey = `${key}_at`;   // registration_done_at etc
+    timestamp = verificationData?.[timeKey] ?? null;  
+
+    if (value === true) {
+      status = "completed";
+    } else if (value === false) {
+      status = "failed";
     }
+  }
 
-    return {
-      label,
-      step: i + 1,
-      status,
-    };
-  });
+  return {
+    label: key,
+    step: i + 1,
+    status,
+    timestamp,
+  };
+});
+
+
 
   useEffect(() => {
     const fetchJobLocation = async () => {
@@ -835,9 +912,9 @@ const backendAttempts =
         </div>
 
         {/* --- VERIFICATION PROGRESS --- */}
-       <div className={`${isDark ? 'bg-[#111C44]' : 'bg-white'} rounded-[32px] px-10 py-6 shadow-sm`}>
+       <div className={`${isDark ? 'bg-[#111C44]' : 'bg-white'} rounded-[32px] px-10 py-14 shadow-sm`}>
 
-  <div className="flex justify-between items-start mb-12">
+  <div className="flex justify-between items-start mb-5">
     <h3
       className={`text-[15px] font-black ${isDark ? 'text-white' : 'text-[#2B3674]'
         } uppercase tracking-widest`}
@@ -846,7 +923,140 @@ const backendAttempts =
     </h3>
 
     {/* Verification Attempt Counter - RIGHT SIDE */}
-      <div className="flex flex-col items-end">
+     
+    </div>
+
+  <div className="relative pb-16">
+    {/* GREEN PROGRESS LINE */}
+    <div className="absolute top-5 left-8 right-8 h-1 bg-[#42BE65]"></div>
+
+    <div className="relative flex justify-between">
+     {verificationSteps.map((step,i) => (
+  <div key={step.label}
+          className="flex flex-col items-center relative w-full cursor-pointer transition-transform active:scale-95"
+          // onClick={() => handleStepClick(i + 1)}
+        >
+          {/* Circle */}
+          <div className="relative z-10 flex flex-col items-center">
+            {step.status === "completed" ? (
+              <div className="h-10 w-10 rounded-full bg-[#42BE65] flex items-center justify-center text-white shadow-lg ring-4 ring-white">
+                <Check size={20} strokeWidth={4} />
+              </div>
+            ) : step.status === "failed" ? (
+              <div className="h-10 w-10 rounded-full bg-[#E31A1A] flex items-center justify-center text-white shadow-lg ring-4 ring-white">
+                <X size={20} strokeWidth={4} />
+              </div>
+            ) : step.status === "active" ? (
+              <div className="h-10 w-10 rounded-full bg-[#0070f3] flex items-center justify-center text-white shadow-lg ring-4 ring-white font-black">
+                {step.step}
+              </div>
+            ) : (
+              <div
+                className={`h-10 w-10 rounded-full ${isDark
+                    ? 'bg-gray-700 text-gray-300'
+                    : 'bg-gray-100 text-[#A3AED0]'
+                  } flex items-center justify-center text-sm font-black`}
+              >
+                {step.step}
+              </div>
+            )}
+
+            {/* Label */}
+            {/* <div className="absolute top-[72px] w-36 text-center pointer-events-none px-1">
+              <p
+                className={`text-[9px] font-black tracking-wider leading-tight uppercase ${step.status === "failed"
+                    ? 'text-[#E31A1A]'
+                    : step.status === "completed"
+                      ? 'text-[#42BE65]'
+                      : step.status === "active"
+                        ? 'text-[#0070f3]'
+                        : 'text-[#A3AED0]'
+                  }`}
+              >
+                {step.label.replace("_done", "").replace(/_/g, " ")}
+
+              </p>
+            </div> */}
+            {/* Label + Time + Buttons */}
+<div className="absolute top-[70px] w-40 text-center px-1  flex flex-col items-center justify-between min-h-[85px]">
+
+  {/* TOP SECTION */}
+  <div className="flex flex-col items-center gap-1">
+
+    {/* Label */}
+    <p
+      className={`text-[8px] font-black tracking-wider uppercase
+        ${
+          step.status === "failed"
+            ? "text-[#E31A1A]"
+            : step.status === "completed"
+            ? "text-[#42BE65]"
+            : step.status === "active"
+            ? "text-[#0070f3]"
+            : "text-[#A3AED0]"
+        }`}
+    >
+      {step.label.replace("_done", "").replace(/_/g, " ")}
+    </p>
+
+    {/* Timestamp – always reserve height */}
+    <p className="text-[6px] text-gray-400 font-medium h-4">
+      {step.timestamp || "time not show"}
+    </p>
+
+  </div>
+
+  {/* BOTTOM SECTION (Button Always Same Position) */}
+  <div className="flex flex-col items-center gap-1 mt-1 mb-3">
+
+    {step.status !== "completed" && (
+      <span className="text-[9px] font-bold text-[#A3AED0]">
+        Pending
+      </span>
+    )}
+
+    {step.status === "completed" ? (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedStep(step);
+          setShowRejectModal(true);
+        }} disabled
+        className="px-3 py-[3px] text-[9px] font-bold border border-[#E31A1A] text-[#E31A1A] rounded-full hover:bg-[#E31A1A] hover:text-white transition-all"
+      >
+        REJECT
+      </button>
+    ) : (
+      <button
+ onClick={(e) => {
+  e.stopPropagation();
+
+  // Always create NEW object reference
+  setSelectedStep({ ...step });
+  setStepAction("approve");
+  setShowStepModal(true);
+}}
+
+        className="px-3 py-[3px] text-[9px] font-bold border border-[#0070f3] text-[#0070f3] rounded-full hover:bg-[#0070f3] hover:text-white transition-all"
+      >
+        APPROVE
+      </button>
+    )}
+
+  </div>
+
+</div>
+
+
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  
+</div>
+ <div className="flex flex-col items-end">
         <p className={`text-xs font-bold text-xl ${isDark ? 'text-gray-300' : 'text-[#2B3674]'} mb-2`}>
           Verification Attempt
         </p>
@@ -881,65 +1091,6 @@ const backendAttempts =
           
         </div>
       </div>
-    </div>
-
-  <div className="relative pb-16">
-    {/* GREEN PROGRESS LINE */}
-    <div className="absolute top-5 left-8 right-8 h-1 bg-[#42BE65]"></div>
-
-    <div className="relative flex justify-between">
-     {verificationSteps.map((step) => (
-  <div key={step.label}
-          className="flex flex-col items-center relative w-full cursor-pointer transition-transform active:scale-95"
-          onClick={() => handleStepClick(i + 1)}
-        >
-          {/* Circle */}
-          <div className="relative z-10 flex flex-col items-center">
-            {step.status === "completed" ? (
-              <div className="h-10 w-10 rounded-full bg-[#42BE65] flex items-center justify-center text-white shadow-lg ring-4 ring-white">
-                <Check size={20} strokeWidth={4} />
-              </div>
-            ) : step.status === "failed" ? (
-              <div className="h-10 w-10 rounded-full bg-[#E31A1A] flex items-center justify-center text-white shadow-lg ring-4 ring-white">
-                <X size={20} strokeWidth={4} />
-              </div>
-            ) : step.status === "active" ? (
-              <div className="h-10 w-10 rounded-full bg-[#0070f3] flex items-center justify-center text-white shadow-lg ring-4 ring-white font-black">
-                {step.step}
-              </div>
-            ) : (
-              <div
-                className={`h-10 w-10 rounded-full ${isDark
-                    ? 'bg-gray-700 text-gray-300'
-                    : 'bg-gray-100 text-[#A3AED0]'
-                  } flex items-center justify-center text-sm font-black`}
-              >
-                {step.step}
-              </div>
-            )}
-
-            {/* Label */}
-            <div className="absolute top-[72px] w-36 text-center pointer-events-none px-1">
-              <p
-                className={`text-[9px] font-black tracking-wider leading-tight uppercase ${step.status === "failed"
-                    ? 'text-[#E31A1A]'
-                    : step.status === "completed"
-                      ? 'text-[#42BE65]'
-                      : step.status === "active"
-                        ? 'text-[#0070f3]'
-                        : 'text-[#A3AED0]'
-                  }`}
-              >
-                {step.label.replace("_done", "").replace(/_/g, " ")}
-              </p>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-</div>
-
 
 
         {/* --- JOB ROLE & KYC SUMMARY --- */}
@@ -1081,7 +1232,7 @@ const backendAttempts =
 </div>
 
 {docPreview && (
-  <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+  <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm">
     
     {/* BACKDROP */}
     <div
@@ -1882,34 +2033,23 @@ const backendAttempts =
         Payments are processed every Friday for the previous week's billing.
       </p>
     </div>
-   <div className="flex gap-2 mt-2">
-  {/* APPROVED */}
- <button
-    onClick={() => setShowRejectModal(true)}
-    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all
-    ${
-      isDark
-        ? "bg-[#1B254B] text-red-400 hover:bg-[#232D65]"
-        : "bg-red-50 text-red-500 hover:bg-red-100"
-    }`}
-  >
-    REJECT
-  </button>
+  <div className="flex gap-4">
+    <button
+      onClick={() => setShowApproveModal(true)}
+      className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl
+      font-bold text-sm hover:bg-blue-600 transition-all"
+    >
+      Approve
+    </button>
 
-  {/* REJECT */}
-  
-  <button
-    onClick={() => setShowApproveModal(true)}
-    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all
-    ${
-      isDark
-        ? "bg-[#1B254B] text-blue-400 hover:bg-[#232D65]"
-        : "bg-blue-50 text-white-600 hover:bg-green-100"
-    }`}
-  >
-    APPROVE
-  </button>
-</div>
+    <button
+      onClick={() => setShowRejectModal(true)}
+      className="flex-1 border border-red-300 text-red-500 py-3
+      rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
+    >
+      Reject
+    </button>
+  </div>
 
   </div>
 )}
@@ -2144,7 +2284,7 @@ const backendAttempts =
       {/* --- APPROVE CONFIRMATION MODAL --- */}
 {/* --- APPROVE / REJECT CHOICE MODAL --- */}
 {showApproveModal && (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
     {/* Backdrop */}
     <div
       className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -2217,12 +2357,87 @@ const backendAttempts =
   </div>
 )}
 
+{/* --- STEP APPROVE / REJECT MODAL --- */}
+{showStepModal && (
+
+  <div key={selectedStep?.label + stepAction} className="fixed inset-0 z-[500] flex items-center justify-center p-4">
+    
+    <div
+      className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+    onClick={() => {
+  setShowStepModal(false);
+  setSelectedStep(null);
+  setStepAction(null);
+}}
+    ></div>
+
+    <div className={`relative w-full max-w-[380px] rounded-[28px] p-6 shadow-2xl border text-center
+      ${isDark ? "bg-[#111C44] border-gray-800" : "bg-white"}`}>
+
+      <h3 className={`text-xl font-black mb-3 ${
+        isDark ? "text-white" : "text-[#2B3674]"
+      }`}>
+        {stepAction === "approve"
+          ? "Approve Confirmation"
+          : "Reject Confirmation"}
+      </h3>
+
+      <p className={`text-[13px] mb-8 ${
+        isDark ? "text-gray-400" : "text-[#707EAE]"
+      }`}>
+        {stepAction === "approve"
+          ? `Are you sure you want to approve the "${selectedStep?.label
+              .replace("_done", "")
+              .replace(/_/g, " ")}" step?`
+          : `Are you sure you want to reject the "${selectedStep?.label
+              .replace("_done", "")
+              .replace(/_/g, " ")}" step?`}
+      </p>
+
+      <div className="flex gap-3">
+        <button
+        onClick={() => {
+  setShowStepModal(false);
+  setSelectedStep(null);
+  setStepAction(null);
+}}
+          className={`flex-1 py-3 rounded-2xl font-black text-[13px]
+            ${isDark
+              ? "bg-[#1B254B] text-white"
+              : "bg-gray-100 text-[#2B3674]"}`}
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={() => {
+            console.log("Step:", selectedStep);
+            console.log("Action:", stepAction);
+            updateStepStatus()
+            // 👉 API CALL YAHAN LAGANI HAI
+
+          
+          }}
+          className={`flex-1 py-3 rounded-2xl font-black text-[13px] text-white
+            ${
+              stepAction === "approve"
+                ? "bg-[#0070f3] hover:bg-blue-600"
+                : "bg-red-500 hover:bg-red-600"
+            }`}
+        >
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
 
 
 {/* --- REJECT CONFIRMATION MODAL --- */}
 {showRejectModal && (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
     {/* Backdrop */}
     <div
       className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -2313,7 +2528,7 @@ const backendAttempts =
 
 
       {showConfirm && (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
     {/* Backdrop */}
     <div
       className="absolute inset-0 bg-black/40 backdrop-blur-sm"

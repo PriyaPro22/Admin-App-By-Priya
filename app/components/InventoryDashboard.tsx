@@ -40,6 +40,12 @@ const InventoryDashboard = () => {
     const [selectedDeepChildCategoryId, setSelectedDeepChildCategoryId] = useState<string | null>(null);
     const [selectedDeepChildCategoryName, setSelectedDeepChildCategoryName] = useState<string | null>(null);
 
+    // ✅ DEEP CATEGORY (Parent) - JO URL ME deepKey BANEGA
+const [selectedDeepCategoryId, setSelectedDeepCategoryId] = useState<string | null>(null);
+const [selectedDeepCategoryName, setSelectedDeepCategoryName] = useState<string | null>(null);
+
+// ✅ DEEP CHILD CATEGORY (Child) - JO LIST ME DIKHTA HAI
+
     const [editingMainCategory, setEditingMainCategory] = useState<any | null>(null);
     const [editingSubCategory, setEditingSubCategory] = useState<any | null>(null);
     const [editingChildCategory, setEditingChildCategory] = useState<any | null>(null);
@@ -141,6 +147,94 @@ const InventoryDashboard = () => {
             e.target.value = "";
         }
     };
+
+
+    // ✅ DELETE YEH WALA DUPLICATE CODE - YE PURANA HAI
+/*
+const handleDeepChildCategoryClick = (item: any) => {
+  // ✅ YEH DEEP CHILD CATEGORY HAI (Child) - jo list me dikh raha hai
+  const deepChildId = item.documentId || item.id || item._id;
+  
+  setSelectedDeepChildCategoryId(deepChildId);
+  setSelectedDeepChildCategoryName(item.firstTitle || item.name || "Deep Child Category");
+
+  // ✅ IMPORTANT - YEHI DEEP CATEGORY ID URL ME deepKey BANEGA
+  if (!selectedDeepCategoryId) {
+    console.error("❌ No Deep Category selected!");
+    alert("Please select a Deep Category first");
+    return;
+  }
+
+  if (selectedMainCategoryId && selectedChildCategoryId) {
+    console.log("🔍 FETCHING SUB DEEP FOR:", {
+      mainId: selectedMainCategoryId,
+      childKey: selectedChildCategoryName, // "Repair"
+      deepKey: selectedDeepCategoryId,     // ✅ YEH DEEP CATEGORY ID HAI (Parent)
+      subId: selectedSubCategoryId
+    });
+
+    // ✅ Correct order: mainId, childKey, deepKey (Parent ID), subId
+    fetchSubDeepChildCategories(
+      selectedMainCategoryId,
+      selectedChildCategoryName!,  // Display Name (Repair)
+      selectedDeepCategoryId!,     // ✅ DEEP CATEGORY ID (Parent) - IMPORTANT!
+      selectedSubCategoryId
+    );
+  }
+  setActiveView('subDeepList');
+};
+*/
+
+// ✅ YEHI RAKHO - SIRF EK FUNCTION
+// ✅ DEEP CATEGORY CLICK - YEH SUB DEEP FETCH KAREGA
+
+// ✅ DEEP CATEGORY CLICK - YEH SUB DEEP FETCH KAREGA
+const handleDeepCategoryClick = (item: any) => {
+    // ✅ YEH DEEP CATEGORY HAI (Parent) - jo Installation/Repair ke under hai
+    const deepCategoryId = item.documentId || item.id || item._id;
+    
+    setSelectedDeepCategoryId(deepCategoryId);
+    setSelectedDeepCategoryName(item.firstTitle || item.name || "Deep Category");
+    
+    console.log("🎯 DEEP CATEGORY SELECTED:", {
+        id: deepCategoryId,
+        name: item.firstTitle || item.name,
+        firstTitle: item.firstTitle
+    });
+
+    // ✅ IMPORTANT - SUB DEEP FETCH YAHI SE KARO!
+    if (selectedMainCategoryId && selectedChildCategoryName) {
+        console.log("🔍 FETCHING SUB DEEP FROM DEEP CATEGORY CLICK:", {
+            mainId: selectedMainCategoryId,
+            childKey: selectedChildCategoryName,
+            deepKey: deepCategoryId,
+            subId: selectedSubCategoryId
+        });
+
+        fetchSubDeepChildCategories(
+            selectedMainCategoryId,
+            selectedChildCategoryName!,
+            deepCategoryId!,
+            selectedSubCategoryId
+        );
+    }
+    
+    // ✅ VIEW CHANGE KARO - PEHLE VIEW CHANGE, PHIR FETCH
+    setActiveView('subDeepList');
+    
+    // ✅ FORCE RE-RENDER KE LIYE THODA DELAY
+    setTimeout(() => {
+        console.log("🔄 SubDeep Categories after fetch:", subDeepChildCategories);
+    }, 500);
+};
+// ✅ DEEP CHILD CATEGORY CLICK - YEH AB USE NAHI HOGA (YA FUTURE USE)
+const handleDeepChildCategoryClick = (item: any) => {
+  // Future use - agar Deep Child Category ke under kuch ho
+  console.log("Deep Child Category Clicked:", item);
+};
+
+// ✅ DEEP CHILD CATEGORY CLICK - YEH SUB DEEP FETCH KAREGA
+
 
     // ✅ Smart Thumbnail Select: Merges with video-only entries if available
     const handleVideoThumbnailSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -341,6 +435,8 @@ const InventoryDashboard = () => {
         setSelectedChildCategoryId(null);
         setSelectedChildCategoryName(null);
         setSelectedDeepChildCategoryId(null);
+          setSelectedDeepCategoryId(null);        // ✅ ADD THIS
+  setSelectedDeepCategoryName(null);    
         setSelectedDeepChildCategoryName(null);
     }
 
@@ -520,36 +616,42 @@ const InventoryDashboard = () => {
         }
         setActiveView('childList');
     };
-    const handleChildCategoryClick = async (item: any) => {
-        setSelectedChildCategoryId(item._id || item.id);
-        setSelectedChildCategoryName(item.name);
+const handleChildCategoryClick = async (item: any) => {
+  const childId = item.documentId || item._id || item.id;
+  
+  setSelectedChildCategoryId(childId);
+  setSelectedChildCategoryName(item.name);
 
-        if (!selectedMainCategoryId) return;
+  if (!selectedMainCategoryId) {
+    alert("Main category not selected");
+    return;
+  }
 
-        // ✅ Ensure we fetch media with correct subId if present
-        // await fetchDeepChildCategories(selectedMainCategoryId,setSelectedChildCategoryId ,selectedSubCategoryId);
+  console.log("🔍 Clicked Child Category:", {
+    name: item.name,
+    documentId: item.documentId,
+    _id: item._id,
+    usingId: childId
+  });
 
-        setActiveView("deepList");
-    };
+  // ✅ STEP 1: Pehle view change karo
+  setActiveView("deepList");
+  
+  // ✅ STEP 2: Thoda delay dekar data fetch karo
+  setTimeout(() => {
+    fetchDeepChildCategories(
+      selectedMainCategoryId,
+      childId,
+      selectedSubCategoryId
+    );
+  }, 50);
+};
+
+useEffect(() => {
+  console.log("🔄 deepChildCategories changed:", deepChildCategories);
+}, [deepChildCategories]);
 
 
-
-    const handleDeepChildCategoryClick = (item: any) => {
-        const id = item.documentId || item.id || item._id;
-        setSelectedDeepChildCategoryId(id);
-        setSelectedDeepChildCategoryName(item.firstTitle || item.name || "Deep Category");
-
-        if (selectedMainCategoryId && selectedChildCategoryId) {
-            // Correct order: mainId, childKey, deepKey, subId
-            fetchSubDeepChildCategories(
-                selectedMainCategoryId,
-                selectedChildCategoryId,
-                id,
-                selectedSubCategoryId
-            );
-        }
-        setActiveView('subDeepList');
-    };
 
     const handleBack = () => {
         if (activeView === 'subDeepList') {
@@ -558,6 +660,8 @@ const InventoryDashboard = () => {
             setSelectedDeepChildCategoryName(null);
         } else if (activeView === 'deepList') {
             setActiveView('childList');
+              setSelectedDeepCategoryId(null);      // ✅ DEEP CATEGORY CLEAR KARO
+    setSelectedDeepCategoryName(null); 
             setSelectedDeepChildCategoryId(null);
             setSelectedDeepChildCategoryName(null);
         } else if (activeView === 'childList') {
@@ -1480,7 +1584,7 @@ const InventoryDashboard = () => {
                                     <CategoryList
                                         type="deep"
                                         filterId={selectedChildCategoryId}
-                                        onItemClick={handleDeepChildCategoryClick}
+                                         onItemClick={handleDeepCategoryClick} 
                                         onToggleVisibility={handleToggleDeep}
                                         onDeleteClick={(item: any) => deleteDeepChildCategory(item.id || item._id)}
                                         onEditClick={handleEditDeep}
@@ -1589,41 +1693,55 @@ const InventoryDashboard = () => {
                     }
 
                     {/* SUB DEEP CHILD LIST VIEW */}
-                    {
-                        activeView === 'subDeepList' && (
-                            <div className="mb-8 pt-6">
-                                <div className="flex items-center gap-4 mb-8">
-                                    <button onClick={handleBack} className={`p-1 rounded-full transition-colors ${isDark ? 'hover:bg-gray-800 text-white' : 'hover:bg-gray-200 text-black'}`}>
-                                        <ArrowLeft size={28} />
-                                    </button>
-                                    <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-blue-950'}`}>
-                                        {selectedDeepChildCategoryName}
-                                    </h3>
-                                </div>
-                                {selectedDeepChildCategoryId && (
-                                    <div className="space-y-4">
-                                        <div className="flex justify-end">
-                                            <button
-                                                onClick={() => toggleForm('subDeep')}
-                                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                                            >
-                                                <Plus size={20} />
-                                                Add Sub Deep Category
-                                            </button>
-                                        </div>
-                                        <CategoryList
-                                            type="subDeep"
-                                            filterId={selectedDeepChildCategoryId}
-                                            onDeleteClick={handleDeleteSubDeep}
-                                            onToggleVisibility={handleToggleSubDeep}
-                                            onEditClick={handleEditSubDeep}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        )
-                    }
-
+                  
+{/* SUB DEEP CHILD LIST VIEW - FIXED */}
+{activeView === 'subDeepList' && (
+    <div className="mb-8 pt-6">
+        <div className="flex items-center gap-4 mb-8">
+            <button onClick={handleBack} className={`p-1 rounded-full transition-colors ${isDark ? 'hover:bg-gray-800 text-white' : 'hover:bg-gray-200 text-black'}`}>
+                <ArrowLeft size={28} />
+            </button>
+            <div>
+                <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-blue-950'}`}>
+                    {selectedDeepCategoryName || "Deep Category"}
+                </h3>
+                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {selectedChildCategoryName} • {selectedMainCategoryName}
+                </p>
+            </div>
+        </div>
+        
+        {selectedDeepCategoryId && (
+            <div className="space-y-4">
+                <div className="flex justify-end">
+                    <button
+                        onClick={() => toggleForm('subDeep')}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                        <Plus size={20} />
+                        Add Sub Deep Category
+                    </button>
+                </div>
+                
+                {/* ✅ IMPORTANT - filterId = selectedDeepCategoryId, NOT selectedDeepChildCategoryId */}
+                <CategoryList
+                    type="subDeep"
+                    filterId={selectedDeepCategoryId}  // 🔥 FIXED: DEEP CATEGORY ID SE FILTER
+                    onDeleteClick={handleDeleteSubDeep}
+                    onToggleVisibility={handleToggleSubDeep}
+                    onEditClick={handleEditSubDeep}
+                    // ✅ Optional: Data pass karo directly agar state update slow ho
+                    // dataOverride={subDeepChildCategories}
+                />
+                
+                {/* ✅ DEBUG: Show count */}
+                <div className="text-xs text-gray-500 mt-2">
+                    Total Sub Deep Categories: {subDeepChildCategories?.length || 0}
+                </div>
+            </div>
+        )}
+    </div>
+)}
 
                     {
                         (activeView && activeForm) && (
