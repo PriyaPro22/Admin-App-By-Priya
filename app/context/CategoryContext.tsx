@@ -641,232 +641,253 @@ const fetchSubDeepChildCategories = async (
   };
 
   // ADD CHILD CATEGORY
-  const addChildCategory = async (category: any) => {
-    const normalize = (str: string) => (str || '').trim().toLowerCase();
-    if (childCategories.some(c => normalize(c.name) === normalize(category.name))) {
-      alert('Child Category with this name already exists!');
-      return;
-    }
-    
-    const tempId = `temp-${Date.now()}`;
-    const tempItem: any = {
-      documentId: tempId,
-      name: category.name,
-      visible: category.visible ?? true,
-      subCategoryId: category.subCategoryId,
-      mainCategoryId: category.mainCategoryId,
-    };
-    
-    setChildCategories(prev => [...prev, tempItem]);
-    
-    try {
-      const childId = encodeURIComponent(category.name);
-      const url = category.subCategoryId
-        ? `${BASE_URL}/main/${category.mainCategoryId}/sub/${category.subCategoryId}/child/${childId}`
-        : `${BASE_URL}/main/${category.mainCategoryId}/child/${childId}`;
-      
-      await axios.post(
-        url,
-        { name: category.name, visibility: category.visible ?? true },
-        { headers: getAuthHeaders() }
-      );
-      
-      await fetchChildCategories(category.mainCategoryId, category.subCategoryId);
-    } catch (error) {
-      setChildCategories(prev => prev.filter(item => item.documentId !== tempId));
-      console.error('Failed to add child category:', error);
-      throw error;
-    }
-  };
-
-  // ✅ FIXED: ADD DEEP CHILD CATEGORY - WITH IMAGE/VIDEO SUPPORT
-  const addDeepChildCategory = async (data: any) => {
-    const { mainCategoryId, subCategoryId, childCategoryId, deepChildId } = data;
-    
-    if (!mainCategoryId || !childCategoryId || !deepChildId) {
-      console.error('Missing required IDs');
-      return;
-    }
-    
-    try {
-      let url = '';
-      if (subCategoryId) {
-        url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
-      } else {
-        url = `${BASE_URL}/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
-      }
-      
-      const formData = new FormData();
-      
-      // Basic Fields
-      formData.append('documentId', deepChildId);
-      formData.append('firstTitle', data.firstTitle || '');
-      formData.append('secondTitle', data.secondTitle || '');
-      formData.append('description', data.description || '');
-      formData.append('deepCategoryVisible', String(data.deepCategoryVisible ?? true));
-      formData.append('visible', String(data.visible ?? data.deepCategoryVisible ?? true));
-      formData.append('webviewUrl', data.webviewUrl || '');
-      
-      // Time Fields
-      if (data.minTime !== undefined && data.minTime !== null) {
-        formData.append('minTime', String(data.minTime));
-      }
-      if (data.maxTime !== undefined && data.maxTime !== null) {
-        formData.append('maxTime', String(data.maxTime));
-      }
-      formData.append('minTimeVisible', String(data.minTimeVisible ?? true));
-      formData.append('maxTimeVisible', String(data.maxTimeVisible ?? true));
-      
-      // Pricing Fields
-      formData.append('originalPrice', String(data.originalPrice || 0));
-      formData.append('discountType', data.discountType || 'percentage');
-      formData.append('discountValue', String(data.discountValue || 0));
-      formData.append('gst', String(data.gst || 0));
-      formData.append('gstType', data.gstType || 'inclusive');
-      formData.append('currentPrice', String(data.currentPrice || 0));
-      formData.append('priceAfterGst', String(data.priceAfterGst || 0));
-      formData.append('currentPriceVisible', 'true');
-      
-      // Visibility Flags
-      formData.append('firstTitleVisible', String(data.firstTitleVisible ?? true));
-      formData.append('secondTitleVisible', String(data.secondTitleVisible ?? true));
-      formData.append('descriptionVisible', String(data.descriptionVisible ?? true));
-      formData.append('webviewUrlVisible', String(data.webviewUrlVisible ?? true));
-      formData.append('originalPriceVisible', String(data.originalPriceVisible ?? true));
-      formData.append('photoVisible', String(data.photoVisible ?? true));
-      formData.append('videoVisible', String(data.videoVisible ?? true));
-      
-      // ✅ FIXED: Backend expects 'image' field
-      if (data.imageFile instanceof File) {
-        formData.append('image', data.imageFile);
-        console.log("📤 Adding image file:", data.imageFile.name);
-      } else if (data.image) {
-        formData.append('image', data.image);
-        console.log("📤 Adding image URL:", data.image);
-      }
-      
-      // ✅ FIXED: Backend expects 'video' field
-      if (data.videoFile instanceof File) {
-        formData.append('video', data.videoFile);
-        console.log("📤 Adding video file:", data.videoFile.name);
-      } else if (data.video) {
-        formData.append('video', data.video);
-        console.log("📤 Adding video URL:", data.video);
-      }
-      
-      console.log("📦 SENDING FORM DATA:");
-      for (let pair of formData.entries()) {
-        if (pair[1] instanceof File) {
-          console.log(`   ${pair[0]}: [FILE] ${pair[1].name}`);
-        } else {
-          console.log(`   ${pair[0]}: ${pair[1]}`);
-        }
-      }
-      
-      await axios.post(url, formData, { 
-        headers: getAuthHeaders(true)
-      });
-      
-      await fetchDeepChildCategories(mainCategoryId, childCategoryId, subCategoryId);
-    } catch (error) {
-      console.error('Failed to add deep child category:', error);
-      throw error;
-    }
-  };
-
-  // ADD SUB DEEP CHILD CATEGORY
-// ADD SUB DEEP CHILD CATEGORY - FIXED
-const addSubDeepChildCategory = async (data: any) => {
-  const {
-    mainCategoryId,
-    subCategoryId,
-    childCategoryId,    // ✅ YEH Display Name hai (Repair/Services/Installation)
-    deepChildCategoryId, // ✅ YEH Document ID hai (Deep Category ki ID)
-    subDeepKey,
-  } = data;
+// ADD CHILD CATEGORY - FIXED ✅
+const addChildCategory = async (category: any) => {
+  const normalize = (str: string) => (str || '').trim().toLowerCase();
   
-  if (!mainCategoryId || !childCategoryId || !deepChildCategoryId || !subDeepKey) {
-    console.error('Missing required IDs');
+  // ✅ FIX: Check duplicate within SAME Main Category
+  const isDuplicate = childCategories.some(c => 
+    normalize(c.name) === normalize(category.name) && 
+    c.mainCategoryId === category.mainCategoryId
+  );
+  
+  if (isDuplicate) {
+    alert('Child Category with this name already exists in this Main Category!');
     return;
   }
   
+  const tempId = `temp-${Date.now()}`;
+  const tempItem: any = {
+    documentId: tempId,
+    name: category.name,
+    visible: category.visible ?? true,
+    subCategoryId: category.subCategoryId,
+    mainCategoryId: category.mainCategoryId,
+  };
+  
+  setChildCategories(prev => [...prev, tempItem]);
+  
   try {
-    // ✅ URL CONSTRUCTION - FIXED
-    let url = '';
+    const childId = encodeURIComponent(category.name);
+    const url = category.subCategoryId
+      ? `${BASE_URL}/main/${category.mainCategoryId}/sub/${category.subCategoryId}/child/${childId}`
+      : `${BASE_URL}/main/${category.mainCategoryId}/child/${childId}`;
+    
+    await axios.post(
+      url,
+      { name: category.name, visibility: category.visible ?? true },
+      { headers: getAuthHeaders() }
+    );
+    
+    await fetchChildCategories(category.mainCategoryId, category.subCategoryId);
+  } catch (error) {
+    setChildCategories(prev => prev.filter(item => item.documentId !== tempId));
+    console.error('Failed to add child category:', error);
+    throw error;
+  }
+};
+  // ✅ FIXED: ADD DEEP CHILD CATEGORY - WITH IMAGE/VIDEO SUPPORT
+  // const addDeepChildCategory = async (data: any) => {
+  //   const { mainCategoryId, subCategoryId, childCategoryId, deepChildId } = data;
+    
+  //   if (!mainCategoryId || !childCategoryId || !deepChildId) {
+  //     console.error('Missing required IDs');
+  //     return;
+  //   }
+    
+  //   try {
+  //     let url = '';
+  //     if (subCategoryId) {
+  //       url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
+  //     } else {
+  //       url = `${BASE_URL}/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
+  //     }
+      
+  //     const formData = new FormData();
+      
+  //     // Basic Fields
+  //     formData.append('documentId', deepChildId);
+  //     formData.append('firstTitle', data.firstTitle || '');
+  //     formData.append('secondTitle', data.secondTitle || '');
+  //     formData.append('description', data.description || '');
+  //     formData.append('deepCategoryVisible', String(data.deepCategoryVisible ?? true));
+  //     formData.append('visible', String(data.visible ?? data.deepCategoryVisible ?? true));
+  //     formData.append('webviewUrl', data.webviewUrl || '');
+      
+  //     // Time Fields
+  //     if (data.minTime !== undefined && data.minTime !== null) {
+  //       formData.append('minTime', String(data.minTime));
+  //     }
+  //     if (data.maxTime !== undefined && data.maxTime !== null) {
+  //       formData.append('maxTime', String(data.maxTime));
+  //     }
+  //     formData.append('minTimeVisible', String(data.minTimeVisible ?? true));
+  //     formData.append('maxTimeVisible', String(data.maxTimeVisible ?? true));
+      
+  //     // Pricing Fields
+  //     formData.append('originalPrice', String(data.originalPrice || 0));
+  //     formData.append('discountType', data.discountType || 'percentage');
+  //     formData.append('discountValue', String(data.discountValue || 0));
+  //     formData.append('gst', String(data.gst || 0));
+  //     formData.append('gstType', data.gstType || 'inclusive');
+  //     formData.append('currentPrice', String(data.currentPrice || 0));
+  //     formData.append('priceAfterGst', String(data.priceAfterGst || 0));
+  //     formData.append('currentPriceVisible', 'true');
+      
+  //     // Visibility Flags
+  //     formData.append('firstTitleVisible', String(data.firstTitleVisible ?? true));
+  //     formData.append('secondTitleVisible', String(data.secondTitleVisible ?? true));
+  //     formData.append('descriptionVisible', String(data.descriptionVisible ?? true));
+  //     formData.append('webviewUrlVisible', String(data.webviewUrlVisible ?? true));
+  //     formData.append('originalPriceVisible', String(data.originalPriceVisible ?? true));
+  //     formData.append('photoVisible', String(data.photoVisible ?? true));
+  //     formData.append('videoVisible', String(data.videoVisible ?? true));
+      
+  //     // ✅ FIXED: Backend expects 'image' field
+  //     if (data.imageFile instanceof File) {
+  //       formData.append('image', data.imageFile);
+  //       console.log("📤 Adding image file:", data.imageFile.name);
+  //     } else if (data.image) {
+  //       formData.append('image', data.image);
+  //       console.log("📤 Adding image URL:", data.image);
+  //     }
+      
+  //     // ✅ FIXED: Backend expects 'video' field
+  //     if (data.videoFile instanceof File) {
+  //       formData.append('video', data.videoFile);
+  //       console.log("📤 Adding video file:", data.videoFile.name);
+  //     } else if (data.video) {
+  //       formData.append('video', data.video);
+  //       console.log("📤 Adding video URL:", data.video);
+  //     }
+      
+  //     console.log("📦 SENDING FORM DATA:");
+  //     for (let pair of formData.entries()) {
+  //       if (pair[1] instanceof File) {
+  //         console.log(`   ${pair[0]}: [FILE] ${pair[1].name}`);
+  //       } else {
+  //         console.log(`   ${pair[0]}: ${pair[1]}`);
+  //       }
+  //     }
+      
+  //     await axios.post(url, formData, { 
+  //       headers: getAuthHeaders(true)
+  //     });
+      
+  //     await fetchDeepChildCategories(mainCategoryId, childCategoryId, subCategoryId);
+  //   } catch (error) {
+  //     console.error('Failed to add deep child category:', error);
+  //     throw error;
+  //   }
+  // };
+const addDeepChildCategory = async (data: any) => {
+  const { mainCategoryId, subCategoryId, childCategoryId, deepChildId } = data;
+
+  if (!mainCategoryId || !childCategoryId || !deepChildId) {
+    console.error("Missing required IDs");
+    return;
+  }
+
+  try {
+    let url = "";
+
     if (subCategoryId) {
-      // With Sub Category
-      url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${encodeURIComponent(childCategoryId)}/deep/${encodeURIComponent(deepChildCategoryId)}/sub/${encodeURIComponent(subDeepKey)}`;
-      console.log("🌐 SUB DEEP URL (with sub):", url);
+      url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
     } else {
-      // Without Sub Category - child-key route
-      url = `${BASE_URL}/main/${mainCategoryId}/child-key/${encodeURIComponent(childCategoryId)}/deep/${encodeURIComponent(deepChildCategoryId)}/sub/${encodeURIComponent(subDeepKey)}`;
-      console.log("🌐 SUB DEEP URL (no sub):", url);
+      url = `${BASE_URL}/main/${mainCategoryId}/child/${childCategoryId}/deep/${deepChildId}`;
     }
-    
-    // ✅ BACKEND EXPECTS FormData (upload.any() middleware)
+
     const formData = new FormData();
-    
-    // Basic Fields
-    formData.append('documentId', subDeepKey);
-    formData.append('firstTitle', data.firstTitle || '');
-    formData.append('secondTitle', data.secondTitle || '');
-    formData.append('description', data.description || '');
-    formData.append('subDeepCategoryVisible', String(data.subDeepCategoryVisible ?? true));
-    formData.append('visible', String(data.visible ?? data.subDeepCategoryVisible ?? true));
-    formData.append('webviewUrl', data.webviewUrl || '');
-    
-    // Time Fields
+
+    // 🔹 Basic Fields
+    formData.append("documentId", deepChildId);
+    formData.append("firstTitle", data.firstTitle || "");
+    formData.append("secondTitle", data.secondTitle || "");
+    formData.append("description", data.description || "");
+    formData.append(
+      "deepCategoryVisible",
+      String(data.deepCategoryVisible ?? true)
+    );
+    formData.append(
+      "visible",
+      String(data.visible ?? data.deepCategoryVisible ?? true)
+    );
+    formData.append("webviewUrl", data.webviewUrl || "");
+
+    // 🔹 Time Fields
     if (data.minTime !== undefined && data.minTime !== null) {
-      formData.append('minTime', String(data.minTime));
+      formData.append("minTime", String(data.minTime));
     }
+
     if (data.maxTime !== undefined && data.maxTime !== null) {
-      formData.append('maxTime', String(data.maxTime));
+      formData.append("maxTime", String(data.maxTime));
     }
-    formData.append('minTimeVisible', String(data.minTimeVisible ?? true));
-    formData.append('maxTimeVisible', String(data.maxTimeVisible ?? true));
-    
-    // Pricing Fields
-    formData.append('originalPrice', String(data.originalPrice || 0));
-    formData.append('discountType', data.discountType || 'percentage');
-    formData.append('discountValue', String(data.discountValue || 0));
-    formData.append('gst', String(data.gst || 0));
-    formData.append('gstType', data.gstType || 'inclusive');
-    formData.append('priceAfterGst', String(data.priceAfterGst || 0));
-    formData.append('currentPrice', String(data.currentPrice || 0));
-    formData.append('currentPriceVisible', 'true');
-    
-    // Visibility Flags
-    formData.append('firstTitleVisible', String(data.firstTitleVisible ?? true));
-    formData.append('secondTitleVisible', String(data.secondTitleVisible ?? true));
-    formData.append('descriptionVisible', String(data.descriptionVisible ?? true));
-    formData.append('webviewUrlVisible', String(data.webviewUrlVisible ?? true));
-    formData.append('originalPriceVisible', String(data.originalPriceVisible ?? true));
-    formData.append('photoVisible', String(data.photoVisible ?? true));
-    formData.append('videoVisible', String(data.videoVisible ?? true));
-    
-    // ✅ IMAGE - File Upload (Priority 1)
+
+    formData.append(
+      "minTimeVisible",
+      String(data.minTimeVisible ?? true)
+    );
+    formData.append(
+      "maxTimeVisible",
+      String(data.maxTimeVisible ?? true)
+    );
+
+    // 🔹 Pricing Fields (CLEANED)
+    formData.append("originalPrice", String(data.originalPrice || 0));
+    formData.append("discountType", data.discountType || "percentage");
+    formData.append("discountValue", String(data.discountValue || 0));
+    formData.append("gst", String(data.gst || 0));
+    formData.append("gstType", data.gstType || "inclusive");
+
+    // 🔹 Visibility Flags
+    formData.append(
+      "firstTitleVisible",
+      String(data.firstTitleVisible ?? true)
+    );
+    formData.append(
+      "secondTitleVisible",
+      String(data.secondTitleVisible ?? true)
+    );
+    formData.append(
+      "descriptionVisible",
+      String(data.descriptionVisible ?? true)
+    );
+    formData.append(
+      "webviewUrlVisible",
+      String(data.webviewUrlVisible ?? true)
+    );
+    formData.append(
+      "originalPriceVisible",
+      String(data.originalPriceVisible ?? true)
+    );
+    formData.append(
+      "photoVisible",
+      String(data.photoVisible ?? true)
+    );
+    formData.append(
+      "videoVisible",
+      String(data.videoVisible ?? true)
+    );
+
+    // 🔹 Image Handling
     if (data.imageFile instanceof File) {
-      formData.append('image', data.imageFile);
+      formData.append("image", data.imageFile);
       console.log("📤 Adding image file:", data.imageFile.name);
-    }
-    // ✅ IMAGE - URL (Priority 2)
-    else if (data.image) {
-      formData.append('image', data.image);
+    } else if (data.image) {
+      formData.append("image", data.image);
       console.log("📤 Adding image URL:", data.image);
     }
-    
-    // ✅ VIDEO - File Upload (Priority 1)
+
+    // 🔹 Video Handling
     if (data.videoFile instanceof File) {
-      formData.append('video', data.videoFile);
+      formData.append("video", data.videoFile);
       console.log("📤 Adding video file:", data.videoFile.name);
-    }
-    // ✅ VIDEO - URL (Priority 2)
-    else if (data.video) {
-      formData.append('video', data.video);
+    } else if (data.video) {
+      formData.append("video", data.video);
       console.log("📤 Adding video URL:", data.video);
     }
-    
-    console.log("📦 SENDING SUB DEEP FORM DATA:");
+
+    console.log("📦 FINAL FORM DATA:");
     for (let pair of formData.entries()) {
       if (pair[1] instanceof File) {
         console.log(`   ${pair[0]}: [FILE] ${pair[1].name}`);
@@ -874,22 +895,230 @@ const addSubDeepChildCategory = async (data: any) => {
         console.log(`   ${pair[0]}: ${pair[1]}`);
       }
     }
-    
-    // ✅ POST with FormData
-    await axios.post(url, formData, { 
-      headers: getAuthHeaders(true) 
+
+    await axios.post(url, formData, {
+      headers: getAuthHeaders(true),
     });
-    
-    // ✅ Refresh list
-    await fetchSubDeepChildCategories(
+
+    await fetchDeepChildCategories(
       mainCategoryId,
-      childCategoryId,      // ✅ Display Name
-      deepChildCategoryId,  // ✅ Document ID
+      childCategoryId,
       subCategoryId
     );
-    
+
   } catch (error) {
-    console.error('Failed to add sub deep child category:', error);
+    console.error("Failed to add deep child category:", error);
+    throw error;
+  }
+};
+
+  // ADD SUB DEEP CHILD CATEGORY
+// ADD SUB DEEP CHILD CATEGORY - FIXED
+// const addSubDeepChildCategory = async (data: any) => {
+//   const {
+//     mainCategoryId,
+//     subCategoryId,
+//     childCategoryId,    // ✅ YEH Display Name hai (Repair/Services/Installation)
+//     deepChildCategoryId, // ✅ YEH Document ID hai (Deep Category ki ID)
+//     subDeepKey,
+//   } = data;
+  
+//   if (!mainCategoryId || !childCategoryId || !deepChildCategoryId || !subDeepKey) {
+//     console.error('Missing required IDs');
+//     return;
+//   }
+  
+//   try {
+//     // ✅ URL CONSTRUCTION - FIXED
+//     let url = '';
+//     if (subCategoryId) {
+//       // With Sub Category
+//       url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${encodeURIComponent(childCategoryId)}/deep/${encodeURIComponent(deepChildCategoryId)}/sub/${encodeURIComponent(subDeepKey)}`;
+//       console.log("🌐 SUB DEEP URL (with sub):", url);
+//     } else {
+//       // Without Sub Category - child-key route
+//       url = `${BASE_URL}/main/${mainCategoryId}/child-key/${encodeURIComponent(childCategoryId)}/deep/${encodeURIComponent(deepChildCategoryId)}/sub/${encodeURIComponent(subDeepKey)}`;
+//       console.log("🌐 SUB DEEP URL (no sub):", url);
+//     }
+    
+//     // ✅ BACKEND EXPECTS FormData (upload.any() middleware)
+//     const formData = new FormData();
+    
+//     // Basic Fields
+//     formData.append('documentId', subDeepKey);
+//     formData.append('firstTitle', data.firstTitle || '');
+//     formData.append('secondTitle', data.secondTitle || '');
+//     formData.append('description', data.description || '');
+//     formData.append('subDeepCategoryVisible', String(data.subDeepCategoryVisible ?? true));
+//     formData.append('visible', String(data.visible ?? data.subDeepCategoryVisible ?? true));
+//     formData.append('webviewUrl', data.webviewUrl || '');
+    
+//     // Time Fields
+//     if (data.minTime !== undefined && data.minTime !== null) {
+//       formData.append('minTime', String(data.minTime));
+//     }
+//     if (data.maxTime !== undefined && data.maxTime !== null) {
+//       formData.append('maxTime', String(data.maxTime));
+//     }
+//     formData.append('minTimeVisible', String(data.minTimeVisible ?? true));
+//     formData.append('maxTimeVisible', String(data.maxTimeVisible ?? true));
+    
+//     // Pricing Fields
+//     formData.append('originalPrice', String(data.originalPrice || 0));
+//     formData.append('discountType', data.discountType || 'percentage');
+//     formData.append('discountValue', String(data.discountValue || 0));
+//     formData.append('gst', String(data.gst || 0));
+//     formData.append('gstType', data.gstType || 'inclusive');
+//     formData.append('priceAfterGst', String(data.priceAfterGst || 0));
+//     formData.append('currentPrice', String(data.currentPrice || 0));
+//     formData.append('currentPriceVisible', 'true');
+    
+//     // Visibility Flags
+//     formData.append('firstTitleVisible', String(data.firstTitleVisible ?? true));
+//     formData.append('secondTitleVisible', String(data.secondTitleVisible ?? true));
+//     formData.append('descriptionVisible', String(data.descriptionVisible ?? true));
+//     formData.append('webviewUrlVisible', String(data.webviewUrlVisible ?? true));
+//     formData.append('originalPriceVisible', String(data.originalPriceVisible ?? true));
+//     formData.append('photoVisible', String(data.photoVisible ?? true));
+//     formData.append('videoVisible', String(data.videoVisible ?? true));
+    
+//     // ✅ IMAGE - File Upload (Priority 1)
+//     if (data.imageFile instanceof File) {
+//       formData.append('image', data.imageFile);
+//       console.log("📤 Adding image file:", data.imageFile.name);
+//     }
+//     // ✅ IMAGE - URL (Priority 2)
+//     else if (data.image) {
+//       formData.append('image', data.image);
+//       console.log("📤 Adding image URL:", data.image);
+//     }
+    
+//     // ✅ VIDEO - File Upload (Priority 1)
+//     if (data.videoFile instanceof File) {
+//       formData.append('video', data.videoFile);
+//       console.log("📤 Adding video file:", data.videoFile.name);
+//     }
+//     // ✅ VIDEO - URL (Priority 2)
+//     else if (data.video) {
+//       formData.append('video', data.video);
+//       console.log("📤 Adding video URL:", data.video);
+//     }
+    
+//     console.log("📦 SENDING SUB DEEP FORM DATA:");
+//     for (let pair of formData.entries()) {
+//       if (pair[1] instanceof File) {
+//         console.log(`   ${pair[0]}: [FILE] ${pair[1].name}`);
+//       } else {
+//         console.log(`   ${pair[0]}: ${pair[1]}`);
+//       }
+//     }
+    
+//     // ✅ POST with FormData
+//     await axios.post(url, formData, { 
+//       headers: getAuthHeaders(true) 
+//     });
+    
+//     // ✅ Refresh list
+//     await fetchSubDeepChildCategories(
+//       mainCategoryId,
+//       childCategoryId,      // ✅ Display Name
+//       deepChildCategoryId,  // ✅ Document ID
+//       subCategoryId
+//     );
+    
+//   } catch (error) {
+//     console.error('Failed to add sub deep child category:', error);
+//     throw error;
+//   }
+// };
+const addSubDeepChildCategory = async (data: any) => {
+  const {
+    mainCategoryId,
+    subCategoryId,
+    childCategoryId,
+    deepChildCategoryId,
+    subDeepKey,
+  } = data;
+
+  if (!mainCategoryId || !childCategoryId || !deepChildCategoryId || !subDeepKey) {
+    console.error("Missing required IDs");
+    return;
+  }
+
+  try {
+    let url = "";
+
+    if (subCategoryId) {
+      url = `${BASE_URL}/main/${mainCategoryId}/sub/${subCategoryId}/child/${encodeURIComponent(childCategoryId)}/deep/${encodeURIComponent(deepChildCategoryId)}/sub/${encodeURIComponent(subDeepKey)}`;
+    } else {
+      url = `${BASE_URL}/main/${mainCategoryId}/child-key/${encodeURIComponent(childCategoryId)}/deep/${encodeURIComponent(deepChildCategoryId)}/sub/${encodeURIComponent(subDeepKey)}`;
+    }
+
+    const formData = new FormData();
+
+    // 🔹 Basic Fields
+    formData.append("documentId", subDeepKey);
+    formData.append("firstTitle", data.firstTitle || "");
+    formData.append("secondTitle", data.secondTitle || "");
+    formData.append("description", data.description || "");
+    formData.append("subDeepCategoryVisible", String(data.subDeepCategoryVisible ?? true));
+    formData.append("visible", String(data.visible ?? data.subDeepCategoryVisible ?? true));
+    formData.append("webviewUrl", data.webviewUrl || "");
+
+    // 🔹 Time Fields
+    if (data.minTime !== undefined && data.minTime !== null) {
+      formData.append("minTime", String(data.minTime));
+    }
+    if (data.maxTime !== undefined && data.maxTime !== null) {
+      formData.append("maxTime", String(data.maxTime));
+    }
+
+    formData.append("minTimeVisible", String(data.minTimeVisible ?? true));
+    formData.append("maxTimeVisible", String(data.maxTimeVisible ?? true));
+
+    // 🔹 Pricing Fields (CLEANED)
+    formData.append("originalPrice", String(data.originalPrice || 0));
+    formData.append("discountType", data.discountType || "percentage");
+    formData.append("discountValue", String(data.discountValue || 0));
+    formData.append("gst", String(data.gst || 0));
+    formData.append("gstType", data.gstType || "inclusive");
+
+    // 🔹 Visibility
+    formData.append("firstTitleVisible", String(data.firstTitleVisible ?? true));
+    formData.append("secondTitleVisible", String(data.secondTitleVisible ?? true));
+    formData.append("descriptionVisible", String(data.descriptionVisible ?? true));
+    formData.append("webviewUrlVisible", String(data.webviewUrlVisible ?? true));
+    formData.append("originalPriceVisible", String(data.originalPriceVisible ?? true));
+    formData.append("photoVisible", String(data.photoVisible ?? true));
+    formData.append("videoVisible", String(data.videoVisible ?? true));
+
+    // 🔹 Image
+    if (data.imageFile instanceof File) {
+      formData.append("image", data.imageFile);
+    } else if (data.image) {
+      formData.append("image", data.image);
+    }
+
+    // 🔹 Video
+    if (data.videoFile instanceof File) {
+      formData.append("video", data.videoFile);
+    } else if (data.video) {
+      formData.append("video", data.video);
+    }
+
+    await axios.post(url, formData, {
+      headers: getAuthHeaders(true),
+    });
+
+    await fetchSubDeepChildCategories(
+      mainCategoryId,
+      childCategoryId,
+      deepChildCategoryId,
+      subCategoryId
+    );
+
+  } catch (error) {
+    console.error("Failed to add sub deep child category:", error);
     throw error;
   }
 };

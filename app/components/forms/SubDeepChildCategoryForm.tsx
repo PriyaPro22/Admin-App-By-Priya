@@ -25,6 +25,53 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
 
   const [isSaving, setIsSaving] = useState(false);
   
+  // Drag
+  // ✅ Prevent browser from opening file in new tab
+useEffect(() => {
+  const preventDefault = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  window.addEventListener("dragover", preventDefault);
+  window.addEventListener("drop", preventDefault);
+
+  return () => {
+    window.removeEventListener("dragover", preventDefault);
+    window.removeEventListener("drop", preventDefault);
+  };
+}, []);
+
+
+// ✅ Drag Over
+const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  e.preventDefault();
+  e.stopPropagation();
+};
+
+
+// ✅ Drop Handler (ONLY ONE)
+const handleDrop = (
+  e: React.DragEvent<HTMLDivElement>,
+  type: "photo" | "video"
+) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const files = e.dataTransfer.files;
+
+  if (files && files.length > 0) {
+    const file = files[0];
+
+    setFormData(prev => ({
+      ...prev,
+      [type]: file,
+    }));
+
+    e.dataTransfer.clearData();
+  }
+};
+
   // ✅ INITIAL STATE - For reset
   const initialFormState = {
     mainCategoryId: "",
@@ -442,128 +489,229 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
   };
 
   // ✅ FIXED SAVE HANDLER - WITH IMAGE/VIDEO URL SUPPORT
-  const handleSave = async () => {
-    if (!formData.mainCategoryId) {
-      alert("Select main category");
-      return;
-    }
+  // const handleSave = async () => {
+  //   if (!formData.mainCategoryId) {
+  //     alert("Select main category");
+  //     return;
+  //   }
 
-    if (selectedMainCategory?.hasSubCategory && !formData.subCategoryId) {
-      alert("Select sub category");
-      return;
-    }
+  //   if (selectedMainCategory?.hasSubCategory && !formData.subCategoryId) {
+  //     alert("Select sub category");
+  //     return;
+  //   }
 
-    if (!formData.childCategoryId) {
-      alert("Select child category");
-      return;
-    }
+  //   if (!formData.childCategoryId) {
+  //     alert("Select child category");
+  //     return;
+  //   }
 
-    if (!formData.deepChildCategoryId) {
-      alert("Select deep child category");
-      return;
-    }
+  //   if (!formData.deepChildCategoryId) {
+  //     alert("Select deep child category");
+  //     return;
+  //   }
 
-    if (!formData.firstTitle.trim()) {
-      alert("Enter first title");
-      return;
-    }
+  //   if (!formData.firstTitle.trim()) {
+  //     alert("Enter first title");
+  //     return;
+  //   }
 
-    setIsSaving(true);
+  //   setIsSaving(true);
 
-    try {
-      const subDeepKey = editingCategory
-        ? formData.subDeepKey
-        : generateCategoryId(formData.firstTitle);
+  //   try {
+  //     const subDeepKey = editingCategory
+  //       ? formData.subDeepKey
+  //       : generateCategoryId(formData.firstTitle);
 
-      const priceAfterGst = calculatePriceAfterGst();
-      const currentPrice = calculateCurrentPrice(priceAfterGst);
+  //     const priceAfterGst = calculatePriceAfterGst();
+  //     const currentPrice = calculateCurrentPrice(priceAfterGst);
 
-      const subDeepData: any = {
-        mainCategoryId: formData.mainCategoryId,
-        subCategoryId: formData.subCategoryId || null,
-        childCategoryId: formData.childCategoryId,
-        deepChildCategoryId: formData.deepChildCategoryId,
-        subDeepKey,
+  //     const subDeepData: any = {
+  //       mainCategoryId: formData.mainCategoryId,
+  //       subCategoryId: formData.subCategoryId || null,
+  //       childCategoryId: formData.childCategoryId,
+  //       deepChildCategoryId: formData.deepChildCategoryId,
+  //       subDeepKey,
 
-        firstTitle: formData.firstTitle,
-        secondTitle: formData.secondTitle,
-        description: formData.description,
-        subDeepCategoryVisible: formData.subDeepCategoryVisible,
-        webviewUrl: formData.webviewUrl,
+  //       firstTitle: formData.firstTitle,
+  //       secondTitle: formData.secondTitle,
+  //       description: formData.description,
+  //       subDeepCategoryVisible: formData.subDeepCategoryVisible,
+  //       webviewUrl: formData.webviewUrl,
 
-        minTime: formData.minTime,
-        maxTime: formData.maxTime,
-        minTimeVisible: formData.minTimeVisible,
-        maxTimeVisible: formData.maxTimeVisible,
+  //       minTime: formData.minTime,
+  //       maxTime: formData.maxTime,
+  //       minTimeVisible: formData.minTimeVisible,
+  //       maxTimeVisible: formData.maxTimeVisible,
 
-        originalPrice: Number(formData.originalPrice) || 0,
-        discountType: formData.discountType,
-        discountValue: Number(formData.discountValue) || 0,
-        gst: Number(formData.gst) || 0,
-        gstType: formData.gstType,
+  //       originalPrice: Number(formData.originalPrice) || 0,
+  //       discountType: formData.discountType,
+  //       discountValue: Number(formData.discountValue) || 0,
+  //       gst: Number(formData.gst) || 0,
+  //       gstType: formData.gstType,
 
-        priceAfterGst,
-        currentPrice,
-        currentPriceVisible: true,
+  //       priceAfterGst,
+  //       currentPrice,
+  //       currentPriceVisible: true,
 
-        firstTitleVisible: formData.firstTitleVisible,
-        secondTitleVisible: formData.secondTitleVisible,
-        descriptionVisible: formData.descriptionVisible,
-        webviewUrlVisible: formData.webviewUrlVisible,
-        originalPriceVisible: formData.originalPriceVisible,
+  //       firstTitleVisible: formData.firstTitleVisible,
+  //       secondTitleVisible: formData.secondTitleVisible,
+  //       descriptionVisible: formData.descriptionVisible,
+  //       webviewUrlVisible: formData.webviewUrlVisible,
+  //       originalPriceVisible: formData.originalPriceVisible,
 
-        photoVisible: formData.photoVisible,
-        videoVisible: formData.videoVisible,
-      };
+  //       photoVisible: formData.photoVisible,
+  //       videoVisible: formData.videoVisible,
+  //     };
 
-      // ✅ FIXED: Backend expects 'image' field, not 'imageUri'
-      // ✅ File Upload (Priority 1)
-      if (formData.photo instanceof File) {
-        subDeepData.imageFile = formData.photo;
-      } 
-      // ✅ URL (Priority 2)
-      else if (formData.imageUrl && formData.imageUrl.trim() !== "") {
-        subDeepData.image = formData.imageUrl.trim();  // 🔥 imageUri → image
-      }
+  //     // ✅ FIXED: Backend expects 'image' field, not 'imageUri'
+  //     // ✅ File Upload (Priority 1)
+  //     if (formData.photo instanceof File) {
+  //       subDeepData.imageFile = formData.photo;
+  //     } 
+  //     // ✅ URL (Priority 2)
+  //     else if (formData.imageUrl && formData.imageUrl.trim() !== "") {
+  //       subDeepData.image = formData.imageUrl.trim();  // 🔥 imageUri → image
+  //     }
 
-      // ✅ FIXED: Backend expects 'video' field, not 'videoUri'
-      if (formData.video instanceof File) {
-        subDeepData.videoFile = formData.video;
-      }
-      else if (formData.videoUrl && formData.videoUrl.trim() !== "") {
-        subDeepData.video = formData.videoUrl.trim();  // 🔥 videoUri → video
-      }
+  //     // ✅ FIXED: Backend expects 'video' field, not 'videoUri'
+  //     if (formData.video instanceof File) {
+  //       subDeepData.videoFile = formData.video;
+  //     }
+  //     else if (formData.videoUrl && formData.videoUrl.trim() !== "") {
+  //       subDeepData.video = formData.videoUrl.trim();  // 🔥 videoUri → video
+  //     }
 
-      console.log("📦 SENDING SUB DEEP CHILD DATA:", {
-        ...subDeepData,
-        imageFile: subDeepData.imageFile ? subDeepData.imageFile.name : null,
-        videoFile: subDeepData.videoFile ? subDeepData.videoFile.name : null,
-        image: subDeepData.image,
-        video: subDeepData.video
-      });
+  //     console.log("📦 SENDING SUB DEEP CHILD DATA:", {
+  //       ...subDeepData,
+  //       imageFile: subDeepData.imageFile ? subDeepData.imageFile.name : null,
+  //       videoFile: subDeepData.videoFile ? subDeepData.videoFile.name : null,
+  //       image: subDeepData.image,
+  //       video: subDeepData.video
+  //     });
 
-      if (editingCategory) {
-        await updateSubDeepChildCategory({
-          ...subDeepData,
-          documentId: formData.subDeepKey,
-        });
-        alert("✅ Sub Deep Category Updated");
-      } else {
-        await addSubDeepChildCategory(subDeepData);
-        alert("✅ Sub Deep Category Added");
+  //     if (editingCategory) {
+  //       await updateSubDeepChildCategory({
+  //         ...subDeepData,
+  //         documentId: formData.subDeepKey,
+  //       });
+  //       alert("✅ Sub Deep Category Updated");
+  //     } else {
+  //       await addSubDeepChildCategory(subDeepData);
+  //       alert("✅ Sub Deep Category Added");
         
-        // ✅ RESET FORM AFTER SUCCESSFUL ADD
-        resetForm();
-      }
+  //       // ✅ RESET FORM AFTER SUCCESSFUL ADD
+  //       resetForm();
+  //     }
 
-      onSuccess?.();
-    } catch (e) {
-      console.error(e);
-      alert("Failed to save Sub Deep Category");
-    } finally {
-      setIsSaving(false);
+  //     onSuccess?.();
+  //   } catch (e) {
+  //     console.error(e);
+  //     alert("Failed to save Sub Deep Category");
+  //   } finally {
+  //     setIsSaving(false);
+  //   }
+  // };
+const handleSave = async () => {
+  if (!formData.mainCategoryId) {
+    alert("Select main category");
+    return;
+  }
+
+  if (selectedMainCategory?.hasSubCategory && !formData.subCategoryId) {
+    alert("Select sub category");
+    return;
+  }
+
+  if (!formData.childCategoryId) {
+    alert("Select child category");
+    return;
+  }
+
+  if (!formData.deepChildCategoryId) {
+    alert("Select deep child category");
+    return;
+  }
+
+  if (!formData.firstTitle.trim()) {
+    alert("Enter first title");
+    return;
+  }
+
+  setIsSaving(true);
+
+  try {
+    const subDeepKey = editingCategory
+      ? formData.subDeepKey
+      : generateCategoryId(formData.firstTitle);
+
+    const subDeepData: any = {
+      mainCategoryId: formData.mainCategoryId,
+      subCategoryId: formData.subCategoryId || null,
+      childCategoryId: formData.childCategoryId,
+      deepChildCategoryId: formData.deepChildCategoryId,
+      subDeepKey,
+
+      firstTitle: formData.firstTitle,
+      secondTitle: formData.secondTitle,
+      description: formData.description,
+      subDeepCategoryVisible: formData.subDeepCategoryVisible,
+      webviewUrl: formData.webviewUrl,
+
+      minTime: formData.minTime,
+      maxTime: formData.maxTime,
+      minTimeVisible: formData.minTimeVisible,
+      maxTimeVisible: formData.maxTimeVisible,
+
+      originalPrice: Number(formData.originalPrice) || 0,
+      discountType: formData.discountType,
+      discountValue: Number(formData.discountValue) || 0,
+      gst: Number(formData.gst) || 0,
+      gstType: formData.gstType,
+
+      firstTitleVisible: formData.firstTitleVisible,
+      secondTitleVisible: formData.secondTitleVisible,
+      descriptionVisible: formData.descriptionVisible,
+      webviewUrlVisible: formData.webviewUrlVisible,
+      originalPriceVisible: formData.originalPriceVisible,
+      photoVisible: formData.photoVisible,
+      videoVisible: formData.videoVisible,
+    };
+
+    // 🔹 Image
+    if (formData.photo instanceof File) {
+      subDeepData.imageFile = formData.photo;
+    } else if (formData.imageUrl?.trim()) {
+      subDeepData.image = formData.imageUrl.trim();
     }
-  };
+
+    // 🔹 Video
+    if (formData.video instanceof File) {
+      subDeepData.videoFile = formData.video;
+    } else if (formData.videoUrl?.trim()) {
+      subDeepData.video = formData.videoUrl.trim();
+    }
+
+    if (editingCategory) {
+      await updateSubDeepChildCategory({
+        ...subDeepData,
+        documentId: formData.subDeepKey,
+      });
+      alert("✅ Sub Deep Category Updated");
+    } else {
+      await addSubDeepChildCategory(subDeepData);
+      alert("✅ Sub Deep Category Added");
+      resetForm();
+    }
+
+    onSuccess?.();
+
+  } catch (e) {
+    console.error(e);
+    alert("Failed to save Sub Deep Category");
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   const filteredMainCategories = mainCategories
     .filter(cat => cat?.name && cat.name.toLowerCase().includes(mainSearch.toLowerCase()))
@@ -780,7 +928,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
         )}
       </div>
 
-      {selectedDeepCategory && (
+      
         <>
           <div className="mb-6 rounded-md border-2 border-purple-600 bg-purple-50 p-4">
             <div className="flex items-center justify-between">
@@ -958,7 +1106,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
                 <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
                   <label className="block font-semibold text-gray-900 mb-2">Discount Value</label>
                   <input
-                    type="number"
+                    type="text"
                     name="discountValue"
                     value={formData.discountValue}
                     onChange={handleChange}
@@ -1074,7 +1222,13 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
               <h3 className="font-bold text-gray-900 border-b pb-2">Media Uploads</h3>
 
               {/* IMAGE UPLOAD - File + URL */}
-              <div className="rounded-md border border-gray-300 p-4">
+              {/* <div className="rounded-md border border-gray-300 p-4"> */}
+              <div
+  className="rounded-md border-2 border-dashed border-gray-400 p-4 hover:border-blue-600 transition-colors"
+  onDragOver={handleDragOver}
+  onDrop={(e) => handleDrop(e, "photo")}
+>
+
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <label className="block font-medium text-gray-900">Image Upload</label>
@@ -1147,7 +1301,13 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
               </div>
 
               {/* VIDEO UPLOAD - File + URL */}
-              <div className="rounded-md border border-gray-300 p-4">
+              {/* <div className="rounded-md border border-gray-300 p-4"> */}
+              <div
+  className="rounded-md border-2 border-dashed border-gray-400 p-4 hover:border-blue-600 transition-colors"
+  onDragOver={handleDragOver}
+  onDrop={(e) => handleDrop(e, "video")}
+>
+
                 <div className="flex items-center justify-between mb-3">
                   <label className="block font-medium text-gray-900">Video Upload</label>
                   <div className="flex items-center gap-2">
@@ -1217,7 +1377,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
             </button>
           </div>
         </>
-      )}
+     
     </div>
   );
 };

@@ -2,16 +2,16 @@
 
 import React from "react";
 import Link from "next/link";
-import { Users, Smartphone, Search, Image, CreditCard, FileX } from "lucide-react";
+import { Users, Smartphone, Search, Image, CreditCard, FileX, FileText } from "lucide-react";
 
 export default function UserManagementPage() {
     const modules = [
-        { name: "Users", href: "/user-management/users", icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-        { name: "User App", href: "/user-management/user-app", icon: Smartphone, color: "text-green-600", bg: "bg-green-50" },
+       
         { name: "Search Keywords", href: "/user-management/search-keywords", icon: Search, color: "text-purple-600", bg: "bg-purple-50" },
         { name: "Banner Image", href: "/user-management/banner-image", icon: Image, color: "text-orange-600", bg: "bg-orange-50" },
         { name: "Advance Payment", href: "/user-management/advance-payment", icon: CreditCard, color: "text-indigo-600", bg: "bg-indigo-50" },
         { name: "Cancellation Form", href: "/user-management/cancellation-form", icon: FileX, color: "text-red-600", bg: "bg-red-50" },
+         { name: "Cancellation Policy", href: "/user-management/cancellation-policy", icon: FileText, color: "text-red-600", bg: "bg-red-50" },
     ];
 
     return (

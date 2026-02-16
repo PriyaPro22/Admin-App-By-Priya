@@ -22,7 +22,8 @@ import {
   ChevronRight,
   Power,
   Sun,
-  Moon
+  Moon,
+  Smartphone
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 
@@ -81,7 +82,15 @@ const Sidebar: React.FC<SidebarProps> = ({
   // ];
 const menuItems = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/" },
-  { name: "User Management", icon: Users, href: "/user-management" },
+  { name: "User Management", icon: Users, href: "/user-management",
+      subItems: [
+       { name: "Users", href: "/user-management/users", icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
+        { name: "User App", href: "/user-management", icon: Smartphone, color: "text-green-600", bg: "bg-green-50" },
+     
+    ]
+   },
+
+
   {
     name: "Partner Management",
     icon: Handshake,
@@ -89,7 +98,8 @@ const menuItems = [
     subItems: [
       { name: "Partner App", href: "/partner-management/partner-app" },
       { name: "Partners", href: "/partner-management/partners" },
-      { name: "Dealer Panel", href: "/partner-management/dealer-panel" }
+      { name: "Dealer Panel", href: "/partner-management/dealer-panel" },
+     
     ]
   },
   { name: "Service Management", icon: Power, href: "/service-booking" },

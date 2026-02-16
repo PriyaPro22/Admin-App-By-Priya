@@ -8,6 +8,8 @@ import SubCategoryForm from "./forms/SubCategoryForm";
 import ChildCategoryForm from "./forms/ChildCategoryForm";
 import DeepChildCategoryForm from "./forms/DeepChildCategoryForm";
 import SubDeepChildCategoryForm from "./forms/SubDeepChildCategoryForm";
+import { useRouter } from "next/navigation";
+
 
 import { useCategory, CategoryProvider } from "../context/CategoryContext";
 import CategoryList from "./CategoryList";
@@ -20,10 +22,15 @@ const sanitizeUrl = (url?: string) => {
     return url.trim();
 };
 
+
+
 const InventoryDashboard = () => {
+     const router = useRouter(); 
     const [activeForm, setActiveForm] = useState<string | null>(null);
     const [activeView, setActiveView] = useState<string | null>(null); // 'mainList', 'subList', 'childList'
     const [isProductListingSelected, setIsProductListingSelected] = useState(false);
+    const [isSparePartSelected, setIsSparePartSelected] = useState(false);
+
     const { theme } = useTheme();
     const isDark = theme === "dark";
 
@@ -55,6 +62,10 @@ const [selectedDeepCategoryName, setSelectedDeepCategoryName] = useState<string 
     const [showAddMissingModal, setShowAddMissingModal] = useState(false);
     const [showVideoModal, setShowVideoModal] = useState(false);
     const REQUIRED_SERVICES = ["Installation", "Repair", "Services", "childCatVideos"];
+
+    // image modal
+const [imageUrlInput, setImageUrlInput] = useState("");
+
 
 
     // Mock Video State (Should eventually be in context or fetched)
@@ -914,47 +925,115 @@ useEffect(() => {
     const [showImageModal, setShowImageModal] = useState(false);
     const [showLinkModal, setShowLinkModal] = useState(false);
 
-    const handleImageSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    // const handleImageSubmit = async (e: React.FormEvent) => {
+    //     e.preventDefault();
 
-        if (!selectedMainCategoryId) {
-            alert("Main Category missing");
-            return;
+    //     if (!selectedMainCategoryId) {
+    //         alert("Main Category missing");
+    //         return;
+    //     }
+
+    //     console.log("🚀 SUBMITTING PENDING IMAGES FOR ID:", selectedMainCategoryId);
+
+    //     try {
+    //         for (const img of pendingImages) {
+    //             if (!img.url && !img.file) continue;
+
+    //             console.log("📤 POSTing Image:", img.title || "Untitled");
+    //             await addChildCategoryMedia(
+    //                 selectedMainCategoryId,
+    //                 "images",
+    //                 {
+    //                     imageTitle: imageGroupTitle.trim() || img.title || "",
+    //                     url: img.url,
+    //                     file: img.file as any,
+    //                     visibility: img.visible ?? false // ✅ Default to false
+    //                 },
+    //                 selectedSubCategoryId || undefined
+    //             );
+    //         }
+
+    //         // Refresh media after all uploads using centralized fetcher
+    //         await fetchCurrentMedia();
+
+    //         alert("✅ Images added successfully with POST!");
+    //         setPendingImages([]);
+    //         setImageGroupTitle(""); // ✅ Clear section title
+    //         setShowImageModal(false);
+
+    //     } catch (err) {
+    //         console.error("❌ Image submission failed:", err);
+    //         alert("❌ Failed to add images. Check console.");
+    //     }
+    // };
+
+ const handleImageSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedMainCategoryId) {
+        alert("Main Category missing");
+        return;
+    }
+
+    // ✅ Remove empty entries first
+    const validImages = pendingImages.filter(
+        (img) => img.file || (img.url && img.url.trim() !== "")
+    );
+
+    if (validImages.length === 0) {
+        alert("Please add at least one valid image (file or URL)");
+        return;
+    }
+
+    console.log("🚀 SUBMITTING IMAGES FOR:", selectedMainCategoryId);
+
+    try {
+        for (const img of validImages) {
+
+            console.log("📤 Uploading:", img.title || "Untitled");
+
+            await addChildCategoryMedia(
+                selectedMainCategoryId,
+                "images",
+                {
+                    imageTitle:
+                        imageGroupTitle?.trim() ||
+                        img.title?.trim() ||
+                        "Untitled Image",
+
+                    // ✅ Only send file if exists
+                    file: img.file ? img.file : undefined,
+
+                    // ✅ Only send URL if no file
+                    url: img.file
+                        ? undefined
+                        : img.url?.trim() || undefined,
+
+                    visibility: img.visible ?? false
+                },
+                selectedSubCategoryId || undefined
+            );
         }
 
-        console.log("🚀 SUBMITTING PENDING IMAGES FOR ID:", selectedMainCategoryId);
+        // ✅ Refresh media properly
+        await fetchCurrentMedia(
+            selectedMainCategoryId,
+            selectedSubCategoryId || undefined
+        );
 
-        try {
-            for (const img of pendingImages) {
-                if (!img.url && !img.file) continue;
+        alert("✅ Images uploaded successfully!");
 
-                console.log("📤 POSTing Image:", img.title || "Untitled");
-                await addChildCategoryMedia(
-                    selectedMainCategoryId,
-                    "images",
-                    {
-                        imageTitle: imageGroupTitle.trim() || img.title || "",
-                        url: img.url,
-                        file: img.file as any,
-                        visibility: img.visible ?? false // ✅ Default to false
-                    },
-                    selectedSubCategoryId || undefined
-                );
-            }
+        // ✅ Reset
+        setPendingImages([]);
+        setImageGroupTitle("");
+        setImageUrlInput("");
+        setShowImageModal(false);
 
-            // Refresh media after all uploads using centralized fetcher
-            await fetchCurrentMedia();
-
-            alert("✅ Images added successfully with POST!");
-            setPendingImages([]);
-            setImageGroupTitle(""); // ✅ Clear section title
-            setShowImageModal(false);
-
-        } catch (err) {
-            console.error("❌ Image submission failed:", err);
-            alert("❌ Failed to add images. Check console.");
-        }
-    };
+    } catch (err) {
+        console.error("❌ Image submission failed:", err);
+        alert("❌ Failed to upload images. Check console.");
+    }
+};
 
     const handleLinkSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -1126,6 +1205,35 @@ useEffect(() => {
                                 Open System <ArrowRight className="h-4 w-4" />
                             </div>
                         </button>
+
+                        <button
+    onClick={() => router.push("/partner-management/partner-app/spare-part")}
+
+    className={`border rounded-[2.5rem] p-10 flex flex-col items-center justify-center group transition-all duration-500 hover:-translate-y-2 active:scale-[0.98] relative overflow-hidden ring-4 ring-transparent ${isDark
+        ? 'bg-[#111C44] border-gray-800 hover:shadow-[0_40px_80px_-15px_rgba(16,185,129,0.3)] hover:ring-emerald-900/20'
+        : 'bg-white border-gray-100 hover:shadow-[0_40px_80px_-15px_rgba(16,185,129,0.15)] hover:ring-emerald-50'
+        }`}
+>
+    <div className="absolute top-0 right-0 -m-8 h-32 w-32 bg-emerald-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+    <div className="relative bg-emerald-50 p-8 rounded-[2rem] mb-8 group-hover:bg-emerald-600 group-hover:rotate-[15deg] transition-all duration-500 shadow-sm group-hover:shadow-emerald-200 group-hover:shadow-2xl text-center">
+        <Box className="h-14 w-14 text-emerald-600 group-hover:text-white transition-colors duration-300 mx-auto" />
+    </div>
+
+    <div className="relative text-center">
+        <span className={`text-3xl font-black tracking-tight block mb-3 transition-colors ${isDark ? 'text-white group-hover:text-emerald-400' : 'text-blue-950 group-hover:text-emerald-700'}`}>
+            Spare Part
+        </span>
+        <p className={`text-lg font-medium max-w-[240px] leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            Manage spare parts inventory and stock levels
+        </p>
+    </div>
+
+    <div className="mt-10 flex items-center gap-2 text-emerald-600 font-bold uppercase text-xs tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-4 group-hover:translate-y-0">
+        Open System <ArrowRight className="h-4 w-4" />
+    </div>
+</button>
+
 
                         <div className={`border border-dashed rounded-[2.5rem] p-10 flex flex-col items-center justify-center opacity-60 grayscale hidden md:flex ${isDark ? 'bg-[#111C44]/50 border-gray-700' : 'bg-gray-100/50 border-gray-200'}`}>
                             <div className={`p-8 rounded-[2rem] mb-8 ${isDark ? 'bg-gray-800' : 'bg-gray-200/50'}`}>
@@ -1896,10 +2004,77 @@ useEffect(() => {
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">Add Video</label>
                                                     <div className="space-y-3">
-                                                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-all">
-                                                            <span className="text-sm font-bold text-blue-600">Choose Video</span>
-                                                            <input type="file" className="hidden" accept="video/*" multiple onChange={handleVideoSelect} />
-                                                        </label>
+                                                       {/* FILE UPLOAD */}
+{/* Image Upload Box */}
+{/* <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-all">
+    <span className="text-sm font-bold text-blue-600">Choose Images</span>
+    <input
+        type="file"
+        className="hidden"
+        accept="image/*"
+        multiple
+        onChange={(e) => {
+            if (e.target.files) {
+                const newFiles = Array.from(e.target.files).map(file => ({
+                    id: Math.random().toString(36).substr(2, 9),
+                    file,
+                    url: "",
+                    title: file.name.replace(/\.[^/.]+$/, ""),
+                    visible: false,
+                    previewUrl: URL.createObjectURL(file)
+                }));
+
+                setPendingImages(prev => [...prev, ...newFiles]);
+            }
+        }}
+    />
+    Enter Image Url
+    <input type="url" placeholder="Enter your imGE URL "  />
+</label> */}
+
+
+{/* OR Divider */}
+{/* <div className="flex items-center justify-center my-3">
+    <div className="h-px bg-gray-300 flex-1" />
+    <span className="px-2 text-xs text-gray-400 font-semibold">OR</span>
+    <div className="h-px bg-gray-300 flex-1" />
+</div> */}
+
+{/* URL Input Section */}
+{/* <div className="flex gap-2">
+    <input
+        type="text"
+        value={imageUrlInput}
+        onChange={(e) => setImageUrlInput(e.target.value)}
+        placeholder="Paste Image URL here..."
+        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+    />
+
+    <button
+        type="button"
+        onClick={() => {
+            if (!imageUrlInput.trim()) return;
+
+            setPendingImages(prev => [
+                ...prev,
+                {
+                    id: Math.random().toString(36).substr(2, 9),
+                    file: null,
+                    url: imageUrlInput.trim(),
+                    title: "Image from URL",
+                    visible: false,
+                    previewUrl: imageUrlInput.trim()
+                }
+            ]);
+
+            setImageUrlInput("");
+        }}
+        className="bg-blue-600 text-white px-4 rounded-lg text-sm font-bold hover:bg-blue-700"
+    >
+        Add
+    </button>
+</div> */}
+
 
                                                         <div className="flex gap-2">
                                                             <input
@@ -2093,108 +2268,386 @@ useEffect(() => {
 
                     {/* ADD IMAGE MODAL */}
                     {
-                        showImageModal && (
-                            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-                                <div className="w-full max-w-[310px] bg-white rounded-xl shadow-2xl p-4 relative max-h-[90vh] overflow-y-auto">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h3 className="text-xl font-bold text-blue-950">Add Images</h3>
-                                        <button onClick={() => setShowImageModal(false)} className="text-gray-400 hover:text-gray-600">
-                                            <X size={24} />
-                                        </button>
-                                    </div>
+//                         showImageModal && (
+//                             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+//                                 <div className="w-full max-w-[310px] bg-white rounded-xl shadow-2xl p-4 relative max-h-[90vh] overflow-y-auto">
+//                                     <div className="flex justify-between items-center mb-6">
+//                                         <h3 className="text-xl font-bold text-blue-950">Add Images</h3>
+//                                         <button onClick={() => setShowImageModal(false)} className="text-gray-400 hover:text-gray-600">
+//                                             <X size={24} />
+//                                         </button>
+//                                     </div>
 
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-1">Section Title</label>
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={imageGroupTitle}
-                                                    onChange={(e) => setImageGroupTitle(e.target.value)}
-                                                    placeholder="e.g., Photos"
-                                                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-                                                />
-                                            </div>
-                                        </div>
+//                                     <div className="space-y-4">
+//                                         <div>
+//                                             <label className="block text-sm font-bold text-gray-700 mb-1">Section Title</label>
+//                                             <div className="flex items-center gap-2">
+//                                                 <input
+//                                                     type="text"
+//                                                     value={imageGroupTitle}
+//                                                     onChange={(e) => setImageGroupTitle(e.target.value)}
+//                                                     placeholder="e.g., Photos"
+//                                                     className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+//                                                 />
+//                                             </div>
+//                                         </div>
 
-                                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-all">
-                                            <span className="text-sm font-bold text-blue-600">Choose Images</span>
-                                            <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => {
-                                                if (e.target.files) {
-                                                    const newFiles = Array.from(e.target.files).map(file => ({
-                                                        id: Math.random().toString(36).substr(2, 9),
-                                                        file,
-                                                        title: file.name.replace(/\.[^/.]+$/, ""),
-                                                        visible: false, // Default to OFF
-                                                        previewUrl: URL.createObjectURL(file)
-                                                    }));
-                                                    setPendingImages(prev => [...prev, ...newFiles]);
-                                                }
-                                            }} />
-                                        </label>
+//                                         {/* <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-all">
+//                                             <span className="text-sm font-bold text-blue-600">Choose Images</span>
+//                                             <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => {
+//                                                 if (e.target.files) {
+//                                                     const newFiles = Array.from(e.target.files).map(file => ({
+//                                                         id: Math.random().toString(36).substr(2, 9),
+//                                                         file,
+//                                                         title: file.name.replace(/\.[^/.]+$/, ""),
+//                                                         visible: false, // Default to OFF
+//                                                         previewUrl: URL.createObjectURL(file)
+//                                                     }));
+//                                                     setPendingImages(prev => [...prev, ...newFiles]);
+//                                                 }
+//                                             }} />
+//                                         </label> */}
+//                                         {/* FILE UPLOAD */}
+// <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-all">
+//     <span className="text-sm font-bold text-blue-600">
+//         Choose Images
+//     </span>
 
-                                        <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                                            {pendingImages.map((img, idx) => (
-                                                <div key={img.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
-                                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                        <img
-                                                            src={img.previewUrl}
-                                                            className="h-8 w-8 object-cover rounded shadow-sm cursor-pointer hover:opacity-80"
-                                                            onClick={() => setPreviewImageUrl(img.previewUrl || null)}
-                                                            alt="preview"
-                                                        />
-                                                        <input
-                                                            type="text"
-                                                            value={img.title}
-                                                            onChange={(e) => {
-                                                                const newI = [...pendingImages];
-                                                                newI[idx].title = e.target.value;
-                                                                setPendingImages(newI);
-                                                            }}
-                                                            className="bg-transparent text-xs font-bold w-full border-none p-0 focus:ring-0"
-                                                        />
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <button onClick={() => setPendingImages(prev => prev.filter((_, i) => i !== idx))} className="text-red-500 p-1 hover:bg-red-50 rounded-full transition-colors">
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
+//     <input
+//         type="file"
+//         className="hidden"
+//         accept="image/*"
+//         multiple
+//         onChange={(e) => {
+//             if (e.target.files) {
+//                 const newFiles = Array.from(e.target.files).map(file => ({
+//                     id: Math.random().toString(36).substr(2, 9),
+//                     file,
+//                     url: "",
+//                     title: file.name.replace(/\.[^/.]+$/, ""),
+//                     visible: false,
+//                     previewUrl: URL.createObjectURL(file)
+//                 }));
 
-                                        <button
-                                            onClick={async () => {
-                                                for (const img of pendingImages) {
-                                                    await addChildCategoryMedia(
-                                                        selectedMainCategoryId!,
-                                                        "images",
-                                                        {
-                                                            imageTitle: img.title,
-                                                            file: img.file || undefined,
-                                                            visibility: img.visible
-                                                        },
-                                                        selectedSubCategoryId || undefined
-                                                    );
-                                                }
-                                                await updateChildCategoryMediaGroup(
-                                                    selectedMainCategoryId!,
-                                                    "images",
-                                                    { name: imageGroupTitle, visibility: imageGroupTitleVisible },
-                                                    selectedSubCategoryId || undefined
-                                                );
-                                                setShowImageModal(false);
-                                                setPendingImages([]);
-                                                fetchCurrentMedia();
-                                            }}
-                                            className="w-full bg-[#E57355] text-white font-bold py-3.5 rounded-xl shadow-lg mt-2 active:scale-[0.98] transition-all"
-                                        >
-                                            Upload
-                                        </button>
-                                    </div>
-                                </div>
+//                 setPendingImages(prev => [...prev, ...newFiles]);
+//             }
+//         }}
+//     />
+// </label>
+
+// {/* OR Divider */}
+// <div className="flex items-center justify-center my-3">
+//     <div className="h-px bg-gray-300 flex-1" />
+//     <span className="px-2 text-xs text-gray-400 font-semibold">OR</span>
+//     <div className="h-px bg-gray-300 flex-1" />
+// </div>
+
+// {/* URL INPUT */}
+// <div className="flex gap-2">
+//     <input
+//         type="url"
+//         value={imageUrlInput}
+//         onChange={(e) => setImageUrlInput(e.target.value)}
+//         placeholder="Paste Image URL here..."
+//         className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+//     />
+
+//     <button
+//         type="button"
+//         onClick={() => {
+//             if (!imageUrlInput.trim()) return;
+
+//             setPendingImages(prev => [
+//                 ...prev,
+//                 {
+//                     id: Math.random().toString(36).substr(2, 9),
+//                     file: null,
+//                     url: imageUrlInput.trim(),
+//                     title: "Image from URL",
+//                     visible: false,
+//                     previewUrl: imageUrlInput.trim()
+//                 }
+//             ]);
+
+//             setImageUrlInput("");
+//         }}
+//         className="bg-blue-600 text-white px-4 rounded-lg text-sm font-bold hover:bg-blue-700"
+//     >
+//         Add
+//     </button>
+// </div>
+
+
+//                                         <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+//                                             {pendingImages.map((img, idx) => (
+//                                                 <div key={img.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
+//                                                     <div className="flex items-center gap-2 min-w-0 flex-1">
+//                                                         <img
+//                                                             src={img.previewUrl}
+//                                                             className="h-8 w-8 object-cover rounded shadow-sm cursor-pointer hover:opacity-80"
+//                                                             onClick={() => setPreviewImageUrl(img.previewUrl || null)}
+//                                                             alt="preview"
+//                                                         />
+//                                                         <input
+//                                                             type="text"
+//                                                             value={img.title}
+//                                                             onChange={(e) => {
+//                                                                 const newI = [...pendingImages];
+//                                                                 newI[idx].title = e.target.value;
+//                                                                 setPendingImages(newI);
+//                                                             }}
+//                                                             className="bg-transparent text-xs font-bold w-full border-none p-0 focus:ring-0"
+//                                                         />
+//                                                     </div>
+//                                                     <div className="flex items-center gap-2">
+//                                                         <button onClick={() => setPendingImages(prev => prev.filter((_, i) => i !== idx))} className="text-red-500 p-1 hover:bg-red-50 rounded-full transition-colors">
+//                                                             <Trash2 size={16} />
+//                                                         </button>
+//                                                     </div>
+//                                                 </div>
+//                                             ))}
+//                                         </div>
+
+//                                         <button
+//                                             onClick={async () => {
+//                                                 for (const img of pendingImages) {
+//                                                     await addChildCategoryMedia(
+//                                                         selectedMainCategoryId!,
+//                                                         "images",
+//                                                         {
+//                                                             imageTitle: img.title,
+//                                                             file: img.file || undefined,
+//                                                             visibility: img.visible
+//                                                         },
+//                                                         selectedSubCategoryId || undefined
+//                                                     );
+//                                                 }
+//                                                 await updateChildCategoryMediaGroup(
+//                                                     selectedMainCategoryId!,
+//                                                     "images",
+//                                                     { name: imageGroupTitle, visibility: imageGroupTitleVisible },
+//                                                     selectedSubCategoryId || undefined
+//                                                 );
+//                                                 setShowImageModal(false);
+//                                                 setPendingImages([]);
+//                                                 fetchCurrentMedia();
+//                                             }}
+//                                             className="w-full bg-[#E57355] text-white font-bold py-3.5 rounded-xl shadow-lg mt-2 active:scale-[0.98] transition-all"
+//                                         >
+//                                             Upload
+//                                         </button>
+//                                     </div>
+//                                 </div>
+//                             </div>
+//                         )
+showImageModal && (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+        <div className="w-full max-w-[310px] bg-white rounded-xl shadow-2xl p-4 relative max-h-[90vh] overflow-y-auto">
+
+            <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-blue-950">Add Images</h3>
+                <button
+                    onClick={() => setShowImageModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                >
+                    <X size={24} />
+                </button>
+            </div>
+
+            <div className="space-y-4">
+
+                {/* SECTION TITLE */}
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                        Section Title
+                    </label>
+                    <input
+                        type="text"
+                        value={imageGroupTitle}
+                        onChange={(e) => setImageGroupTitle(e.target.value)}
+                        placeholder="e.g., Photos"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+
+                {/* FILE UPLOAD */}
+                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-all">
+                    <span className="text-sm font-bold text-blue-600">
+                        Choose Images
+                    </span>
+
+                    <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => {
+                            if (!e.target.files) return;
+
+                            const newFiles = Array.from(e.target.files).map(file => ({
+                                id: Math.random().toString(36).substring(2, 9),
+                                file,
+                                url: "",
+                                title: file.name.replace(/\.[^/.]+$/, ""),
+                                visible: false,
+                                previewUrl: URL.createObjectURL(file)
+                            }));
+
+                            setPendingImages(prev => [...prev, ...newFiles]);
+                        }}
+                    />
+                </label>
+
+                {/* OR */}
+                <div className="flex items-center justify-center my-3">
+                    <div className="h-px bg-gray-300 flex-1" />
+                    <span className="px-2 text-xs text-gray-400 font-semibold">OR</span>
+                    <div className="h-px bg-gray-300 flex-1" />
+                </div>
+
+                {/* URL INPUT */}
+                <div className="flex gap-2">
+                    <input
+                        type="url"
+                        value={imageUrlInput}
+                        onChange={(e) => setImageUrlInput(e.target.value)}
+                        placeholder="Paste Image URL here..."
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                    />
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (!imageUrlInput.trim()) return;
+
+                            setPendingImages(prev => [
+                                ...prev,
+                                {
+                                    id: Math.random().toString(36).substring(2, 9),
+                                    file: null,
+                                    url: imageUrlInput.trim(),
+                                    title: "Image from URL",
+                                    visible: false,
+                                    previewUrl: imageUrlInput.trim()
+                                }
+                            ]);
+
+                            setImageUrlInput("");
+                        }}
+                        className="bg-blue-600 text-white px-4 rounded-lg text-sm font-bold hover:bg-blue-700"
+                    >
+                        Add
+                    </button>
+                </div>
+
+                {/* PREVIEW LIST */}
+                <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                    {pendingImages.map((img, idx) => (
+                        <div
+                            key={img.id}
+                            className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200"
+                        >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <img
+                                    src={img.previewUrl}
+                                    className="h-8 w-8 object-cover rounded shadow-sm"
+                                    alt="preview"
+                                />
+                                <input
+                                    type="text"
+                                    value={img.title}
+                                    onChange={(e) => {
+                                        const newArr = [...pendingImages];
+                                        newArr[idx].title = e.target.value;
+                                        setPendingImages(newArr);
+                                    }}
+                                    className="bg-transparent text-xs font-bold w-full border-none p-0 focus:ring-0"
+                                />
                             </div>
-                        )
+
+                            <button
+                                onClick={() =>
+                                    setPendingImages(prev =>
+                                        prev.filter((_, i) => i !== idx)
+                                    )
+                                }
+                                className="text-red-500 p-1 hover:bg-red-50 rounded-full"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+
+                {/* ✅ FIXED UPLOAD BUTTON */}
+                <button
+                    onClick={async () => {
+
+                        if (!selectedMainCategoryId) {
+                            alert("Main category missing");
+                            return;
+                        }
+
+                        const validImages = pendingImages.filter(
+                            (img) => img.file || (img.url && img.url.trim() !== "")
+                        );
+
+                        if (validImages.length === 0) {
+                            alert("Please add at least one image (file or URL)");
+                            return;
+                        }
+
+                        try {
+
+                            for (const img of validImages) {
+
+                                await addChildCategoryMedia(
+                                    selectedMainCategoryId,
+                                    "images",
+                                    {
+                                        imageTitle: img.title || "Untitled Image",
+                                        file: img.file ? img.file : undefined,
+                                        url: img.file ? undefined : img.url?.trim(),
+                                        visibility: img.visible ?? false
+                                    },
+                                    selectedSubCategoryId || undefined
+                                );
+                            }
+
+                            await updateChildCategoryMediaGroup(
+                                selectedMainCategoryId,
+                                "images",
+                                {
+                                    name: imageGroupTitle || "Images",
+                                    visibility: imageGroupTitleVisible
+                                },
+                                selectedSubCategoryId || undefined
+                            );
+
+                            setPendingImages([]);
+                            setImageUrlInput("");
+                            setShowImageModal(false);
+
+                            await fetchCurrentMedia();
+
+                            alert("✅ Images uploaded successfully!");
+
+                        } catch (error) {
+                            console.error("Upload failed:", error);
+                            alert("Upload failed. Check console.");
+                        }
+
+                    }}
+                    className="w-full bg-[#E57355] text-white font-bold py-3.5 rounded-xl shadow-lg mt-2 active:scale-[0.98] transition-all"
+                >
+                    Upload
+                </button>
+
+            </div>
+        </div>
+    </div>
+)
+
                     }
 
                     {/* OVERLAYS */}
