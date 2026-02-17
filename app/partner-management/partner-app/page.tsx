@@ -8,6 +8,7 @@ export default function UserManagementPage() {
     const modules = [
        
         { name: "Video Tutorials", href: "partner-app/video-tutorial", icon: Search, color: "text-purple-600", bg: "bg-purple-50" },
+        { name: "Cancellation & Reshedule", href: "partner-app/cancel-Reshedule", icon: Search, color: "text-purple-600", bg: "bg-purple-50" },
      
       
     ];

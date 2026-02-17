@@ -18,6 +18,151 @@ const departmentList = [
   "Mobile"
 ];
 
+// Watcher Function
+  
+const [selectedCategory, setSelectedCategory] = useState("");
+
+
+const [filteredCategories, setFilteredCategories] = useState([]); // filtered data
+// Delete Modal
+const [deleteItem, setDeleteItem] = useState(null);
+const [deleting, setDeleting] = useState(false);
+// handle edit
+const [editLoading, setEditLoading] = useState(false);
+
+
+
+// HandleSave
+const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+
+  e.preventDefault();
+
+  try {
+    const docId = localStorage.getItem("selectedDocId");
+    const docName = localStorage.getItem("selectedDocName");
+
+    if (!docId || !docName) {
+      alert("Please select category first");
+      return;
+    }
+
+
+    const basePrice = parseFloat(formData.basePrice) || 0;
+    const gstRate = parseFloat(formData.gstRate) || 0;
+
+    let finalPrice = basePrice;
+
+    if (formData.gstStatus === "Excluded") {
+      finalPrice = basePrice + (basePrice * gstRate) / 100;
+    }
+
+    const partKey = formData.partName
+      .replace(/\s+/g, "_")
+      .toLowerCase();
+
+//  const requestBody = {
+
+//   docId: docId,
+//   docName: docName,
+//   department: selectedDepartment, // 👈 ADD THIS
+//   spareParts: {
+//     [partKey]: {
+//       partName: formData.partName,   // 👈 ADD THIS
+//       partPrice: finalPrice,
+//       gstPercent: gstRate,
+//       gstType: formData.gstStatus,
+//       finalPrice: finalPrice,
+//       hasWarranty: formData.warrantyAvailable,
+//       warrantyDays: formData.warrantyAvailable
+//         ? parseInt(formData.warrantyPeriod)
+//         : 0,
+//     },
+//   },
+// };
+
+const requestBody = {
+  _id: docId,          // 👈 yahi selectedDocId bhejna hai
+  docId: docId,
+  docName: docName,
+  spareParts: {
+    [partKey]: {
+      partName: formData.partName,
+      partPrice: basePrice,
+      gstPercent: gstRate,
+      gstType: formData.gstStatus,
+      finalPrice: finalPrice,
+      hasWarranty: formData.warrantyAvailable,
+      warrantyDays: formData.warrantyAvailable
+        ? parseInt(formData.warrantyPeriod)
+        : 0,
+    }
+  }
+};
+
+
+    // 🔥 ADD / EDIT Logic
+    let url = "https://api.bijliwalaaya.in/api/partner-rate-card";
+    let method = "POST";
+
+    if (editingPart) {
+      url = `https://api.bijliwalaaya.in/api/partner-rate-card/${editingPart.id}`;
+      method = "PUT";
+    }
+
+    const res = await fetch(url, {
+      method: method,
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-token": "super_secure_token",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      alert(
+        editingPart
+          ? "✅ Rate card updated successfully"
+          : "✅ Rate card saved successfully"
+      );
+
+      fetchRateCard();
+      handleCloseForm();
+      setEditingPart(null);
+    } else {
+      alert("❌ Failed to save");
+    }
+
+  } catch (error) {
+    console.error("Save Error:", error);
+    alert("Server error");
+  }
+};
+
+const handleCategoryInput = (e) => {
+  const value = e.target.value;
+  setSelectedCategory(value);
+
+  if (!value) {
+    setFilteredCategories(categories);
+    return;
+  }
+
+  const lowerValue = value.toLowerCase();
+
+  const sorted = [...categories].sort((a, b) => {
+    const aStarts = a.name.toLowerCase().startsWith(lowerValue);
+    const bStarts = b.name.toLowerCase().startsWith(lowerValue);
+
+    if (aStarts && !bStarts) return -1;
+    if (!aStarts && bStarts) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  setFilteredCategories(sorted);
+};
+
 const fetchCategoriesByDepartment = async (department) => {
   try {
     setLoadingCategories(true);
@@ -37,11 +182,14 @@ const fetchCategoriesByDepartment = async (department) => {
     const result = await res.json();
     console.log("API Response:", result);
 
-    if (result.success && result.data) {
-      setCategories(result.data);
-    } else {
-      setCategories([]);
-    }
+   if (result.success && result.data) {
+  setCategories(result.data);
+  setFilteredCategories(result.data); // 🔥 important
+} else {
+  setCategories([]);
+  setFilteredCategories([]);
+}
+
   } catch (err) {
     console.error(err);
     setCategories([]);
@@ -51,9 +199,9 @@ const fetchCategoriesByDepartment = async (department) => {
 };
 
 const [selectedDepartment, setSelectedDepartment] = useState("");
-const [categoryOptions, setCategoryOptions] = useState([]);
-const [searchTerm, setSearchTerm] = useState("");
-const [selectedCategory, setSelectedCategory] = useState("");
+// const [categoryOptions, setCategoryOptions] = useState([]);
+// const [searchTerm, setSearchTerm] = useState("");
+// const [selectedCategory, setSelectedCategory] = useState("");
 
 const handleDepartmentChange = (e) => {
   const value = e.target.value;
@@ -74,25 +222,64 @@ const handleDepartmentChange = (e) => {
     setCategories([]);
   }
 };
+// const handleEdit = async (part) => {
+//   try {
+//     setEditingPart(part);
+
+//     const res = await fetch(
+//       `https://api.bijliwalaaya.in/api/partner-rate-card/${part.id}`,
+//       {
+//         method: "GET",
+//         headers: {
+//           "Content-Type": "application/json",
+//           "x-api-token": "super_secure_token",
+//         },
+//       }
+//     );
+
+//     const result = await res.json();
+
+//     if (result.success && result.data) {
+//       const data = result.data;
+
+//       setFormData({
+//         mainCategory: data.docName || "",
+//         subCategory: data.docName || "",
+//         partName: data.partName || "",
+//         basePrice: data.partPrice || "",
+//         gstRate: data.gstPercent || "",
+//         gstStatus: data.gstType || "",
+//         warrantyAvailable: data.hasWarranty || false,
+//         warrantyPeriod: data.warrantyDays || "",
+//       });
+
+//       setSelectedCategory(data.docName);
+//       setShowForm(true);
+//     }
+
+//   } catch (error) {
+//     console.error("Edit Fetch Error:", error);
+//   }
+// };
 
 
 
-const filteredOptions = categoryOptions
-  .filter((item) =>
-    `${item.main} ${item.sub}`
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
-  )
-  .sort((a, b) => {
-    const aMatch = `${a.main} ${a.sub}`
-      .toLowerCase()
-      .startsWith(searchTerm.toLowerCase());
-    const bMatch = `${b.main} ${b.sub}`
-      .toLowerCase()
-      .startsWith(searchTerm.toLowerCase());
+// const filteredOptions = categoryOptions
+//   .filter((item) =>
+//     `${item.main} ${item.sub}`
+//       .toLowerCase()
+//       .includes(searchTerm.toLowerCase())
+//   )
+//   .sort((a, b) => {
+//     const aMatch = `${a.main} ${a.sub}`
+//       .toLowerCase()
+//       .startsWith(searchTerm.toLowerCase());
+//     const bMatch = `${b.main} ${b.sub}`
+//       .toLowerCase()
+//       .startsWith(searchTerm.toLowerCase());
 
-    return bMatch - aMatch; // match wala upar
-  });
+//     return bMatch - aMatch; // match wala upar
+//   });
 
   // Inventory Data
  const [inventory, setInventory] = useState([]);
@@ -249,6 +436,60 @@ const [loadingSubCategory, setLoadingSubCategory] = useState(false);
 //   }));
 // };
 
+const handleEdit = async (item) => {
+  try {
+    setShowForm(true);
+    setEditLoading(true);
+
+    const res = await fetch(
+      `https://api.bijliwalaaya.in/api/partner-rate-card/${item.id}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-token": "super_secure_token",
+        },
+      }
+    );
+
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+      alert("Failed to fetch data from server");
+      return;
+    }
+
+    const categoryData = result.data;
+
+    // 🔥 Important — correct spare part extract
+    const part = categoryData.spareParts?.[item.partKey];
+
+    if (!part) {
+      alert("Spare part not found");
+      return;
+    }
+
+    setFormData({
+      mainCategory: categoryData.docName || "",
+      subCategory: categoryData.docName || "",
+      partName: part.partName || "",
+      basePrice: part.partPrice?.toString() || "",
+      gstRate: part.gstPercent?.toString() || "0",
+      gstStatus: part.gstType || "Excluded",
+      warrantyAvailable: part.hasWarranty ?? false,
+      warrantyPeriod: part.warrantyDays?.toString() || "",
+    });
+
+    setSelectedDepartment(categoryData.department || "");
+    setEditingPart(item);
+
+  } catch (error) {
+    console.error("Edit Fetch Error:", error);
+    alert("Server error while loading edit data");
+  } finally {
+    setEditLoading(false);
+  }
+};
 
 // Data Get
 const formatApiData = (apiData) => {
@@ -257,24 +498,21 @@ const formatApiData = (apiData) => {
   apiData.forEach((category) => {
     // Case 1: Direct spareParts
     if (category.spareParts) {
-      Object.values(category.spareParts).forEach((part) => {
-        partsArray.push({
-          id: part.docId,
-          name: part.partName,
-          subCategory: category.docName,
-          category: category.docName,
-          categoryColor: "blue",
-          basePrice: part.partPrice,
-          gst: part.gstPercent,
-          finalPrice: part.finalPrice,
-          mainCategory: category.docName,
-          gstRate: part.gstPercent,
-          gstStatus: part.gstType,
-          warrantyAvailable: part.hasWarranty,
-          warrantyPeriod: part.warrantyDays,
-        });
-      });
-    }
+  Object.entries(category.spareParts).forEach(([key, part]) => {
+    partsArray.push({
+      id: category.docId,      // document id
+      partKey: key,            // 👈 DELETE ke liye important
+      name: part.partName,
+      subCategory: category.docName,
+      category: category.docName,
+      department: category.department || "N/A",
+      categoryColor: "blue",
+      basePrice: part.partPrice,
+      gst: part.gstPercent,
+      finalPrice: part.finalPrice,
+    });
+  });
+}
 
     // Case 2: Subcategory ke andar spareParts
     if (category.subcategory) {
@@ -339,94 +577,75 @@ const fetchRateCard = async () => {
 
 
 
-  const handleAddNew = () => {
-    setEditingPart(null);
-    setFormData({
-      mainCategory: "Engine Components",
-      subCategory: "Pistons & Rings",
-      partName: "",
-      basePrice: "450.00",
-      gstRate: "18",
-      gstStatus: "Included",
-      warrantyAvailable: true,
-      warrantyPeriod: "365",
-    });
-    setShowForm(true);
-  };
+const handleAddNew = () => {
+  setEditingPart(null);
 
-  const handleEdit = (part) => {
-    setEditingPart(part);
-    setFormData({
-      mainCategory: part.mainCategory || "Engine Components",
-      subCategory: part.subCategory || "Pistons & Rings",
-      partName: part.name || part.partName || "",
-      basePrice: part.basePrice || "450.00",
-      gstRate: part.gst || part.gstRate || "18",
-      gstStatus: part.gstStatus || "Included",
-      warrantyAvailable: part.warrantyAvailable !== undefined ? part.warrantyAvailable : true,
-      warrantyPeriod: part.warrantyPeriod || "365",
-    });
-    setShowForm(true);
-  };
+  setFormData({
+    mainCategory: "",
+    subCategory: "",
+    partName: "",
+    basePrice: "",
+    gstRate: "",
+    gstStatus: "", // default agar chaho
+    warrantyAvailable: false,
+    warrantyPeriod: "",
+  });
+
+  setSelectedDepartment("");
+  setSelectedCategory("");
+  setFilteredCategories([]);
+  setCategories([]);
+
+  setShowForm(true);
+};
+
+  
 
   const handleCloseForm = () => {
     setShowForm(false);
     setEditingPart(null);
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    
-    // Calculate final price
-    const basePrice = parseFloat(formData.basePrice) || 0;
-    const gstRate = parseFloat(formData.gstRate) || 0;
-    
-    let finalPrice = basePrice;
-    if (formData.gstStatus === "Excluded") {
-      finalPrice = basePrice + (basePrice * gstRate / 100);
-    } else {
-      finalPrice = basePrice;
-    }
-
-    const newPart = {
-      id: editingPart ? editingPart.id : `#SP-${Math.floor(4000 + Math.random() * 1000)}`,
-      name: formData.partName,
-      partName: formData.partName,
-      subCategory: formData.subCategory,
-      mainCategory: formData.mainCategory,
-      category: formData.subCategory === "Pistons & Rings" ? "Internal" : 
-                formData.subCategory === "Gaskets" ? "Internal" :
-                formData.subCategory === "Fuel Injectors" ? "Electrical" : "General",
-      categoryColor: "blue",
-      basePrice: formData.basePrice,
-      gst: formData.gstRate,
-      finalPrice: finalPrice.toFixed(2),
-      gstRate: formData.gstRate,
-      gstStatus: formData.gstStatus,
-      warrantyAvailable: formData.warrantyAvailable,
-      warrantyPeriod: formData.warrantyPeriod,
-    };
-
-    if (editingPart) {
-      // Update existing part
-      setInventory(inventory.map(item => 
-        item.id === editingPart.id ? newPart : item
-      ));
-    } else {
-      // Add new part
-      setInventory([...inventory, newPart]);
-    }
-
-    handleCloseForm();
-  };
+  
 
  
 
-  const handleDelete = (id) => {
-    if (confirm("Are you sure you want to delete this item?")) {
-      setInventory(inventory.filter(item => item.id !== id));
+ const confirmDelete = async () => {
+  if (!deleteItem) return;
+
+  setDeleting(true);
+
+  try {
+    const res = await fetch(
+      `https://api.bijliwalaaya.in/api/partner-rate-card/${deleteItem.id}/spare-parts/${deleteItem.partKey}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-token": "super_secure_token",
+        },
+      }
+    );
+
+    const result = await res.json();
+
+    if (res.ok && result.success) {
+      alert("✅ Spare part deleted successfully");
+      fetchRateCard();
+    } else {
+      alert(result.message || "❌ Failed to delete");
     }
-  };
+
+  } catch (error) {
+    console.error("Delete Error:", error);
+    alert("Server error while deleting");
+  } finally {
+    setDeleting(false);
+    setDeleteItem(null); // modal close
+  }
+};
+
+
 
   // Calculate GST and final price for display in form
   const basePrice = parseFloat(formData.basePrice) || 0;
@@ -548,29 +767,43 @@ const fetchRateCard = async () => {
         Loading...
       </div>
     ) : (
-      <select
-        value={selectedCategory}
-       onChange={(e) => {
-  const value = e.target.value;
+      <div className="relative">
+  <input
+    type="text"
+    value={selectedCategory}
+    onChange={handleCategoryInput}
+    placeholder="Search Category..."
+    className="w-full rounded-xl border border-gray-300 px-4 py-3"
+  />
 
-  setSelectedCategory(value);
+  {filteredCategories.length > 0 && (
+    <div className="absolute z-10 bg-white border w-full rounded-xl shadow-lg max-h-60 overflow-y-auto">
+     {filteredCategories.map((item) => (
+  <div
+    key={item.documentId}
+    onClick={() => {
+      setSelectedCategory(item.name);
+      setFilteredCategories([]);
 
-  setFormData((prev) => ({
-    ...prev,
-    subCategory: value,
-  }));
-}}
+      // ✅ store docId & docName in localStorage
+      localStorage.setItem("selectedDocId", item.documentId);
+      localStorage.setItem("selectedDocName", item.name);
 
-        className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="">Select Category</option>
+      setFormData((prev) => ({
+        ...prev,
+        subCategory: item.name,
+      }));
+    }}
+    className="px-4 py-3 hover:bg-blue-50 cursor-pointer"
+  >
+    {item.name}
+  </div>
+))}
 
-        {categories.map((item) => (
-          <option key={item.documentId} value={item.name}>
-            {item.name}
-          </option>
-        ))}
-      </select>
+    </div>
+  )}
+</div>
+
     )}
   </div>
 )}
@@ -623,6 +856,7 @@ const fetchRateCard = async () => {
                className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
 
               >
+                <option value="0">0%</option>
                 <option value="5">5%</option>
                 <option value="12">12%</option>
                 <option value="18">18%</option>
@@ -641,6 +875,7 @@ const fetchRateCard = async () => {
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
 
               >
+                <option>No Gst</option>
                 <option>Excluded</option>
                 <option>Included</option>
               </select>
@@ -752,6 +987,8 @@ const fetchRateCard = async () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50">
+ 
+
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">PART NAME</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">CATEGORY</th>
@@ -821,12 +1058,14 @@ const fetchRateCard = async () => {
 
     {/* Delete */}
     <button
-      onClick={() => handleDelete(item.id)}
-      className="flex items-center gap-2 text-red-600 hover:text-red-800 font-semibold transition"
-    >
-      <Trash2 size={16} />
-      Delete
-    </button>
+  onClick={() => setDeleteItem(item)}
+
+  className="flex items-center gap-2 text-red-600 hover:text-red-800 font-semibold transition"
+>
+  <Trash2 size={16} />
+  Delete
+</button>
+
 
   </div>
 </td>
@@ -855,6 +1094,40 @@ const fetchRateCard = async () => {
           </div>
         </div>
       </div>
+      {deleteItem && (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+    <div className="bg-white rounded-2xl p-8 w-96 shadow-xl">
+      <h3 className="text-xl font-bold text-gray-900 mb-4">
+        Confirm Delete
+      </h3>
+
+      <p className="text-gray-600 mb-6">
+        Are you sure you want to delete{" "}
+        <span className="font-semibold text-red-600">
+          {deleteItem.name}
+        </span>
+        ?
+      </p>
+
+      <div className="flex justify-end gap-4">
+        <button
+          onClick={() => setDeleteItem(null)}
+          className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 font-medium"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={confirmDelete}
+          className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
