@@ -3,6 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
+
 import {
   LayoutDashboard,
   Users,
@@ -80,6 +82,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   //   { name: "Finance", icon: Banknote, href: "/finance" },
   //   { name: "Roles & Permission", icon: ShieldCheck, href: "/add-role" },
   // ];
+  const router = useRouter();
+
 const menuItems = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/" },
   { name: "User Management", icon: Users, href: "/user-management",
@@ -107,6 +111,7 @@ const menuItems = [
   { name: "Utilities", icon: Settings, href: "/utilities" },
   { name: "Finance", icon: Banknote, href: "/finance" },
   { name: "Roles & Permission", icon: ShieldCheck, href: "/add-role" },
+   { name: "Convenience", icon: ShieldCheck, href: "/convenience" },
 ];
 
 React.useEffect(() => {
@@ -311,12 +316,16 @@ React.useEffect(() => {
 
           {!(isCollapsed && !isHovered) && (
             <div className="mt-10 px-2 pb-6 animate-in fade-in duration-500">
-              <button className="w-full bg-[#0070f3] hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-500/20 flex items-center justify-center gap-3 transition-all active:scale-95 group">
-                <div className="bg-white/20 p-1.5 rounded-full group-hover:bg-white/30 transition-colors">
-                  <LifeBuoy className="h-4 w-4" />
-                </div>
-                Support
-              </button>
+            <button
+  onClick={() => router.push("/settings")}
+  className="w-full bg-[#0070f3] hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-500/20 flex items-center justify-center gap-3 transition-all active:scale-95 group"
+>
+  <div className="bg-white/20 p-1.5 rounded-full group-hover:bg-white/30 transition-colors">
+    <LifeBuoy className="h-4 w-4" />
+  </div>
+  Settings
+</button>
+
             </div>
           )}
         </nav>

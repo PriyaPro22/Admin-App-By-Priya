@@ -149,37 +149,43 @@ const fetchAllTutorialVideos = async () => {
     const res = await api.get("/tutorial/videos");
     if (!res.data.success) return;
 
-    const allPages = res.data.data; // object
+    const allPages = res.data.data; // object with page keys
     const allVideos: any[] = [];
     const pageSet = new Set<string>();
 
-    Object.keys(allPages).forEach((key) => {
-      pageSet.add(key); // 🔥 PAGE EXISTS MAP
+    // 🔥 FIX: Iterate through each page in the data object
+    Object.entries(allPages).forEach(([pageKey, pageData]: [string, any]) => {
+      pageSet.add(pageKey);
 
-      const page = allPages[key];
-      (page.videos || []).forEach((video: any) => {
-        allVideos.push({
-          pageKey: key,
-          category: getPageDisplayName(key),
-          title: video.title,
-          type: video.videoType === "youtube" ? "YouTube" : "Media",
-          typeIcon: video.videoType === "youtube" ? "video_library" : "description",
-          typeColor: video.videoType === "youtube" ? "text-red-500" : "text-blue-500",
-          status: video.visibility ? "Visible" : "Hidden",
-          statusColor: video.visibility
-            ? "bg-emerald-100 text-emerald-700"
-            : "bg-slate-100 text-slate-500",
-          statusDot: video.visibility ? "bg-emerald-500" : "bg-slate-400",
-          date: new Date(video.createdAt || Date.now()).toLocaleDateString(),
-          videoUrl: video.videoUrl || video.video,
-          visibility: video.visibility,
-          videoType: video.videoType,
-          index: video.index,
+      // 🔥 FIX: Page ka data object hai, videos array nahi
+      // Har video index ke liye iterate karo
+      if (pageData.data && typeof pageData.data === 'object') {
+        Object.entries(pageData.data).forEach(([index, video]: [string, any]) => {
+          allVideos.push({
+            pageKey: pageKey,
+            category: getPageDisplayName(pageKey),
+            title: video.title,
+            type: video.videoType === "youtube" ? "YouTube" : "Media",
+            typeIcon: video.videoType === "youtube" ? "video_library" : "description",
+            typeColor: video.videoType === "youtube" ? "text-red-500" : "text-blue-500",
+            status: video.visibility === "true" || video.visibility === true ? "Visible" : "Hidden",
+            statusColor: video.visibility === "true" || video.visibility === true
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-slate-100 text-slate-500",
+            statusDot: video.visibility === "true" || video.visibility === true 
+              ? "bg-emerald-500" 
+              : "bg-slate-400",
+            date: new Date().toLocaleDateString(), // API mein createdAt nahi hai
+            videoUrl: video.videoUrl || video.video,
+            visibility: video.visibility === "true" || video.visibility === true,
+            videoType: video.videoType,
+            index: parseInt(index), // 🔥 Important: index store karo delete/edit ke liye
+          });
         });
-      });
+      }
     });
 
-    setExistingPages(pageSet);        // 🔥 IMPORTANT
+    setExistingPages(pageSet);
     setTutorials(allVideos);
     setTotalTutorials(allVideos.length);
 
@@ -226,97 +232,195 @@ const fetchAllTutorialVideos = async () => {
   };
 
   // 2. SAVE VIDEO - POST/PUT /video/:pageKey
-  const saveVideo = async () => {
-    // Validation
-    if (!videoTitle) {
-      setError("Please enter video title");
-      return;
-    }
+  // const saveVideo = async () => {
+  //   // Validation
+  //   if (!videoTitle) {
+  //     setError("Please enter video title");
+  //     return;
+  //   }
 
-    if (videoType === "youtube" && !youtubeUrl) {
-      setError("Please enter YouTube URL");
-      return;
-    }
+  //   if (videoType === "youtube" && !youtubeUrl) {
+  //     setError("Please enter YouTube URL");
+  //     return;
+  //   }
 
-    if (videoType === "local" && !selectedFile) {
-      setError("Please select a video file");
-      return;
-    }
+  //   if (videoType === "local" && !selectedFile) {
+  //     setError("Please select a video file");
+  //     return;
+  //   }
 
-    try {
-      setLoading(true);
-      setError(null);
-      setSuccessMessage(null);
+  //   try {
+  //     setLoading(true);
+  //     setError(null);
+  //     setSuccessMessage(null);
 
-      // FIRST: Check if page exists
-      if (!pageExists) {
-        const pageCreated = await createPage();
-        if (!pageCreated) {
-          throw new Error("Failed to create page. Cannot add video.");
-        }
-      }
+  //     // FIRST: Check if page exists
+  //     if (!pageExists) {
+  //       const pageCreated = await createPage();
+  //       if (!pageCreated) {
+  //         throw new Error("Failed to create page. Cannot add video.");
+  //       }
+  //     }
 
-      // SECOND: Now add/update video
-      const formData = new FormData();
-      formData.append("title", videoTitle);
-      formData.append("visibility", String(videoVisibility));
-      formData.append("videoType", videoType);
+  //     // SECOND: Now add/update video
+  //     const formData = new FormData();
+  //     formData.append("title", videoTitle);
+  //     formData.append("visibility", String(videoVisibility));
+  //     formData.append("videoType", videoType);
       
-      if (videoType === "youtube") {
-        formData.append("videoUrl", youtubeUrl);
-      } else if (selectedFile) {
-        formData.append("video", selectedFile);
-      }
+  //     if (videoType === "youtube") {
+  //       formData.append("videoUrl", youtubeUrl);
+  //     } else if (selectedFile) {
+  //       formData.append("video", selectedFile);
+  //     }
 
-      let response;
-      if (editingIndex !== null) {
-        // Update existing video
-        response = await api.put(
-          `/video/${pageKey}/${editingIndex}`,
-          formData,
-          { 
-            headers: { 
-              "Content-Type": "multipart/form-data",
-              "x-api-token": X_API_TOKEN 
-            } 
-          }
-        );
-      } else {
-        // Add new video
-        response = await api.post(
-          `/video/${pageKey}`,
-          formData,
-          { 
-            headers: { 
-              "Content-Type": "multipart/form-data",
-              "x-api-token": X_API_TOKEN 
-            } 
-          }
-        );
-      }
+  //     let response;
+  //     if (editingIndex !== null) {
+  //       // Update existing video
+  //       response = await api.put(
+  //         `/video/${pageKey}/${editingIndex}`,
+  //         formData,
+  //         { 
+  //           headers: { 
+  //             "Content-Type": "multipart/form-data",
+  //             "x-api-token": X_API_TOKEN 
+  //           } 
+  //         }
+  //       );
+  //     } else {
+  //       // Add new video
+  //       response = await api.post(
+  //         `/video/${pageKey}`,
+  //         formData,
+  //         { 
+  //           headers: { 
+  //             "Content-Type": "multipart/form-data",
+  //             "x-api-token": X_API_TOKEN 
+  //           } 
+  //         }
+  //       );
+  //     }
 
-      if (response.data.success) {
-        setSuccessMessage(
-          editingIndex !== null 
-            ? "Video updated successfully!" 
-            : "Video added successfully!"
-        );
-        resetVideoForm();
-       await fetchAllTutorialVideos();
+  //     if (response.data.success) {
+  //       setSuccessMessage(
+  //         editingIndex !== null 
+  //           ? "Video updated successfully!" 
+  //           : "Video added successfully!"
+  //       );
+  //       resetVideoForm();
+  //      await fetchAllTutorialVideos();
+  //     }
+  //   } catch (error: any) {
+  //     console.error("Error saving video:", error);
+  //     if (error.response?.status === 401) {
+  //       setError("Invalid or missing service token");
+  //     } else if (error.response?.status === 404) {
+  //       setError("Page not found. Please create the page first.");
+  //     } else {
+  //       setError(error.response?.data?.message || "Failed to save video");
+  //     }
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+const saveVideo = async () => {
+  // Validation
+  if (!videoTitle) {
+    setError("Please enter video title");
+    return;
+  }
+
+  if (videoType === "youtube" && !youtubeUrl) {
+    setError("Please enter YouTube URL");
+    return;
+  }
+
+  if (videoType === "local" && !selectedFile) {
+    setError("Please select a video file");
+    return;
+  }
+
+  try {
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    // FIRST: Check if page exists
+    if (!pageExists) {
+      const pageCreated = await createPage();
+      if (!pageCreated) {
+        throw new Error("Failed to create page. Cannot add video.");
       }
-    } catch (error: any) {
-      console.error("Error saving video:", error);
-      if (error.response?.status === 401) {
-        setError("Invalid or missing service token");
-      } else if (error.response?.status === 404) {
-        setError("Page not found. Please create the page first.");
-      } else {
-        setError(error.response?.data?.message || "Failed to save video");
-      }
-    } finally {
-      setLoading(false);
     }
-  };
+
+    // SECOND: Now add/update video
+    const formData = new FormData();
+    formData.append("title", videoTitle);
+    formData.append("visibility", String(videoVisibility));
+    formData.append("videoType", videoType);
+
+    // ✅ ADD THESE TWO LINES HERE
+    formData.append("isSkippable", String(isSkippable));
+    formData.append(
+      "skipTime",
+      isSkippable ? String(skipTime) : "0"
+    );
+
+    if (videoType === "youtube") {
+      formData.append("videoUrl", youtubeUrl);
+    } else if (selectedFile) {
+      formData.append("video", selectedFile);
+    }
+
+    let response;
+    if (editingIndex !== null) {
+      // Update existing video
+      response = await api.put(
+        `/video/${pageKey}/${editingIndex}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            "x-api-token": X_API_TOKEN,
+          },
+        }
+      );
+    } else {
+      // Add new video
+      response = await api.post(
+        `/video/${pageKey}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            "x-api-token": X_API_TOKEN,
+          },
+        }
+      );
+    }
+
+    if (response.data.success) {
+      setSuccessMessage(
+        editingIndex !== null
+          ? "Video updated successfully!"
+          : "Video added successfully!"
+      );
+      resetVideoForm();
+      await fetchAllTutorialVideos();
+    }
+  } catch (error: any) {
+    console.error("Error saving video:", error);
+    if (error.response?.status === 401) {
+      setError("Invalid or missing service token");
+    } else if (error.response?.status === 404) {
+      setError("Page not found. Please create the page first.");
+    } else {
+      setError(error.response?.data?.message || "Failed to save video");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   // 3. DELETE VIDEO - DELETE /video/:pageKey/:index
   const deleteVideo = async (pageKey: string, index: number) => {
@@ -460,6 +564,9 @@ const editVideo = (tutorial: any) => {
   const handleYoutubeUrlSelect = (e: React.MouseEvent<HTMLInputElement>) => {
     (e.target as HTMLInputElement).select();
   };
+// skip input
+const [skipTime, setSkipTime] = useState<number>(0);
+const [isSkippable, setIsSkippable] = useState<boolean>(false);
 
   // Handle page key change
   const handlePageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -484,10 +591,10 @@ const editVideo = (tutorial: any) => {
   const getPageDisplayName = (key: string) => {
     const pages: { [key: string]: string } = {
       'onboarding': 'Onboarding',
-      'earnings-and-wallet': 'Earnings & Wallet',
-      'profile-settings': 'Profile Settings',
-      'service-fulfillment': 'Service Fulfillment',
-      'security-and-privacy': 'Security & Privacy'
+      'login': 'login',
+      'onBoardingPaymentPage': ' onBoardingPaymentPage',
+      'documentVerificationPage': ' documentVerificationPage'
+      
     };
     return pages[key] || key.split('-').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
@@ -739,10 +846,10 @@ const editVideo = (tutorial: any) => {
                   value={pageKey}
                 >
                   <option value="onboarding">Onboarding</option>
-                  <option value="earnings-and-wallet">Earnings & Wallet</option>
-                  <option value="profile-settings">Profile Settings</option>
-                  <option value="service-fulfillment">Service Fulfillment</option>
-                  <option value="security-and-privacy">Security & Privacy</option>
+                  <option value="login">login</option>
+                  <option value="onBoardingPaymentPage">onBoardingPaymentPage</option>
+                  <option value="documentVerificationPage">documentVerificationPage</option>
+                  
                 </select>
                 <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none">
                   expand_more
@@ -919,6 +1026,40 @@ const editVideo = (tutorial: any) => {
                     YouTube links are recommended for faster app load times. Local videos are uploaded to our server.
                   </p>
                 </div>
+                                 {/* Skip Settings */}
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+
+  {/* Skip Time */}
+  <div className="space-y-2">
+    <label className="text-sm font-semibold text-slate-700">
+      Skip Time (in seconds)
+    </label>
+    <input
+      type="number"
+      min="0"
+      value={skipTime}
+      onChange={(e) => setSkipTime(Number(e.target.value))}
+      className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 focus:ring-2 focus:ring-[#137fec]/20 focus:border-[#137fec] outline-none text-sm"
+      placeholder="Enter skip time"
+    />
+  </div>
+
+  {/* Is Skippable */}
+  <div className="space-y-2">
+    <label className="text-sm font-semibold text-slate-700">
+      Is Skippable?
+    </label>
+    <select
+      value={isSkippable ? "yes" : "no"}
+      onChange={(e) => setIsSkippable(e.target.value === "yes")}
+      className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-3 focus:ring-2 focus:ring-[#137fec]/20 focus:border-[#137fec] outline-none text-sm"
+    >
+      <option value="no">False</option>
+      <option value="yes">True</option>
+    </select>
+  </div>
+
+</div>
               </div>
 
               {/* Video Preview Box with Replace and Remove Buttons */}

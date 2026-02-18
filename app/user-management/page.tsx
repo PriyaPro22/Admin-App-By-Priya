@@ -12,6 +12,7 @@ export default function UserManagementPage() {
         { name: "Advance Payment", href: "/user-management/advance-payment", icon: CreditCard, color: "text-indigo-600", bg: "bg-indigo-50" },
         { name: "Cancellation Form", href: "/user-management/cancellation-form", icon: FileX, color: "text-red-600", bg: "bg-red-50" },
          { name: "Cancellation Policy", href: "/user-management/cancellation-policy", icon: FileText, color: "text-red-600", bg: "bg-red-50" },
+          { name: "Offers", href: "/user-management/offers", icon: FileText, color: "text-red-600", bg: "bg-red-50" },
     ];
 
     return (

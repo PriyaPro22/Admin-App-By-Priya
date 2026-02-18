@@ -48,6 +48,11 @@ export default function PartnerDetailsPage({ params }: { params: { id: string } 
   const [loading, setLoading] = useState(true);
   const [verificationData, setVerificationData] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(6);
+const [currentSection, setCurrentSection] = useState<
+  "bank_done" | "vehicle_done" | "education_done" | null
+>(null);
+const [actionLoading, setActionLoading] = useState(false);
+
 
 const [showConfirm, setShowConfirm] = useState(false);
 // Image modal
@@ -60,6 +65,103 @@ const [showStepModal, setShowStepModal] = useState(false);
 const [stepAction, setStepAction] = useState<"approve" | "reject" | null>(null);
 const [selectedStep, setSelectedStep] = useState<any>(null);
 
+// Document Verification Api
+const saveKycLiveStatus = async (
+  pageKey: string,
+  approved: boolean,
+  note: string
+) => {
+  try {
+    const res = await fetch(
+      `https://api.bijliwalaaya.in/api/partner/kyc-live-status/${params.id}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-token": "super_secure_token",
+        },
+        body: JSON.stringify({
+          pageKey,          // ✅ dynamic
+          approved,
+          note,
+          status: approved,
+          role: "admin",
+          adminId: "ADMIN_001", // ❌ blank mat bhejo
+        }),
+      }
+    );
+
+    const json = await res.json();
+    if (json.success) {
+      console.log("Saved:", json.data);
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
+// Key Changes
+const updatePartnerFinalStatus = async (approved: boolean) => {
+  try {
+    const res = await fetch(
+      `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-token": "super_secure_token",
+        },
+        body: JSON.stringify({
+          kyc_success: approved,
+          kyc_success_at: new Date().toISOString(),
+
+          admin_approved: approved,
+          admin_approved_at: new Date().toISOString(),
+        }),
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.success) {
+      fetchVerificationStatus(); // UI refresh
+    }
+  } catch (error) {
+    console.error("Final status update failed", error);
+  }
+};
+
+// update verificationstatus 
+const updateVerificationStatus = async (
+  pageKey: string,
+  value: boolean
+) => {
+  try {
+    const res = await fetch(
+      `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-token": "super_secure_token",
+        },
+        body: JSON.stringify({
+          [pageKey]: value,
+        }),
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.success) {
+      console.log("Verification updated:", json.updated_fields);
+
+      // UI refresh
+      fetchVerificationStatus();
+    }
+  } catch (error) {
+    console.error("Verification update failed", error);
+  }
+};
 
 // Aadhaar modal
 const [docPreview, setDocPreview] = useState<string | null>(null);
@@ -599,30 +701,38 @@ const categoryConfig: Record<string, any> = {
   },
 };
 
+// Approvel button
+// 🔥 All step keys (jo partner approval ke liye important hain)
+const approvalKeys = [
+  "documents_done",
+  "vehicle_done",
+  "bank_done",
+  "education_done",
+  "address_done",
+];
+
+// ✅ Check if all approved
+
+
+// ❌ Check if any rejected
+// const anyRejected =
+//   approvalKeys.some((key) => verificationData?.[key] === false) ||
+//   verificationData?.kyc_success === false;
+const anyRejected =
+  approvalKeys.some((key) => verificationData?.[key] === false);
+
+const allApproved =
+  approvalKeys.every((key) => verificationData?.[key] === true);
+
+const disableApproveButton = !allApproved;
 
 
 
-  //verification steps 
-  // const verificationSteps = stepKeyMap.map((label, i) => {
-  //   let status: "completed" | "failed" | "pending" | "active" = "pending";
 
-  //   if (verificationData) {
-  //     const key = stepKeyMap[i];
-  //     const value = verificationData[key];
 
-  //     if (value === true) {
-  //       status = "completed";
-  //     } else if (value === false) {
-  //       status = "failed";
-  //     }
-  //   }
 
-  //   return {
-  //     label,
-  //     step: i + 1,
-  //     status,
-  //   };
-  // });
+
+
 const verificationSteps = stepKeyMap.map((key, i) => {
   let status: "completed" | "failed" | "pending" = "pending";
   let timestamp: string | null = null;
@@ -800,18 +910,39 @@ const backendAttempts =
           >
             Block Partner
           </button>
-          <button
-            onClick={() => setShowRejectModal(true)}
-            className={`px-5 py-2.5 text-[13px] font-bold border-2 ${isDark ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-[#707EAE]'} rounded-xl hover:bg-gray-50 transition-all`}
-          >
-            Reject
-          </button>
-          <button
-            onClick={() => setShowApproveModal(true)}
-            className="px-6 py-2.5 text-[13px] font-bold bg-[#0070f3] text-white rounded-xl shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition-all"
-          >
-            Approve Partner
-          </button>
+       {/* REJECT PARTNER */}
+<button
+  onClick={() => {
+    setCurrentSection("kyc_success");  // 🔥 important
+    setShowRejectModal(true);
+  }}
+  className="px-5 py-2.5 text-[13px] font-bold border-2 border-red-500 text-red-500 rounded-xl hover:bg-red-50 transition-all"
+>
+  Reject Partner
+</button>
+
+
+{/* APPROVE PARTNER */}
+<button
+  disabled={disableApproveButton}
+  onClick={() => {
+    setApproveContext("partner");   // 🔥 important
+    setShowApproveModal(true);      // 🔥 open modal
+  }}
+  className={`px-6 py-2.5 text-[13px] font-bold rounded-xl shadow-lg transition-all
+  ${
+    anyRejected
+      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+      : "bg-[#0070f3] text-white hover:bg-blue-600 shadow-blue-500/20"
+  }`}
+>
+  Approve Partner
+</button>
+
+
+        
+ 
+
         </div>
       </div>
 
@@ -1407,17 +1538,31 @@ const backendAttempts =
       {/* DOCUMENT VERIFICATION ACTIONS */}
       <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-6 shadow-sm border flex items-center gap-4`}>
         <button
-          onClick={() => setShowApproveModal(true)}
-          className="flex-1 bg-[#0070f3] text-white py-4 rounded-xl font-bold text-[14px] hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] uppercase tracking-wider"
-        >
-          Approve
-        </button>
-        <button
-          onClick={() => setShowRejectModal(true)}
-          className={`flex-1 ${isDark ? 'bg-transparent border-gray-700 text-red-400' : 'bg-transparent border-red-100 text-red-500'} border py-4 rounded-xl font-bold text-[14px] hover:bg-red-50 transition-all active:scale-[0.98] uppercase tracking-wider`}
-        >
-          Reject
-        </button>
+  onClick={() => {
+    setCurrentSection("documents_done"); // 🔥 IMPORTANT
+    setShowApproveModal(true);
+  }}
+  className="flex-1 bg-[#0070f3] text-white py-4 rounded-xl font-bold text-[14px] hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] uppercase tracking-wider"
+>
+  Approve
+</button>
+
+      
+      <button
+  onClick={() => {
+    setCurrentSection("documents_done");  // 🔥 IMPORTANT
+    setShowRejectModal(true);
+  }}
+  className={`flex-1 ${
+    isDark
+      ? "bg-transparent border-gray-700 text-red-400"
+      : "bg-transparent border-red-100 text-red-500"
+  } border py-4 rounded-xl font-bold text-[14px]
+  hover:bg-red-50 transition-all active:scale-[0.98] uppercase tracking-wider`}
+>
+  Reject
+</button>
+
       </div>
     </div>
     {/* Section 3:Vehicle Verification */}
@@ -1703,8 +1848,8 @@ const backendAttempts =
   
 
   {/* ACTION BUTTONS */}
- <div className="flex gap-6 mt-10">
-  {/* APPROVE VEHICLE */}
+ {/* <div className="flex gap-6 mt-10">
+  
   <button
     onClick={() => {
       setApproveContext("vehicle");
@@ -1717,10 +1862,35 @@ const backendAttempts =
     Approve Vehicle
   </button>
 
-  {/* REJECT VEHICLE */}
+  
   <button
     onClick={() => {
       setApproveContext("vehicle");
+      setShowRejectModal(true);
+    }}
+    className="flex-1 border border-red-300 text-red-500 py-4 rounded-xl
+    font-bold flex items-center justify-center gap-2"
+  >
+    <XCircle size={18} />
+    Reject
+  </button>
+</div> */}
+<div className="flex gap-6 mt-10">
+  <button
+    onClick={() => {
+      setCurrentSection("vehicle_done");
+      setShowApproveModal(true);
+    }}
+    className="flex-1 bg-blue-600 text-white py-4 rounded-xl font-bold
+    flex items-center justify-center gap-2"
+  >
+    <CheckCircle2 size={18} />
+    Approve Vehicle
+  </button>
+
+  <button
+    onClick={() => {
+      setCurrentSection("vehicle_done");
       setShowRejectModal(true);
     }}
     className="flex-1 border border-red-300 text-red-500 py-4 rounded-xl
@@ -2033,7 +2203,7 @@ const backendAttempts =
         Payments are processed every Friday for the previous week's billing.
       </p>
     </div>
-  <div className="flex gap-4">
+  {/* <div className="flex gap-4">
     <button
       onClick={() => setShowApproveModal(true)}
       className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl
@@ -2049,7 +2219,30 @@ const backendAttempts =
     >
       Reject
     </button>
-  </div>
+  </div> */}
+<div className="flex gap-4">
+  <button
+    onClick={() => {
+      setCurrentSection("bank_done");
+      setShowApproveModal(true);
+    }}
+    className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl
+    font-bold text-sm hover:bg-blue-600 transition-all"
+  >
+    Approve
+  </button>
+
+  <button
+    onClick={() => {
+      setCurrentSection("bank_done");
+      setShowRejectModal(true);
+    }}
+    className="flex-1 border border-red-300 text-red-500 py-3
+    rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
+  >
+    Reject
+  </button>
+</div>
 
   </div>
 )}
@@ -2128,7 +2321,7 @@ const backendAttempts =
   </div>
 
   {/* Action Buttons */}
-  <div className="flex gap-4">
+  {/* <div className="flex gap-4">
     <button
       onClick={() => setShowApproveModal(true)}
       className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl
@@ -2144,7 +2337,31 @@ const backendAttempts =
     >
       Reject
     </button>
-  </div>
+  </div> */}
+  <div className="flex gap-4">
+  <button
+    onClick={() => {
+      setCurrentSection("education_done");
+      setShowApproveModal(true);
+    }}
+    className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl
+    font-bold text-sm hover:bg-blue-600 transition-all"
+  >
+    Approve
+  </button>
+
+  <button
+    onClick={() => {
+      setCurrentSection("education_done");
+      setShowRejectModal(true);
+    }}
+    className="flex-1 border border-red-300 text-red-500 py-3
+    rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
+  >
+    Reject
+  </button>
+</div>
+
 </div>
 {/* Residential Proof */}
 {/* ================= RESIDENTIAL PROOF ================= */}
@@ -2257,7 +2474,7 @@ const backendAttempts =
   </div>
 
   {/* ACTION BUTTONS */}
-  <div className="flex gap-4">
+  {/* <div className="flex gap-4">
     <button
       onClick={() => setShowApproveModal(true)}
       className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl
@@ -2273,7 +2490,32 @@ const backendAttempts =
     >
       Reject
     </button>
-  </div>
+  </div> */}
+ <div className="flex gap-4">
+  <button
+    onClick={() => {
+      setCurrentSection("address_done");  // 🔥 try this
+      setShowApproveModal(true);
+    }}
+    className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl
+    font-bold text-sm hover:bg-blue-600 transition-all"
+  >
+    Approve
+  </button>
+
+  <button
+    onClick={() => {
+      setCurrentSection("address_done");
+      setShowRejectModal(true);
+    }}
+    className="flex-1 border border-red-300 text-red-500 py-3
+    rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
+  >
+    Reject
+  </button>
+</div>
+
+
 </div>
 
 
@@ -2342,16 +2584,78 @@ const backendAttempts =
         </button>
 
         {/* APPROVE */}
-        <button
-          onClick={() => {
-            // 🔥 APPROVE API YAHAN CALL HOGI
-            setShowApproveModal(false);
-          }}
-          className="flex-1 py-3 rounded-2xl font-black text-[13px]
-          bg-[#0070f3] text-white hover:bg-blue-600 transition-all uppercase"
-        >
-          APPROVE
-        </button>
+<button
+  disabled={actionLoading}
+  onClick={async () => {
+    if (!currentSection) return;
+
+    try {
+      setActionLoading(true);
+
+      // 1️⃣ Update section status
+      await updateVerificationStatus(currentSection, true);
+
+      // 2️⃣ Save live KYC status
+      await saveKycLiveStatus(
+        currentSection,
+        true,
+        `${currentSection.replace("_done", "")} verified`
+      );
+
+      // 3️⃣ 🔥 Refetch latest verification status
+     // 3️⃣ Get fresh verification status directly
+const res = await fetch(
+  `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+  {
+    headers: {
+      "x-api-token": "super_secure_token",
+    },
+  }
+);
+
+const json = await res.json();
+
+if (json.success) {
+  const freshData = json.data;
+
+  const updatedAllApproved =
+    approvalKeys.every((key) => freshData?.[key] === true);
+
+  if (updatedAllApproved) {
+    await updatePartnerFinalStatus(true);
+  }
+
+  setVerificationData(freshData); // update UI
+}
+
+
+      // Close modal
+      setShowApproveModal(false);
+      setCurrentSection(null);
+
+    } catch (error) {
+      console.error("Approve failed", error);
+    } finally {
+      setActionLoading(false);
+    }
+  }}
+  className="flex-1 py-3 rounded-2xl font-black text-[13px]
+  bg-[#0070f3] text-white hover:bg-blue-600 transition-all uppercase
+  disabled:opacity-60 disabled:cursor-not-allowed"
+>
+  {actionLoading ? (
+    <div className="flex items-center justify-center gap-2">
+      <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+      Processing...
+    </div>
+  ) : (
+    "APPROVE"
+  )}
+</button>
+
+
+
+
       </div>
     </div>
   </div>
@@ -2501,25 +2805,81 @@ const backendAttempts =
         >
           BACK
         </button>
+<button
+  disabled={!rejectReason.trim() || actionLoading}
+ onClick={async () => {
+  if (!currentSection) return;
 
-        {/* REJECT – RIGHT */}
-        <button
-          disabled={!rejectReason.trim()}
-          onClick={() => {
-            console.log("Reject Reason:", rejectReason);
-            // 🔥 REJECT API YAHAN LAGEGI
-            setShowRejectModal(false);
-            setRejectReason("");
-          }}
-          className={`flex-1 py-3 rounded-2xl font-black text-[13px]
-          ${
-            rejectReason.trim()
-              ? "bg-red-500 text-white hover:bg-red-600"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed"
-          }`}
-        >
-          REJECT
-        </button>
+  try {
+    setActionLoading(true);
+
+    // 1️⃣ Update section false
+    await updateVerificationStatus(currentSection, false);
+
+    // 2️⃣ Save live status
+    await saveKycLiveStatus(
+      currentSection,
+      false,
+      rejectReason
+    );
+
+    // 3️⃣ 🔥 Fetch latest verification status
+    const res = await fetch(
+      `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+      {
+        headers: { "x-api-token": "super_secure_token" },
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.success) {
+      const freshData = json.data;
+
+      const updatedAllApproved =
+        approvalKeys.every((key) => freshData?.[key] === true);
+
+      // ❌ If NOT all approved → partner should be false
+      if (!updatedAllApproved) {
+        await updatePartnerFinalStatus(false);
+      }
+
+      setVerificationData(freshData);
+    }
+
+    // Close modal
+    setShowRejectModal(false);
+    setRejectReason("");
+    setCurrentSection(null);
+
+  } catch (error) {
+    console.error("Reject failed", error);
+  } finally {
+    setActionLoading(false);
+  }
+}}
+
+
+  
+  className={`flex-1 py-3 rounded-2xl font-black text-[13px]
+  ${
+    rejectReason.trim() && !actionLoading
+      ? "bg-red-500 text-white hover:bg-red-600"
+      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+  }`}
+>
+  {actionLoading ? (
+    <div className="flex items-center justify-center gap-2">
+      <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+      Processing...
+    </div>
+  ) : (
+    "REJECT"
+  )}
+</button>
+
+
+
       </div>
     </div>
   </div>

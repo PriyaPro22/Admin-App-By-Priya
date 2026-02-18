@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect,useRef } from "react";
 import {
     Plus,
     ClipboardList,
@@ -84,6 +84,52 @@ export default function PartnersPage() {
     const [pendingPartnersCount, setPendingPartnersCount] = useState<number | string>("...");
     const [activePartnersCount, setActivePartnersCount] = useState<number | string>("...");
     const [blockedPartnersCount, setBlockedPartnersCount] = useState<number | string>("...");
+   
+const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+
+const exportRef = useRef<HTMLDivElement>(null);
+const excelInputRef = useRef<HTMLInputElement>(null);
+const pdfInputRef = useRef<HTMLInputElement>(null);
+
+
+
+
+
+
+
+    /* ✅ EXPORT FUNCTIONS */
+const handleExcelExport = () => {
+    setSelectedExportFormat("Excel");
+    setIsExportOpen(false);
+
+    console.log("Excel Export Triggered");
+    // Yaha apna excel export logic likhna
+};
+
+const handlePDFExport = () => {
+    setSelectedExportFormat("PDF");
+    setIsExportOpen(false);
+
+    console.log("PDF Export Triggered");
+    // Yaha apna PDF export logic likhna
+};
+useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+        if (
+            exportRef.current &&
+            !exportRef.current.contains(event.target as Node)
+        ) {
+            setIsExportOpen(false);
+        }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+    };
+}, []);
+
+
     
     /* ✅ FETCH STATS DATA */
     useEffect(() => {
@@ -231,44 +277,100 @@ export default function PartnersPage() {
 
                     <div className="flex-1"></div>
 
-                    <div className="relative">
-                        <button
-                            onClick={() => setIsExportOpen(!isExportOpen)}
-                            className={`px-6 py-4 font-bold rounded-xl border transition-all flex items-center gap-2.5 ${isExportOpen
-                                ? "bg-[#0070f3] text-white border-[#0070f3] shadow-lg shadow-blue-500/20"
-                                : (isDark ? "bg-[#111C44] text-white border-gray-800 hover:bg-[#1B2559]" : "bg-white text-[#2B3674] border-gray-100 hover:bg-gray-50")
-                                }`}
-                        >
-                            <Download size={18} className={isExportOpen ? "text-white" : "text-[#A3AED0]"} strokeWidth={2.5} />
-                            Export Data
-                            <ChevronDown size={14} className={`ml-0.5 transition-transform ${isExportOpen ? "rotate-180" : ""}`} />
-                        </button>
+<div className="relative" ref={exportRef}>
 
-                        {isExportOpen && (
-                            <div className={`absolute right-0 mt-3 w-56 rounded-[24px] shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in duration-200 origin-top-right p-2 ${isDark ? 'bg-[#111C44] border border-gray-800' : 'bg-white border border-gray-50'}`}>
-                                <button
-                                    onClick={() => setSelectedExportFormat("Excel")}
-                                    className={`w-full flex items-center justify-between gap-3 px-5 py-3.5 rounded-xl text-[14px] font-bold transition-all ${selectedExportFormat === "Excel" ? "bg-blue-50 text-[#0070f3]" : (isDark ? "text-white hover:bg-[#1B2559]" : "text-[#2B3674] hover:bg-gray-50")}`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <FileSpreadsheet size={18} className={selectedExportFormat === "Excel" ? "text-[#0070f3]" : "text-[#05CD99]"} />
-                                        Excel Format
-                                    </div>
-                                    {selectedExportFormat === "Excel" && <Check size={16} strokeWidth={3} />}
-                                </button>
-                                <button
-                                    onClick={() => setSelectedExportFormat("PDF")}
-                                    className={`w-full flex items-center justify-between gap-3 px-5 py-3.5 rounded-xl text-[14px] font-bold transition-all mt-1 ${selectedExportFormat === "PDF" ? "bg-blue-50 text-[#0070f3]" : (isDark ? "text-white hover:bg-[#1B2559]" : "text-[#2B3674] hover:bg-gray-50")}`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <FileText size={18} className={selectedExportFormat === "PDF" ? "text-[#0070f3]" : "text-[#E31A1A]"} />
-                                        PDF Document
-                                    </div>
-                                    {selectedExportFormat === "PDF" && <Check size={16} strokeWidth={3} />}
-                                </button>
-                            </div>
-                        )}
-                    </div>
+    {/* 🔹 Hidden Excel Input */}
+    <input
+        type="file"
+        accept=".xlsx,.xls"
+        ref={excelInputRef}
+        className="hidden"
+        onChange={(e) => {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                setSelectedFileName(file.name);
+                console.log("Excel Selected:", file);
+            }
+        }}
+    />
+
+    {/* 🔹 Hidden PDF Input */}
+    <input
+        type="file"
+        accept=".pdf"
+        ref={pdfInputRef}
+        className="hidden"
+        onChange={(e) => {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                setSelectedFileName(file.name);
+                console.log("PDF Selected:", file);
+            }
+        }}
+    />
+
+    {/* 🔵 MAIN EXPORT BUTTON */}
+    <button
+        type="button"
+        onClick={() => setIsExportOpen((prev) => !prev)}
+        className={`px-6 py-4 font-bold rounded-xl border transition-all flex items-center gap-2.5 ${
+            isExportOpen
+                ? "bg-[#0070f3] text-white border-[#0070f3] shadow-lg shadow-blue-500/20"
+                : "bg-[#111C44] text-white border-gray-800 hover:bg-[#1B2559]"
+        }`}
+    >
+        <Download size={18} strokeWidth={2.5} />
+        Export Data
+        <ChevronDown
+            size={14}
+            className={`ml-0.5 transition-transform ${
+                isExportOpen ? "rotate-180" : ""
+            }`}
+        />
+    </button>
+
+    {/* 🔽 DROPDOWN */}
+    {isExportOpen && (
+        <div className="absolute right-0 mt-3 w-56 rounded-[20px] shadow-2xl overflow-hidden z-50 p-2 bg-white border">
+
+            {/* Excel Option */}
+            <button
+                type="button"
+                onClick={() => {
+                    setIsExportOpen(false);
+                    excelInputRef.current?.click();
+                }}
+                className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl text-[14px] font-bold hover:bg-gray-100 transition-all"
+            >
+                <FileSpreadsheet size={18} className="text-[#05CD99]" />
+                Choose Excel File
+            </button>
+
+            {/* PDF Option */}
+            <button
+                type="button"
+                onClick={() => {
+                    setIsExportOpen(false);
+                    pdfInputRef.current?.click();
+                }}
+                className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl text-[14px] font-bold hover:bg-gray-100 transition-all mt-1"
+            >
+                <FileText size={18} className="text-[#E31A1A]" />
+                Choose PDF File
+            </button>
+        </div>
+    )}
+
+    {/* 📁 Selected File Name */}
+    {selectedFileName && (
+        <p className="mt-3 text-sm font-bold text-[#0070f3]">
+            Selected File: {selectedFileName}
+        </p>
+    )}
+
+</div>
+
+
                 </div>
 
                 {/* --- STATS GRID (API DATA SET) --- */}
