@@ -49,9 +49,70 @@ export default function PartnerDetailsPage({ params }: { params: { id: string } 
   const [verificationData, setVerificationData] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(6);
 const [currentSection, setCurrentSection] = useState<
-  "bank_done" | "vehicle_done" | "education_done" | null
+  | "documents_done"
+  | "vehicle_done"
+  | "bank_done"
+  | "education_done"
+  | "address_done"
+  | "kyc_success"
+  | null
 >(null);
+
 const [actionLoading, setActionLoading] = useState(false);
+const [kycNotes, setKycNotes] = useState<Record<string, any>>({});
+const [showFinalRejectModal, setShowFinalRejectModal] = useState(false);
+
+
+// Kyc Notes
+const fetchSingleKycNote = async (pageKey: string) => {
+  try {
+    const res = await fetch(
+      `https://api.bijliwalaaya.in/api/partner/kyc-live-status/${params.id}/${pageKey}`,
+      {
+        headers: {
+          "x-api-token": "super_secure_token",
+        },
+      }
+    );
+
+    const json = await res.json();
+
+    if (json.success) {
+      return json.data;   // 👈 single section data
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Single KYC fetch error", error);
+    return null;
+  }
+};
+
+useEffect(() => {
+  const sections = [
+    "documents_done",
+    "vehicle_done",
+    "bank_done",
+    "education_done",
+    "address_done",
+  ];
+
+  const loadAllNotes = async () => {
+    for (const key of sections) {
+      const data = await fetchSingleKycNote(key);
+      if (data) {
+        setKycNotes(prev => ({
+          ...prev,
+          [key]: data,
+        }));
+      }
+    }
+  };
+
+  loadAllNotes();
+}, [params.id]);
+
+
 
 
 const [showConfirm, setShowConfirm] = useState(false);
@@ -64,6 +125,116 @@ const [kycData, setKycData] = useState<any>(null);
 const [showStepModal, setShowStepModal] = useState(false);
 const [stepAction, setStepAction] = useState<"approve" | "reject" | null>(null);
 const [selectedStep, setSelectedStep] = useState<any>(null);
+
+
+// ================= RESIDENTIAL PROOF =================
+const [residentialData, setResidentialData] = useState<any>(null);
+const [residentialLoading, setResidentialLoading] = useState(true);
+
+const BASE_URL = "https://api.bijliwalaaya.in/api/partner";
+const TOKEN = "super_secure_token"; // 🔥 yahan apna token lagao
+
+useEffect(() => {
+  const fetchResidentialProof = async () => {
+    try {
+      setResidentialLoading(true);
+
+      const res = await fetch(
+        `${BASE_URL}/residential-proof/${params.id}`,
+        {
+          headers: {
+            "x-api-token": "super_secure_token",
+          },
+        }
+      );
+
+      const json = await res.json();
+      console.log("Residential Response:", json);
+
+      if (json.success) {
+        setResidentialData(json.data);
+      } else {
+        setResidentialData(null);
+      }
+    } catch (error) {
+      console.error("Residential fetch error", error);
+      setResidentialData(null);
+    } finally {
+      setResidentialLoading(false);
+    }
+  };
+
+  fetchResidentialProof();
+}, [params.id]);
+
+
+const saveResidentialProof = async (payload: {
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  pincode: string;
+  proofType: string;
+  proofImage: File | string;
+}) => {
+  const formData = new FormData();
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value) formData.append(key, value as any);
+  });
+
+  const res = await fetch(
+    `${BASE_URL}/residential-proof/${params.id}`,
+    {
+      method: "POST", // or PUT
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+      },
+      body: formData,
+    }
+  );
+
+  const json = await res.json();
+  if (json.success) {
+    setResidentialData(json.data);
+  }
+};
+
+const updateResidentialProof = async (payload: any) => {
+  const res = await fetch(
+    `${BASE_URL}/residential-proof/${params.id}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const json = await res.json();
+  if (json.success) {
+    setResidentialData(json.data);
+  }
+};
+
+const deleteResidentialProof = async () => {
+  const res = await fetch(
+    `${BASE_URL}/residential-proof/${params.id}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+      },
+    }
+  );
+
+  const json = await res.json();
+  if (json.success) {
+    setResidentialData(null);
+  }
+};
 
 // Document Verification Api
 const saveKycLiveStatus = async (
@@ -639,7 +810,9 @@ const aadhaarAddress = aadhaarData?.split_address
 
         if (json.success) {
           setVerificationData(json.data);
-          console.log("Priya singh",setVerificationData);
+          // console.log("Priya singh",setVerificationData);
+          console.log("Verification Data:", json.data);
+
           console.log("Priya", json.data);
         }
       } catch (err) {
@@ -704,6 +877,7 @@ const categoryConfig: Record<string, any> = {
 // Approvel button
 // 🔥 All step keys (jo partner approval ke liye important hain)
 const approvalKeys = [
+   "payment_done",       // 🔥 ADD THIS
   "documents_done",
   "vehicle_done",
   "bank_done",
@@ -724,7 +898,39 @@ const anyRejected =
 const allApproved =
   approvalKeys.every((key) => verificationData?.[key] === true);
 
+// ✅ Approve disabled if NOT all approved
 const disableApproveButton = !allApproved;
+
+// ✅ Reject disabled if any section already rejected OR not fully approved
+const disableRejectButton = allApproved;
+
+
+
+const renderKycNote = (key: string) => {
+  const noteData = kycNotes?.[key];
+  if (!noteData?.note) return null;
+
+  const isApproved = noteData.approved === true;
+
+  return (
+    <div
+      className={`w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl mb-4
+      ${
+        isApproved
+          ? "bg-green-50 text-green-700"
+          : "bg-red-50 text-red-600"
+      }`}
+    >
+      <span className="text-lg">
+        {isApproved ? "✅" : "❌"}
+      </span>
+
+      <span className="text-[14px] font-semibold text-center">
+        {noteData.note}
+      </span>
+    </div>
+  );
+};
 
 
 
@@ -910,31 +1116,157 @@ const backendAttempts =
           >
             Block Partner
           </button>
-       {/* REJECT PARTNER */}
-<button
+ 
+{/* <button
+  disabled={disableRejectButton}
   onClick={() => {
-    setCurrentSection("kyc_success");  // 🔥 important
+    setCurrentSection("kyc_success");
     setShowRejectModal(true);
   }}
-  className="px-5 py-2.5 text-[13px] font-bold border-2 border-red-500 text-red-500 rounded-xl hover:bg-red-50 transition-all"
+  className={`px-5 py-2.5 text-[13px] font-bold border-2 rounded-xl transition-all
+  ${
+    disableRejectButton
+      ? "border-gray-300 text-gray-400 cursor-not-allowed"
+      : "border-red-500 text-red-500 hover:bg-red-50"
+  }`}
 >
   Reject Partner
+</button> */}
+<button
+  disabled={actionLoading}
+  onClick={() => {
+    setShowFinalRejectModal(true); // 👈 only open modal
+  }}
+  className={`px-6 py-2.5 text-[13px] font-bold rounded-xl
+  shadow-lg transition-all uppercase
+  ${
+    actionLoading
+      ? "bg-red-300 text-white cursor-not-allowed"
+      : "bg-red-500 text-white hover:bg-red-600 shadow-red-500/20"
+  }`}
+>
+  {/* {actionLoading ? "PROCESSING..." : "Reject Partner"} */}
+  Reject Partner
 </button>
+
+
+
+{/* --- FINAL PARTNER REJECT MODAL --- */}
+{/* --- FINAL PARTNER REJECT MODAL --- */}
+{showFinalRejectModal && (
+  <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
+    
+    {/* Backdrop */}
+    <div
+      className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      onClick={() => {
+        if (!actionLoading) setShowFinalRejectModal(false);
+      }}
+    />
+
+    {/* Modal */}
+    <div
+      className={`relative w-full max-w-[360px] rounded-[28px] p-6 shadow-2xl border text-center
+      ${isDark ? "bg-[#111C44] border-gray-800" : "bg-white"}`}
+    >
+      {/* Icon */}
+      <div
+        className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full
+        ${isDark ? "bg-red-900/20" : "bg-red-50"}`}
+      >
+        <XCircle size={28} className="text-red-500" />
+      </div>
+
+      <h3
+        className={`text-xl font-black mb-3 ${
+          isDark ? "text-white" : "text-[#2B3674]"
+        }`}
+      >
+        Reject Partner
+      </h3>
+
+      <p
+        className={`text-[13px] mb-8 ${
+          isDark ? "text-gray-400" : "text-[#707EAE]"
+        }`}
+      >
+        Are you sure you want to reject this partner?
+      </p>
+
+      <div className="flex gap-3">
+        
+        {/* REVIEW */}
+        <button
+          disabled={actionLoading}
+          onClick={() => setShowFinalRejectModal(false)}
+          className={`flex-1 py-3 rounded-2xl font-black text-[13px] uppercase
+          ${
+            isDark
+              ? "bg-[#1B254B] text-white hover:bg-[#232D65]"
+              : "bg-gray-100 text-[#2B3674] hover:bg-gray-200"
+          }
+          ${actionLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+        >
+          REVIEW
+        </button>
+
+        {/* FINAL REJECT */}
+        <button
+          disabled={actionLoading}
+          onClick={async () => {
+            try {
+              setActionLoading(true);
+
+              await updatePartnerFinalStatus(false);
+
+              setShowFinalRejectModal(false);
+            } catch (error) {
+              console.error("Final reject failed", error);
+            } finally {
+              setActionLoading(false);
+            }
+          }}
+          className={`flex-1 py-3 rounded-2xl font-black text-[13px] uppercase
+          flex items-center justify-center gap-2 transition-all duration-200
+          ${
+            actionLoading
+              ? "bg-red-400 cursor-not-allowed"
+              : "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20"
+          } text-white`}
+        >
+          {actionLoading ? (
+            <>
+              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              PROCESSING...
+            </>
+          ) : (
+            "REJECT"
+          )}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
 
 
 {/* APPROVE PARTNER */}
 <button
   disabled={disableApproveButton}
   onClick={() => {
-    setApproveContext("partner");   // 🔥 important
-    setShowApproveModal(true);      // 🔥 open modal
+    setCurrentSection("kyc_success");  // 🔥 ADD THIS
+    setShowApproveModal(true);
   }}
+
   className={`px-6 py-2.5 text-[13px] font-bold rounded-xl shadow-lg transition-all
   ${
-    anyRejected
-      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-      : "bg-[#0070f3] text-white hover:bg-blue-600 shadow-blue-500/20"
-  }`}
+  disableApproveButton
+    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+    : "bg-[#0070f3] text-white hover:bg-blue-600 shadow-blue-500/20"
+}
+`}
 >
   Approve Partner
 </button>
@@ -1534,7 +1866,9 @@ const backendAttempts =
 </div>
 
       </div>
+{/* 🔥 KYC Note */}
 
+{renderKycNote("documents_done")}
       {/* DOCUMENT VERIFICATION ACTIONS */}
       <div className={`${isDark ? 'bg-[#111C44] border-gray-800' : 'bg-white border-transparent'} rounded-[24px] p-6 shadow-sm border flex items-center gap-4`}>
         <button
@@ -1875,6 +2209,7 @@ const backendAttempts =
     Reject
   </button>
 </div> */}
+{renderKycNote("vehicle_done")}
 <div className="flex gap-6 mt-10">
   <button
     onClick={() => {
@@ -2196,30 +2531,10 @@ const backendAttempts =
       </p>
     </div>
 
-    {/* Info Box */}
-    <div className="flex gap-3 items-start p-3 rounded-xl bg-blue-50 text-blue-700">
-      <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-      <p className="text-[11px] font-bold leading-relaxed">
-        Payments are processed every Friday for the previous week's billing.
-      </p>
-    </div>
-  {/* <div className="flex gap-4">
-    <button
-      onClick={() => setShowApproveModal(true)}
-      className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl
-      font-bold text-sm hover:bg-blue-600 transition-all"
-    >
-      Approve
-    </button>
+   
+  
+  {renderKycNote("bank_done")}
 
-    <button
-      onClick={() => setShowRejectModal(true)}
-      className="flex-1 border border-red-300 text-red-500 py-3
-      rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
-    >
-      Reject
-    </button>
-  </div> */}
 <div className="flex gap-4">
   <button
     onClick={() => {
@@ -2338,6 +2653,8 @@ const backendAttempts =
       Reject
     </button>
   </div> */}
+  {renderKycNote("education_done")}
+
   <div className="flex gap-4">
   <button
     onClick={() => {
@@ -2365,158 +2682,101 @@ const backendAttempts =
 </div>
 {/* Residential Proof */}
 {/* ================= RESIDENTIAL PROOF ================= */}
-<div
-  className={`rounded-[24px] p-6 border shadow-sm mt-8
-  ${isDark ? "bg-[#111C44] border-gray-800" : "bg-white border-gray-200"}`}
->
-  {/* Header */}
-  <div className="flex items-center gap-3 mb-6">
-    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-      📍
-    </div>
-    <h4
-      className={`text-lg font-extrabold ${
-        isDark ? "text-white" : "text-[#2B3674]"
-      }`}
-    >
-      Residential Proof
-    </h4>
-  </div>
-
-  {/* BASIC DETAILS */}
-  <div className="grid grid-cols-2 gap-y-4 gap-x-6 mb-4">
-    <div>
-      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
-        City
-      </p>
-      <p
-        className={`text-[14px] font-bold ${
-          isDark ? "text-white" : "text-[#2B3674]"
-        }`}
-      >
-        Azamgarh
-      </p>
-    </div>
-
-    <div>
-      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
-        State
-      </p>
-      <p
-        className={`text-[14px] font-bold ${
-          isDark ? "text-white" : "text-[#2B3674]"
-        }`}
-      >
-        Uttar Pradesh
-      </p>
-    </div>
-
-    <div>
-      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
-        Pin Code
-      </p>
-      <p
-        className={`text-[14px] font-bold ${
-          isDark ? "text-white" : "text-[#2B3674]"
-        }`}
-      >
-        276124
-      </p>
-    </div>
-
-    <div>
-      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
-        Aadhaar
-      </p>
-      <p className="text-[14px] font-bold text-blue-600">
-        True
-      </p>
-    </div>
-  </div>
-
-  {/* FULL ADDRESS */}
-  <div className="mb-4">
-    <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
-      Full Address
-    </p>
-    <p
-      className={`text-[14px] font-semibold leading-relaxed ${
-        isDark ? "text-gray-200" : "text-[#2B3674]"
-      }`}
-    >
-      Guru Govind Nagar N.P. Azmatgarh, Azamgarh, Uttar Pradesh
-    </p>
-  </div>
-
-  {/* SAVED TIMESTAMP */}
-  <div className="mb-6">
-    <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
-      Saved Timestamp
-    </p>
-    <p
-      className={`text-[13px] font-bold ${
-        isDark ? "text-gray-300" : "text-[#2B3674]"
-      }`}
-    >
-      06-02-2026 16:18:18
-    </p>
-  </div>
-
-  {/* DOCUMENT PREVIEW */}
-  <div className="mb-6">
-    <div
-      className={`w-full h-40 rounded-xl
-      ${isDark ? "bg-[#1B254B]" : "bg-gray-300"}
-      flex items-center justify-center text-white font-bold text-sm`}
-    >
-      VIEW DOCUMENT
-    </div>
-  </div>
-
-  {/* ACTION BUTTONS */}
-  {/* <div className="flex gap-4">
-    <button
-      onClick={() => setShowApproveModal(true)}
-      className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl
-      font-bold text-sm hover:bg-blue-600 transition-all"
-    >
-      Approve
-    </button>
-
-    <button
-      onClick={() => setShowRejectModal(true)}
-      className="flex-1 border border-red-300 text-red-500 py-3
-      rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
-    >
-      Reject
-    </button>
-  </div> */}
- <div className="flex gap-4">
-  <button
-    onClick={() => {
-      setCurrentSection("address_done");  // 🔥 try this
-      setShowApproveModal(true);
-    }}
-    className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl
-    font-bold text-sm hover:bg-blue-600 transition-all"
+{/* ================= RESIDENTIAL PROOF ================= */}
+{!residentialLoading && residentialData && (
+  <div
+    className={`rounded-[24px] p-6 border shadow-sm mt-8
+    ${isDark ? "bg-[#111C44] border-gray-800" : "bg-white border-gray-200"}`}
   >
-    Approve
-  </button>
+    <div className="flex items-center gap-3 mb-6">
+      <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+        📍  
+      </div>
+      <h4 className={`text-lg font-extrabold ${isDark ? "text-white" : "text-[#2B3674]"}`}>
+        Residential Proof
+      </h4>
+    </div>
 
-  <button
-    onClick={() => {
-      setCurrentSection("address_done");
-      setShowRejectModal(true);
-    }}
-    className="flex-1 border border-red-300 text-red-500 py-3
-    rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
-  >
-    Reject
-  </button>
-</div>
+    <div className="grid grid-cols-2 gap-y-4 gap-x-6 mb-4">
+      <div>
+        <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">City</p>
+        <p className="text-[14px] font-bold">
+          {residentialData.city}
+        </p>
+      </div>
 
+      <div>
+        <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">State</p>
+        <p className="text-[14px] font-bold">
+          {residentialData.state}
+        </p>
+      </div>
 
-</div>
+      <div>
+        <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">Pin Code</p>
+        <p className="text-[14px] font-bold">
+          {residentialData.pincode}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">Proof Type</p>
+        <p className="text-[14px] font-bold text-blue-600 capitalize">
+          {residentialData.proofType?.replace("_", " ")}
+        </p>
+      </div>
+    </div>
+
+    <div className="mb-4">
+      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+        Full Address
+      </p>
+      <p className="text-[14px] font-semibold leading-relaxed">
+        {residentialData.addressLine1}
+        {residentialData.addressLine2 && `, ${residentialData.addressLine2}`}
+      </p>
+    </div>
+
+    {/* Document Preview */}
+    {residentialData.proofImage && (
+      <div
+        onClick={() => setPreviewImage(residentialData.proofImage)}
+        className="w-full h-40 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 ring-blue-400 transition"
+      >
+        <img
+          src={residentialData.proofImage}
+          alt="Residential Proof"
+          className="h-full w-full object-cover"
+        />
+      </div>
+    )}
+
+    {renderKycNote("address_done")}
+
+    <div className="flex gap-4 mt-6">
+      <button
+        onClick={() => {
+          setCurrentSection("address_done");
+          setShowApproveModal(true);
+        }}
+        className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-600 transition-all"
+      >
+        Approve
+      </button>
+
+      <button
+        onClick={() => {
+          setCurrentSection("address_done");
+          setShowRejectModal(true);
+        }}
+        className="flex-1 border border-red-300 text-red-500 py-3 rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
+      >
+        Reject
+      </button>
+    </div>
+  </div>
+)}
+
 
 
   </div>
@@ -2547,13 +2807,22 @@ const backendAttempts =
       </div>
 
       {/* Title */}
-      <h3 className={`text-xl font-black mb-2 ${
+   <h3 className={`text-xl font-black mb-2 ${
   isDark ? "text-white" : "text-[#2B3674]"
 }`}>
-  {approveContext === "vehicle"
+  {currentSection === "vehicle_done"
     ? "Approve Vehicle"
+    : currentSection === "bank_done"
+    ? "Approve Bank Details"
+    : currentSection === "education_done"
+    ? "Approve Education"
+    : currentSection === "address_done"
+    ? "Approve Address"
+    : currentSection === "documents_done"
+    ? "Approve Documents"
     : "Approve Partner"}
 </h3>
+
 
 
       {/* Description */}
@@ -2593,16 +2862,32 @@ const backendAttempts =
       setActionLoading(true);
 
       // 1️⃣ Update section status
-      await updateVerificationStatus(currentSection, true);
+      // await updateVerificationStatus(currentSection, true);
+if (currentSection === "kyc_success") {
+  await updatePartnerFinalStatus(true);
+} else {
+  await updateVerificationStatus(currentSection, true);
 
-      // 2️⃣ Save live KYC status
-      await saveKycLiveStatus(
-        currentSection,
-        true,
-        `${currentSection.replace("_done", "")} verified`
-      );
+  await saveKycLiveStatus(
+    currentSection,
+    true,
+    `${currentSection.replace("_done", "")} verified`
+  );
+}
 
-      // 3️⃣ 🔥 Refetch latest verification status
+      
+
+
+      
+      // 🔥 refresh that section note only
+const updatedNote = await fetchSingleKycNote(currentSection);
+
+if (updatedNote) {
+  setKycNotes(prev => ({
+    ...prev,
+    [currentSection]: updatedNote
+  }));
+}
      // 3️⃣ Get fresh verification status directly
 const res = await fetch(
   `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
@@ -2763,13 +3048,28 @@ if (json.success) {
         <XCircle size={28} className="text-red-500" />
       </div>
 
-      <h3
+      {/* <h3
         className={`text-xl font-black mb-2 ${
           isDark ? "text-white" : "text-[#2B3674]"
         }`}
       >
         Reject Partner
-      </h3>
+      </h3> */}
+<h3 className={`text-xl font-black mb-2 ${
+  isDark ? "text-white" : "text-[#2B3674]"
+}`}>
+  {currentSection === "vehicle_done"
+    ? "Reject Vehicle"
+    : currentSection === "bank_done"
+    ? "Reject Bank Details"
+    : currentSection === "education_done"
+    ? "Reject Education"
+    : currentSection === "address_done"
+    ? "Reject Address"
+    : currentSection === "documents_done"
+    ? "Reject Documents"
+    : "Reject Partner"}
+</h3>
 
       <p
         className={`text-[13px] mb-4 ${
@@ -2814,14 +3114,27 @@ if (json.success) {
     setActionLoading(true);
 
     // 1️⃣ Update section false
-    await updateVerificationStatus(currentSection, false);
+ if (currentSection === "kyc_success") {
+  await updatePartnerFinalStatus(false);
+} else {
+  await updateVerificationStatus(currentSection, false);
 
-    // 2️⃣ Save live status
-    await saveKycLiveStatus(
-      currentSection,
-      false,
-      rejectReason
-    );
+  await saveKycLiveStatus(
+    currentSection,
+    false,
+    rejectReason
+  );
+}
+
+    // 🔥 refresh that section note only
+const updatedNote = await fetchSingleKycNote(currentSection);
+
+if (updatedNote) {
+  setKycNotes(prev => ({
+    ...prev,
+    [currentSection]: updatedNote
+  }));
+}
 
     // 3️⃣ 🔥 Fetch latest verification status
     const res = await fetch(
