@@ -131,49 +131,83 @@ export default function CreateOfferPage() {
     headImage: "",
     headVideo: "",
   });
-  // Media
+  // Media — blob preview URLs (for display only)
   const [bannerImages, setBannerImages] = useState<string[]>([]);
   const [bannerFiles, setBannerFiles] = useState<File[]>([]);
+  const [bannerCloudUrls, setBannerCloudUrls] = useState<string[]>([]); // ← real Cloudinary URLs
 
   const [videos, setVideos] = useState<string[]>([]);
-  const [promoImages, setPromoImages] = useState<string[]>([]);
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
+  const [videoCloudUrls, setVideoCloudUrls] = useState<string[]>([]); // ← real Cloudinary URLs
+
+  const [promoImages, setPromoImages] = useState<string[]>([]);
   const [promoFiles, setPromoFiles] = useState<File[]>([]);
+  const [promoCloudUrls, setPromoCloudUrls] = useState<string[]>([]);  // ← real Cloudinary URLs
+
+  // Header Cloudinary URLs
+  const [headImageCloudUrl, setHeadImageCloudUrl] = useState<string>("");
+  const [headVideoCloudUrl, setHeadVideoCloudUrl] = useState<string>("");
 
   const [tempInputs, setTempInputs] = useState({
     banner: "",
     video: "",
     promo: "",
   });
+  // ── Upload a single file → Cloudinary URL (temp offer auto-deleted) ─────────
+  const uploadFileToCDN = async (
+    file: File,
+    fieldName: string
+  ): Promise<string | null> => {
+    try {
+      const fd = new FormData();
+      fd.append(fieldName, file);
+      fd.append("title", "__temp_upload__");
+      fd.append("description", "__temp__");
+
+      const res = await fetch(
+        "https://api.bijliwalaaya.in/api/offers/add-offer",
+        { method: "POST", headers: { "x-api-token": "super_secure_token" }, body: fd }
+      );
+      if (!res.ok) return null;
+
+      const data = await res.json();
+      console.log("CDN upload response:", JSON.stringify(data).slice(0, 400));
+
+      // Try all common response shapes to find the _id and URL
+      const offer = data?.data ?? data?.offer ?? data;
+      const _id = offer?._id;
+      const cdnUrl = offer?.[fieldName] ?? null;
+
+      // ✅ Immediately delete the temp offer (awaited so it actually completes)
+      if (_id) {
+        try {
+          await fetch(`https://api.bijliwalaaya.in/api/offers/${_id}`, {
+            method: "DELETE",
+            headers: { "x-api-token": "super_secure_token" },
+          });
+          console.log("Temp offer deleted:", _id);
+        } catch { /* ignore delete errors */ }
+      }
+
+      return cdnUrl;
+    } catch {
+      return null;
+    }
+  };
+
   const handleFileUpload = (
     files: FileList | null,
     type: "banner" | "video" | "promo"
   ) => {
     if (!files) return;
-
-    const previews: string[] = [];
-    const realFiles: File[] = [];
-
     Array.from(files).forEach(file => {
-      previews.push(URL.createObjectURL(file)); // 👁 preview
-      realFiles.push(file);                     // 📦 real file
+      const preview = URL.createObjectURL(file);
+      if (type === "banner") { setBannerImages(p => [...p, preview]); setBannerFiles(p => [...p, file]); }
+      if (type === "video") { setVideos(p => [...p, preview]); setVideoFiles(p => [...p, file]); }
+      if (type === "promo") { setPromoImages(p => [...p, preview]); setPromoFiles(p => [...p, file]); }
     });
-
-    if (type === "banner") {
-      setBannerImages(prev => [...prev, ...previews]);
-      setBannerFiles(prev => [...prev, ...realFiles]);
-    }
-
-    if (type === "video") {
-      setVideos(prev => [...prev, ...previews]);
-      setVideoFiles(prev => [...prev, ...realFiles]);
-    }
-
-    if (type === "promo") {
-      setPromoImages(prev => [...prev, ...previews]);
-      setPromoFiles(prev => [...prev, ...realFiles]);
-    }
   };
+
   const [offers, setOffers] = useState<any[]>([]);
   const [mainCategories, setMainCategories] = useState<any[]>([]);
   const [subCategories, setSubCategories] = useState<Record<string, any[]>>({});
@@ -203,7 +237,17 @@ export default function CreateOfferPage() {
       const data = await res.json();
 
       if (data.success) {
-        setMainCategories(data.data);
+       if (data.success) {
+  const mains = data.data;
+  setMainCategories(mains);
+
+  // 🔥 Auto fetch sub categories
+  mains.forEach((main: any) => {
+    if (main.hasSubCategory) {
+      fetchSubCategories(main._id);
+    }
+  });
+}
       }
 
     } catch (error) {
@@ -212,6 +256,8 @@ export default function CreateOfferPage() {
       setLoading(false);
     }
   };
+
+  
   const fetchSubCategories = async (mainId: string) => {
     try {
       const res = await fetch(
@@ -225,12 +271,16 @@ export default function CreateOfferPage() {
 
       const data = await res.json();
 
-      if (data.success) {
-        setSubCategories(prev => ({
-          ...prev,
-          [mainId]: data.data
-        }));
-      }
+    if (data.success) {
+  const subObject = data.data?.subCategory || {};
+
+  const subArray = Object.values(subObject);
+
+  setSubCategories(prev => ({
+    ...prev,
+    [mainId]: subArray
+  }));
+}
     } catch (error) {
       console.error("Error fetching sub categories:", error);
     }
@@ -315,113 +365,84 @@ export default function CreateOfferPage() {
   //     setSaving(false);
   //   }
   // };
-const handleSaveOffer = async () => {
-  if (saving) return;
+  const handleSaveOffer = async () => {
+    if (saving) return;
 
-  if (!details.title?.trim()) {
-    alert("Title is required");
-    return;
-  }
+    if (!details.title?.trim()) { alert("Title is required"); return; }
+    if (!details.description?.trim()) { alert("Description is required"); return; }
 
-  if (!details.description?.trim()) {
-    alert("Description is required");
-    return;
-  }
+    try {
+      setSaving(true);
 
-  try {
-    setSaving(true);
-
-    const payload = buildPayload();
-    const formData = new FormData();
-
-    // ✅ REQUIRED FIELDS DIRECTLY
-    formData.append("title", payload.title);
-    formData.append("description", payload.description);
-
-    // ✅ Optional Fields
-    if (payload.promocode)
-      formData.append("promocode", payload.promocode);
-
-    if (payload.headTitle)
-      formData.append("headTitle", payload.headTitle);
-
-    if (payload.headDescription)
-      formData.append("headDescription", payload.headDescription);
-
-    // ✅ Arrays / Objects
-    if (payload.select_main_category)
-      formData.append(
-        "select_main_category",
-        JSON.stringify(payload.select_main_category)
+      // ─────────────────────────────────────────────────────────────────────
+      // STEP 1: Create offer with all structured data (JSON body)
+      //         Mongoose embedded arrays/objects REQUIRE real JSON types.
+      // ─────────────────────────────────────────────────────────────────────
+      const payload = buildPayload();
+      const createRes = await fetch(
+        "https://api.bijliwalaaya.in/api/offers/add-offer",
+        {
+          method: "POST",
+          headers: { "x-api-token": "super_secure_token", "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
       );
 
-    if (payload.states)
-      formData.append("states", JSON.stringify(payload.states));
-
-    if (payload.cities)
-      formData.append("cities", JSON.stringify(payload.cities));
-
-    if (payload.discountValue)
-      formData.append("discountValue", String(payload.discountValue));
-
-    if (payload.limit)
-      formData.append("limit", String(payload.limit));
-
-    if (payload.user_usage_limit)
-      formData.append("user_usage_limit", String(payload.user_usage_limit));
-
-    if (payload.min_spend)
-      formData.append("min_spend", String(payload.min_spend));
-
-    // ✅ Files
-    if (headerImageFile)
-      formData.append("headImage", headerImageFile);
-
-    if (headerVideoFile)
-      formData.append("headVideo", headerVideoFile);
-
-    bannerFiles.forEach(file =>
-      formData.append("imageUrl", file)
-    );
-
-    videoFiles.forEach(file =>
-      formData.append("videoUrl", file)
-    );
-
-    promoFiles.forEach(file =>
-      formData.append("promoLogo", file)
-    );
-
-    const res = await fetch(
-      "https://api.bijliwalaaya.in/api/offers/add-offer",
-      {
-        method: "POST",
-        headers: {
-          "x-api-token": "super_secure_token"
-        },
-        body: formData
+      let createData: any = null;
+      try { createData = await createRes.json(); } catch {
+        alert(`Server crashed (${createRes.status}) — check backend logs.`); return;
       }
-    );
+      if (!createRes.ok) { alert(createData?.message || `Backend error (${createRes.status})`); return; }
 
-    console.log("STATUS:", res.status);
+      const offerId = createData?.data?._id ?? createData?.offer?._id ?? createData?._id;
+      console.log("Offer created:", offerId, createData);
 
-    const data = await res.json();
-    console.log("RESPONSE:", data);
+      // ─────────────────────────────────────────────────────────────────────
+      // STEP 2: If files exist, upload them via FormData PUT to the same offer
+      //         multer handles them → Cloudinary → URLs stored in the offer
+      // ─────────────────────────────────────────────────────────────────────
+      const hasFiles = bannerFiles.length || videoFiles.length || promoFiles.length
+        || headerImageFile || headerVideoFile;
 
-    if (!res.ok) {
-      alert(data.message || "Backend validation failed");
-      return;
+      if (offerId && hasFiles) {
+        const fd = new FormData();
+        bannerFiles.forEach(f => fd.append("imageUrl", f));
+        videoFiles.forEach(f => fd.append("videoUrl", f));
+        promoFiles.forEach(f => fd.append("promoLogo", f));
+        if (headerImageFile) fd.append("headImage", headerImageFile);
+        if (headerVideoFile) fd.append("headVideo", headerVideoFile);
+
+        const updateRes = await fetch(
+          `https://api.bijliwalaaya.in/api/offers/${offerId}`,
+          {
+            method: "PUT",
+            headers: { "x-api-token": "super_secure_token" },
+            body: fd,
+          }
+        );
+        const updateData = await updateRes.json().catch(() => null);
+        console.log("File update response:", updateData);
+      }
+
+      alert("Offer Created Successfully ✅");
+
+      // Reset
+      setDetails({ title: "", description: "", link: "" });
+      setBannerImages([]); setBannerFiles([]); setBannerCloudUrls([]);
+      setVideos([]); setVideoFiles([]); setVideoCloudUrls([]);
+      setPromoImages([]); setPromoFiles([]); setPromoCloudUrls([]);
+      setHeaderSection({ headTitle: "", headDescription: "", headImage: "", headVideo: "" });
+      setHeaderImageFile(null); setHeaderVideoFile(null);
+      setHeadImageCloudUrl(""); setHeadVideoCloudUrl("");
+
+    } catch (err) {
+      console.error("SERVER ERROR:", err);
+      alert("Server error");
+    } finally {
+      setSaving(false);
     }
+  };
 
-    alert("Offer Created Successfully ✅");
-
-  } catch (err) {
-    console.error("SERVER ERROR:", err);
-    alert("Server error");
-  } finally {
-    setSaving(false);
-  }
-};
   // const formatDate = (dateStr: string) => {
   //   const [day, month, year] = dateStr.split("/");
   //   return `${year}-${month}-${day}`;
@@ -538,73 +559,105 @@ const handleSaveOffer = async () => {
   //   };
 
   const buildPayload = () => {
+    // ── Core flags ────────────────────────────────────────────────────────
     const payload: any = {
       title: details.title.trim(),
+      description: details.description.trim(),
+      offerActive: true,
+      visibleToUser: promo.visible,
+      offerVisible: true,
     };
 
-    if (details.description.trim()) {
-      payload.description = details.description.trim();
-    }
+    // ── Header section ────────────────────────────────────────────────────
+    if (headerSection.headTitle) payload.headTitle = headerSection.headTitle;
+    if (headerSection.headDescription) payload.headDescription = headerSection.headDescription;
+    // Use Cloudinary URL if file was uploaded, else fall back to URL input
+    if (headImageCloudUrl) payload.headImage = headImageCloudUrl;
+    else if (headerSection.headImage) payload.headImage = headerSection.headImage;
+    if (headVideoCloudUrl) payload.headVideo = headVideoCloudUrl;
+    else if (headerSection.headVideo) payload.headVideo = headerSection.headVideo;
 
-    if (promo.code) {
-      payload.promocode = promo.code;
-    }
+    // ── Media URLs: Cloudinary (from file upload) OR pasted URL ───────────
+    if (bannerCloudUrls.length > 0) payload.imageUrl = bannerCloudUrls[0];
+    else if (bannerImages.length > 0 && !bannerImages[0].startsWith('blob:')) payload.imageUrl = bannerImages[0];
+    if (videoCloudUrls.length > 0) payload.videoUrl = videoCloudUrls[0];
+    else if (videos.length > 0 && !videos[0].startsWith('blob:')) payload.videoUrl = videos[0];
+    if (promoCloudUrls.length > 0) payload.promoLogo = promoCloudUrls[0];
+    else if (promoImages.length > 0 && !promoImages[0].startsWith('blob:')) payload.promoLogo = promoImages[0];
 
-    if (headerSection.headTitle) {
-      payload.headTitle = headerSection.headTitle;
-    }
+    // ── Promo ─────────────────────────────────────────────────────────────
+    if (promo.code) payload.promocode = promo.code;
 
-    if (headerSection.headDescription) {
-      payload.headDescription = headerSection.headDescription;
-    }
+    // ── Services (offerTarget) ────────────────────────────────────────────
+    const selectedServices = (
+      Object.keys(offerTarget) as Array<keyof typeof offerTarget>
+    ).filter(k => k !== "all" && offerTarget[k]);
+    payload.select_services = selectedServices;
 
-    if (bannerFiles.length === 0 && bannerImages.length > 0) {
-      payload.imageUrl = bannerImages[0];
-    }
+    // ── Departments ───────────────────────────────────────────────────────
+    const deptMap: Record<string, string> = {
+      homeAppliances: "Home Appliances",
+      computer: "Computer",
+      mobile: "Mobile",
+    };
+    const selectedDepts = Object.keys(deptSelection)
+      .filter(k => k !== "all" && deptSelection[k])
+      .map(k => deptMap[k] ?? k);
+    payload.select_departments = selectedDepts;
 
-    if (videoFiles.length === 0 && videos.length > 0) {
-      payload.videoUrl = videos[0];
-    }
-
-    if (promoFiles.length === 0 && promoImages.length > 0) {
-      payload.promoLogo = promoImages[0];
-    }
-
-    const selectedMain = mainCategories
+    // ── Categories (real arrays → Mongoose embedded docs) ─────────────────
+    payload.select_main_category = mainCategories
       .filter(main => treeState[main._id])
-      .map(main => ({
-        documentId: main._id,
-        name: main.name
-      }));
+      .map(main => ({ documentId: main._id, name: main.name }));
 
-    if (selectedMain.length > 0) {
-      payload.select_main_category = selectedMain;
-    }
+    payload.select_sub_category = Object.values(subCategories)
+      .flat()
+      .filter((sub: any) => treeState[sub._id])
+      .map((sub: any) => ({ documentId: sub._id, name: sub.name }));
 
-    if (cityTarget.state) {
-      payload.states = [{ stateName: cityTarget.state }];
-    }
+    payload.select_child_category = Object.values(childCategories)
+      .flat()
+      .filter((child: any) => treeState[child._id])
+      .map((child: any) => ({ documentId: child._id, name: child.name }));
 
-    if (cityTarget.selectedCities.length > 0) {
-      payload.cities = cityTarget.selectedCities.map(city => ({
-        cityName: city
-      }));
-    }
+    // ── Location (real arrays → Mongoose embedded docs) ───────────────────
+    payload.states = cityTarget.allCities
+      ? []
+      : cityTarget.state
+        ? [{ stateName: cityTarget.state }]
+        : [];
 
-    if (discount.value) {
-      payload.discountValue = Number(discount.value);
-    }
+    payload.cities = cityTarget.selectedCities.map(city => ({ cityName: city }));
 
-    if (limits.totalType === "limited" && limits.totalValue) {
-      payload.limit = Number(limits.totalValue);
-    }
+    // ── Discount ──────────────────────────────────────────────────────────
+    payload.discountValue = Number(discount.value) || 0;
+    payload.discountType = {
+      type: discount.type.toUpperCase(),
+      maxDiscount: Number(discount.value) || 0,
+    };
 
-    if (limits.userType === "limited" && limits.userValue) {
-      payload.user_usage_limit = Number(limits.userValue);
-    }
+    // ── Limits ────────────────────────────────────────────────────────────
+    payload.limit = limits.totalType === "limited" ? Number(limits.totalValue) || 0 : 0;
+    payload.user_usage_limit = limits.userType === "limited" ? Number(limits.userValue) || 0 : 0;
+    payload.min_spend = minSpend.active ? Number(minSpend.value) || 0 : 0;
 
-    if (minSpend.active) {
-      payload.min_spend = Number(minSpend.value);
+    // ── Validity (real array → Mongoose embedded docs) ────────────────────
+    payload.validity = [{
+      startDate: formatDate(validity.fromDate),
+      endDate: formatDate(validity.toDate),
+      startTime: validity.fromTime,
+      endTime: validity.toTime,
+    }];
+
+    // ── Payment ───────────────────────────────────────────────────────────
+    if (payment.all) {
+      payload.payment_via = ["ALL"];
+    } else {
+      payload.payment_via = [
+        payment.cash && "CASH",
+        payment.online && "ONLINE",
+        payment.others && payment.othersText,
+      ].filter(Boolean);
     }
 
     return payload;
@@ -994,10 +1047,15 @@ const handleSaveOffer = async () => {
                       ) : (
                         // Render Main Categories List
                         <div className="flex flex-col gap-4">
-                          {mainCategories.map((main) => {
-                            // Filter logic placeholder:
-                            // if (main.departmentId !== deptId) return null; 
-
+                         {mainCategories
+  .filter(
+  (main) =>
+    main.parentId?.toLowerCase().trim() ===
+    deptName.toLowerCase().trim()
+)
+  .map((main) => {
+                            
+                            
                             return (
                               <div key={main._id} className="border-l-[3px] border-slate-200 pl-5 relative">
 
@@ -1180,59 +1238,37 @@ const handleSaveOffer = async () => {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-
-                  const preview = URL.createObjectURL(file);
-
                   setHeaderImageFile(file);
-                  setHeaderSection(prev => ({
-                    ...prev,
-                    headImage: preview
-                  }));
+                  setHeaderSection(prev => ({ ...prev, headImage: URL.createObjectURL(file) }));
                 }}
               />
 
               {/* Drop Area */}
               <div
                 className="border-2 border-dashed border-slate-300 rounded-3xl p-6 text-center bg-slate-50 cursor-pointer hover:bg-slate-100 transition"
-                onClick={() =>
-                  document.getElementById("header-image-upload")?.click()
-                }
+                onClick={() => document.getElementById("header-image-upload")?.click()}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault();
                   const file = e.dataTransfer.files?.[0];
                   if (!file) return;
-
-                  const preview = URL.createObjectURL(file);
-
                   setHeaderImageFile(file);
-                  setHeaderSection(prev => ({
-                    ...prev,
-                    headImage: preview
-                  }));
+                  setHeaderSection(prev => ({ ...prev, headImage: URL.createObjectURL(file) }));
                 }}
               >
                 <i className="fas fa-cloud-upload-alt text-3xl text-slate-400 mb-2"></i>
-                <p className="text-slate-500">
-                  Drag & drop image or click to upload
-                </p>
+                <p className="text-slate-500">Drag &amp; drop image or click to upload</p>
               </div>
 
               {/* Preview */}
               {headerSection.headImage && (
                 <div className="mt-4 relative w-[140px] h-[90px] border rounded-xl overflow-hidden">
-                  <img
-                    src={headerSection.headImage}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={headerSection.headImage} className="w-full h-full object-cover" />
                   <span
                     className="absolute -top-2 -right-2 bg-white w-6 h-6 flex items-center justify-center rounded-full shadow cursor-pointer text-red-500"
                     onClick={() => {
-                      setHeaderSection(prev => ({
-                        ...prev,
-                        headImage: ""
-                      }));
-                      setHeaderImageFile(null);
+                      setHeaderSection(prev => ({ ...prev, headImage: "" }));
+                      setHeadImageCloudUrl("");
                     }}
                   >
                     ✕
@@ -1256,42 +1292,26 @@ const handleSaveOffer = async () => {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-
-                  const preview = URL.createObjectURL(file);
-
                   setHeaderVideoFile(file);
-                  setHeaderSection(prev => ({
-                    ...prev,
-                    headVideo: preview
-                  }));
+                  setHeaderSection(prev => ({ ...prev, headVideo: URL.createObjectURL(file) }));
                 }}
               />
 
               {/* Drop Area */}
               <div
                 className="border-2 border-dashed border-slate-300 rounded-3xl p-6 text-center bg-slate-50 cursor-pointer hover:bg-slate-100 transition"
-                onClick={() =>
-                  document.getElementById("header-video-upload")?.click()
-                }
+                onClick={() => document.getElementById("header-video-upload")?.click()}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault();
                   const file = e.dataTransfer.files?.[0];
                   if (!file) return;
-
-                  const preview = URL.createObjectURL(file);
-
                   setHeaderVideoFile(file);
-                  setHeaderSection(prev => ({
-                    ...prev,
-                    headVideo: preview
-                  }));
+                  setHeaderSection(prev => ({ ...prev, headVideo: URL.createObjectURL(file) }));
                 }}
               >
                 <i className="fas fa-cloud-upload-alt text-3xl text-slate-400 mb-2"></i>
-                <p className="text-slate-500">
-                  Drag & drop video or click to upload
-                </p>
+                <p className="text-slate-500">Drag &amp; drop video or click to upload</p>
               </div>
 
               {/* Preview */}

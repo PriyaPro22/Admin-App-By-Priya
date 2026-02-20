@@ -667,7 +667,7 @@ const handleAddNew = () => {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-black text-gray-900 tracking-tight">
-          Inventory Management
+          Spare Parts Management
         </h1>
         <p className="text-gray-500 mt-1">
           Add, track and manage your spare parts stock and pricing.
@@ -832,7 +832,7 @@ const handleAddNew = () => {
         <div className="space-y-6">
           <div>
             <label className="block font-semibold text-gray-700 mb-2">
-              Base Price ($)
+              Base Price (₹)
             </label>
             <input
               type="number"
@@ -889,7 +889,7 @@ const handleAddNew = () => {
                 Calculated GST Value
               </span>
               <span className="font-bold text-gray-900">
-                ${gstValue.toFixed(2)}
+                ₹{gstValue.toFixed(2)}
               </span>
             </div>
 
@@ -898,7 +898,7 @@ const handleAddNew = () => {
                 Final Price
               </span>
               <span className="text-3xl font-bold text-blue-600">
-                ${finalPrice.toFixed(2)}
+                ₹{finalPrice.toFixed(2)}
               </span>
             </div>
           </div>
@@ -1032,7 +1032,7 @@ const handleAddNew = () => {
       </td>
 
       <td className="px-6 py-4 text-sm text-right font-medium text-gray-700">
-        ${item.basePrice}
+        ₹{item.basePrice}
       </td>
 
       <td className="px-6 py-4 text-sm text-center text-gray-700">
@@ -1040,7 +1040,7 @@ const handleAddNew = () => {
       </td>
 
       <td className="px-6 py-4 text-sm text-right font-bold text-blue-600">
-        ${item.finalPrice}
+        ₹{item.finalPrice}
       </td>
 
       {/* ✅ Actions Column */}
