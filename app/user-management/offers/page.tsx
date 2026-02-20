@@ -462,7 +462,7 @@ export default function CreateOfferPage() {
 
       alert("Offer Created Successfully ✅");
 
-      // Reset
+      // Reset — all form state
       setDetails({ title: "", description: "", link: "" });
       setBannerImages([]); setBannerFiles([]); setBannerCloudUrls([]);
       setVideos([]); setVideoFiles([]); setVideoCloudUrls([]);
@@ -470,6 +470,19 @@ export default function CreateOfferPage() {
       setHeaderSection({ headTitle: "", headDescription: "", headImage: "", headVideo: "" });
       setHeaderImageFile(null); setHeaderVideoFile(null);
       setHeadImageCloudUrl(""); setHeadVideoCloudUrl("");
+      setOfferTarget({ services: false, rider: false, resale: false, ecommerce: false, all: false });
+      setDeptSelection({ homeAppliances: false, computer: false, mobile: false, all: false });
+      setTreeState({});
+      setCollapsedDepts({});
+      setSubCategories({});
+      setChildCategories({});
+      setCityTarget({ allCities: false, state: "", selectedCities: [] });
+      setPromo({ code: "", visible: true });
+      setDiscount({ type: "percentage", value: 20 });
+      setLimits({ totalType: "unlimited", totalValue: "", userType: "unlimited", userValue: "" });
+      setValidity({ fromDate: "", fromTime: "", toDate: "", toTime: "" });
+      setPayment({ cash: false, online: false, others: false, all: false, othersText: "" });
+      setMinSpend({ active: false, value: 500 });
 
     } catch (err) {
       console.error("SERVER ERROR:", err);
@@ -653,8 +666,9 @@ export default function CreateOfferPage() {
 
     payload.select_child_category = Object.values(childCategories)
       .flat()
-      .filter((child: any) => treeState[child.documentId ?? child._id])
-      .map((child: any) => ({ documentId: child.documentId ?? child._id, name: child.name }));
+      // child.name is the identifier (API returns name-keyed objects with no _id/documentId)
+      .filter((child: any) => treeState[child.documentId ?? child._id ?? child.name])
+      .map((child: any) => ({ documentId: child.documentId ?? child._id ?? child.name, name: child.name }));
 
     // ── Location (real arrays → Mongoose embedded docs) ───────────────────
     payload.states = cityTarget.allCities
