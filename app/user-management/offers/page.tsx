@@ -237,17 +237,17 @@ export default function CreateOfferPage() {
       const data = await res.json();
 
       if (data.success) {
-       if (data.success) {
-  const mains = data.data;
-  setMainCategories(mains);
+        if (data.success) {
+          const mains = data.data;
+          setMainCategories(mains);
 
-  // 🔥 Auto fetch sub categories
-  mains.forEach((main: any) => {
-    if (main.hasSubCategory) {
-      fetchSubCategories(main._id);
-    }
-  });
-}
+          // 🔥 Auto fetch sub categories
+          mains.forEach((main: any) => {
+            if (main.hasSubCategory) {
+              fetchSubCategories(main._id);
+            }
+          });
+        }
       }
 
     } catch (error) {
@@ -257,7 +257,7 @@ export default function CreateOfferPage() {
     }
   };
 
-  
+
   const fetchSubCategories = async (mainId: string) => {
     try {
       const res = await fetch(
@@ -271,41 +271,77 @@ export default function CreateOfferPage() {
 
       const data = await res.json();
 
-    if (data.success) {
-  const subObject = data.data?.subCategory || {};
+      if (data.success) {
+        // API returns data.data as an object with documentId keys (not nested under subCategory)
+        const subObject = data.data || {};
 
-  const subArray = Object.values(subObject);
+        const subArray = Object.values(subObject);
 
-  setSubCategories(prev => ({
-    ...prev,
-    [mainId]: subArray
-  }));
-}
+        setSubCategories(prev => ({
+          ...prev,
+          [mainId]: subArray
+        }));
+      }
     } catch (error) {
       console.error("Error fetching sub categories:", error);
     }
   };
+  // Parses child category API response (name-keyed object) into a flat array
+  const parseChildData = (rawData: any): any[] => {
+    if (!rawData || typeof rawData !== 'object') return [];
+    return Object.entries(rawData)
+      // Filter out non-category entries that have no name or are media objects
+      .filter(([key, val]: [string, any]) =>
+        val && typeof val === 'object' && val.name &&
+        typeof val.name === 'string' &&
+        // skip childCatMedia-type entries (media containers, not categories)
+        !key.toLowerCase().includes('media') &&
+        val.name !== 'childCat' && val.name !== 'images'
+      )
+      .map(([, val]: [string, any]) => ({
+        name: val.name,
+        visibility: val.visibility,
+      }));
+  };
+
   const fetchChildCategories = async (mainId: string, subId: string) => {
     try {
       const res = await fetch(
         `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/sub/${subId}/child`,
         {
-          headers: {
-            "x-api-token": "super_secure_token",
-          },
+          headers: { "x-api-token": "super_secure_token" },
         }
       );
-
       const data = await res.json();
-
       if (data.success) {
         setChildCategories(prev => ({
           ...prev,
-          [`${mainId}-${subId}`]: data.data
+          [`${mainId}-${subId}`]: parseChildData(data.data)
         }));
       }
     } catch (error) {
       console.error("Error fetching child categories:", error);
+    }
+  };
+
+  // New: fetch child categories directly under a main category (no sub)
+  const fetchDirectChildCategories = async (mainId: string) => {
+    try {
+      const res = await fetch(
+        `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/child`,
+        {
+          headers: { "x-api-token": "super_secure_token" },
+        }
+      );
+      const data = await res.json();
+      if (data.success) {
+        setChildCategories(prev => ({
+          ...prev,
+          [`${mainId}-direct`]: parseChildData(data.data)
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching direct child categories:", error);
     }
   };
 
@@ -612,13 +648,13 @@ export default function CreateOfferPage() {
 
     payload.select_sub_category = Object.values(subCategories)
       .flat()
-      .filter((sub: any) => treeState[sub._id])
-      .map((sub: any) => ({ documentId: sub._id, name: sub.name }));
+      .filter((sub: any) => treeState[sub.documentId ?? sub._id])
+      .map((sub: any) => ({ documentId: sub.documentId ?? sub._id, name: sub.name }));
 
     payload.select_child_category = Object.values(childCategories)
       .flat()
-      .filter((child: any) => treeState[child._id])
-      .map((child: any) => ({ documentId: child._id, name: child.name }));
+      .filter((child: any) => treeState[child.documentId ?? child._id])
+      .map((child: any) => ({ documentId: child.documentId ?? child._id, name: child.name }));
 
     // ── Location (real arrays → Mongoose embedded docs) ───────────────────
     payload.states = cityTarget.allCities
@@ -1047,91 +1083,132 @@ export default function CreateOfferPage() {
                       ) : (
                         // Render Main Categories List
                         <div className="flex flex-col gap-4">
-                         {mainCategories
-  .filter(
-  (main) =>
-    main.parentId?.toLowerCase().trim() ===
-    deptName.toLowerCase().trim()
-)
-  .map((main) => {
-                            
-                            
-                            return (
-                              <div key={main._id} className="border-l-[3px] border-slate-200 pl-5 relative">
+                          {mainCategories
+                            .filter(
+                              (main) =>
+                                main.parentId?.toLowerCase().trim() ===
+                                deptName.toLowerCase().trim()
+                            )
+                            .map((main) => {
 
-                                {/* Main Category Row */}
-                                <div className="flex items-center gap-3 py-1">
-                                  <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium hover:text-blue-600 transition-colors">
-                                    <input
-                                      type="checkbox"
-                                      className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer"
-                                      checked={!!treeState[main._id]}
-                                      onChange={() => toggleNode(main._id)}
-                                    />
-                                    <span>{main.name}</span>
-                                  </label>
 
-                                  {main.hasSubCategory && (
-                                    <button
-                                      onClick={() => fetchSubCategories(main._id)}
-                                      className="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-full text-xs font-semibold transition-colors"
-                                    >
-                                      {subCategories[main._id] ? 'Refresh' : 'Load Sub'}
-                                    </button>
+                              return (
+                                <div key={main._id} className="border-l-[3px] border-slate-200 pl-5 relative">
+
+                                  {/* Main Category Row */}
+                                  <div className="flex items-center gap-3 py-1">
+                                    <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium hover:text-blue-600 transition-colors">
+                                      <input
+                                        type="checkbox"
+                                        className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer"
+                                        checked={!!treeState[main._id]}
+                                        onChange={() => toggleNode(main._id)}
+                                      />
+                                      <span>{main.name}</span>
+                                    </label>
+
+                                    {main.hasSubCategory && (
+                                      <button
+                                        onClick={() => fetchSubCategories(main._id)}
+                                        className="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-full text-xs font-semibold transition-colors"
+                                      >
+                                        {subCategories[main._id] ? 'Refresh' : 'Load Sub'}
+                                      </button>
+                                    )}
+
+                                    {/* Direct child load button (for mains without sub) */}
+                                    {!main.hasSubCategory && (
+                                      <button
+                                        onClick={() => fetchDirectChildCategories(main._id)}
+                                        className="text-purple-600 bg-purple-50 hover:bg-purple-100 px-3 py-1 rounded-full text-xs font-semibold transition-colors"
+                                      >
+                                        {childCategories[`${main._id}-direct`] ? 'Reload Child' : 'Load Child'}
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {/* Sub Categories Container */}
+                                  {Array.isArray(subCategories[main._id]) && subCategories[main._id].length > 0 && (
+                                    <div className="mt-2 flex flex-col gap-3 ml-1">
+                                      {subCategories[main._id].map((sub: any) => {
+                                        // API returns documentId field (not _id)
+                                        const subKey = sub.documentId ?? sub._id;
+                                        const childKey = `${main._id}-${subKey}`;
+                                        return (
+                                          <div key={subKey} className="relative pl-6 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:border-l-2 before:border-dashed before:border-slate-300">
+
+                                            {/* Sub Category Row */}
+                                            <div className="flex items-center gap-3 py-1">
+                                              <label className="flex items-center gap-2 cursor-pointer text-slate-700 text-[0.95rem] hover:text-blue-600 transition-colors">
+                                                <input
+                                                  type="checkbox"
+                                                  className="w-[1.05rem] h-[1.05rem] accent-blue-600 rounded cursor-pointer"
+                                                  checked={!!treeState[subKey]}
+                                                  onChange={() => toggleNode(subKey)}
+                                                />
+                                                <span>{sub.name}</span>
+                                              </label>
+
+                                              <button
+                                                onClick={() => fetchChildCategories(main._id, subKey)}
+                                                className="text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-0.5 rounded-full text-[11px] font-semibold transition-colors"
+                                              >
+                                                {childCategories[childKey] ? 'Reload' : 'Load Child'}
+                                              </button>
+                                            </div>
+
+                                            {/* Child Categories Container */}
+                                            {Array.isArray(childCategories[childKey]) && childCategories[childKey].length > 0 && (
+                                              <div className="mt-1 ml-1 flex flex-col gap-1.5 relative pl-6 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:border-l-2 before:border-dotted before:border-slate-300">
+                                                {childCategories[childKey].map((child: any) => {
+                                                  // API returns name as identifier (no documentId/_id)
+                                                  const childId = child.name;
+                                                  return (
+                                                    <div key={childId} className="flex items-center gap-2 py-0.5">
+                                                      <label className="flex items-center gap-2 cursor-pointer text-slate-600 text-sm hover:text-blue-600 transition-colors">
+                                                        <input
+                                                          type="checkbox"
+                                                          className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
+                                                          checked={!!treeState[childId]}
+                                                          onChange={() => toggleNode(childId)}
+                                                        />
+                                                        <span>{child.name}</span>
+                                                      </label>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+
+                                  {/* Direct child categories (loaded via /main/{id}/child) */}
+                                  {Array.isArray(childCategories[`${main._id}-direct`]) && childCategories[`${main._id}-direct`].length > 0 && (
+                                    <div className="mt-2 ml-1 flex flex-col gap-1.5 relative pl-6 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:border-l-2 before:border-dotted before:border-purple-300">
+                                      {childCategories[`${main._id}-direct`].map((child: any) => {
+                                        const childId = child.name;
+                                        return (
+                                          <div key={childId} className="flex items-center gap-2 py-0.5">
+                                            <label className="flex items-center gap-2 cursor-pointer text-slate-600 text-sm hover:text-purple-600 transition-colors">
+                                              <input
+                                                type="checkbox"
+                                                className="w-4 h-4 accent-purple-600 rounded cursor-pointer"
+                                                checked={!!treeState[childId]}
+                                                onChange={() => toggleNode(childId)}
+                                              />
+                                              <span>{child.name}</span>
+                                            </label>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   )}
                                 </div>
-
-                                {/* Sub Categories Container */}
-                                {Array.isArray(subCategories[main._id]) && subCategories[main._id].length > 0 && (
-                                  <div className="mt-2 flex flex-col gap-3 ml-1">
-                                    {subCategories[main._id].map((sub: any) => (
-                                      <div key={sub._id} className="relative pl-6 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:border-l-2 before:border-dashed before:border-slate-300">
-
-                                        {/* Sub Category Row */}
-                                        <div className="flex items-center gap-3 py-1">
-                                          <label className="flex items-center gap-2 cursor-pointer text-slate-700 text-[0.95rem] hover:text-blue-600 transition-colors">
-                                            <input
-                                              type="checkbox"
-                                              className="w-[1.05rem] h-[1.05rem] accent-blue-600 rounded cursor-pointer"
-                                              checked={!!treeState[sub._id]}
-                                              onChange={() => toggleNode(sub._id)}
-                                            />
-                                            <span>{sub.name}</span>
-                                          </label>
-
-                                          <button
-                                            onClick={() => fetchChildCategories(main._id, sub._id)}
-                                            className="text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-0.5 rounded-full text-[11px] font-semibold transition-colors"
-                                          >
-                                            {childCategories[`${main._id}-${sub._id}`] ? 'Reload' : 'Load Child'}
-                                          </button>
-                                        </div>
-
-                                        {/* Child Categories Container */}
-                                        {Array.isArray(childCategories[`${main._id}-${sub._id}`]) && childCategories[`${main._id}-${sub._id}`].length > 0 && (
-                                          <div className="mt-1 ml-1 flex flex-col gap-1.5 relative pl-6 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:border-l-2 before:border-dotted before:border-slate-300">
-                                            {childCategories[`${main._id}-${sub._id}`].map((child: any) => (
-                                              <div key={child._id} className="flex items-center gap-2 py-0.5">
-                                                <label className="flex items-center gap-2 cursor-pointer text-slate-600 text-sm hover:text-blue-600 transition-colors">
-                                                  <input
-                                                    type="checkbox"
-                                                    className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
-                                                    checked={!!treeState[child._id]}
-                                                    onChange={() => toggleNode(child._id)}
-                                                  />
-                                                  <span>{child.name}</span>
-                                                </label>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
                         </div>
                       )}
                     </div>
