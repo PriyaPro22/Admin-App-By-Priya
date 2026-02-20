@@ -22,7 +22,6 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "x-api-token": X_API_TOKEN,
-    "Content-Type": "application/json",
   },
 });
 
@@ -369,7 +368,7 @@ const saveVideo = async () => {
     if (videoType === "youtube") {
       formData.append("videoUrl", youtubeUrl);
     } else if (selectedFile) {
-      formData.append("video", selectedFile);
+      formData.append("videoUrl", selectedFile); // ✅ MUST BE videoUrl
     }
 
     let response;

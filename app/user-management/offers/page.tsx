@@ -1,1377 +1,1437 @@
+'use client';
 
-"use client";
+import React, { useState,useEffect } from 'react';
 
-import { useState, useEffect } from "react";
+// Type definitions
+type ChildCategory = string;
+type SubCategory = { id: string; name: string; childCategories?: ChildCategory[] };
+type MainCategory = { id: string; name: string; subCategories?: SubCategory[] };
+type Department = { id: string; name: string; mainCategories?: MainCategory[] };
 
-// Types based on your backend data structure
-interface Offer {
-  _id: string;
-  promoCode?: string;
-  title: string;
-  description?: string;
-  type: "CASHBACK" | "DISCOUNT" | "FLAT_OFF" | "FREE_SERVICE";
-  value: number;
-  maxDiscount?: number | null;
-  
-  brandName?: string;
-  brandLogo?: string;
-  bannerImage?: string;
-  bannerColor?: string;
-  showOnHome?: boolean;
-  priority?: number;
-  
-  applicableModes?: string[];
-  mainCategories?: string[];
-  subCategories?: string[];
-  childCategories?: string[];
-  deepChildCategories?: string[];
-  subDeepChildCategories?: string[];
-  
-  mainCategoryIds?: string[];
-  subCategoryIds?: string[];
-  childCategoryIds?: string[];
-  deepChildCategoryIds?: string[];
-  subDeepChildCategoryIds?: string[];
-  
-  paymentMethods?: string[];
-  minOrderValue?: number;
-  maxOrderValue?: number | null;
-  totalLimit?: number;
-  usedCount?: number;
-  perUserLimit?: number;
-  newUserOnly?: boolean;
-  userType?: "ALL" | "NEW" | "EXISTING";
-  
-  city?: string[];
-  serviceAreas?: string[];
-  
-  riderConditions?: {
-    minDistance?: number | null;
-    maxDistance?: number | null;
-    startDate?: string;
-    endDate?: string;
-  };
-  
-  vehicleType?: string[];
-  startDate?: string;
-  endDate?: string;
-  validDays?: string[];
-  validTimeSlots?: { start: string; end: string; _id?: string }[];
-  validTimeslots?: { start: string; end: string; _id?: string }[];
-  
-  visible?: boolean;
-  autoApply?: boolean;
-  exclusive?: boolean;
-  canCombineWithOther?: boolean;
-  status?: "ACTIVE" | "INACTIVE" | "SCHEDULED" | "EXPIRED";
-  
-  createdAt?: string;
-  updatedAt?: string;
-  __v?: number;
-}
+// const categoryData: { departments: Department[] } = {
+//     departments: [
+//         {
+//             id: 'homeAppliances',
+//             name: 'Home Appliances',
+//             mainCategories: [
+//                 {
+//                     id: 'ac',
+//                     name: 'AC',
+//                     subCategories: [
+//                         { id: 'windowAC', name: 'Window AC', childCategories: ['Gas Refill', 'Installation', 'PCB Repair'] },
+//                         { id: 'splitAC', name: 'Split AC', childCategories: ['Gas Refill', 'Installation', 'PCB Repair'] },
+//                         { id: 'cassetteAC', name: 'Cassette AC', childCategories: ['Gas Refill', 'Installation'] },
+//                     ],
+//                 },
+//                 {
+//                     id: 'refrigerator',
+//                     name: 'Refrigerator',
+//                     subCategories: [
+//                         { id: 'singleDoor', name: 'Single Door', childCategories: ['Thermostat', 'Door Seal'] },
+//                         { id: 'doubleDoor', name: 'Double Door', childCategories: ['Ice Maker', 'Water Filter'] },
+//                     ],
+//                 },
+//                 {
+//                     id: 'washingMachine',
+//                     name: 'Washing Machine',
+//                     subCategories: [
+//                         { id: 'frontLoad', name: 'Front Load', childCategories: ['Drum', 'Motor', 'Heater'] },
+//                         { id: 'topLoad', name: 'Top Load', childCategories: ['Agitator', 'Lid', 'Belt'] },
+//                     ],
+//                 },
+//             ],
+//         },
+//         {
+//             id: 'computer',
+//             name: 'Computer',
+//             mainCategories: [
+//                 {
+//                     id: 'laptop',
+//                     name: 'Laptop',
+//                     subCategories: [
+//                         { id: 'screenIssue', name: 'Screen Issue', childCategories: ['Display', 'Backlight', 'Hinge'] },
+//                         { id: 'motherboardIssue', name: 'Motherboard Issue', childCategories: ['Chip', 'Capacitor', 'Socket'] },
+//                         { id: 'batteryIssue', name: 'Battery Issue', childCategories: ['Cell', 'Charger', 'Connector'] },
+//                     ],
+//                 },
+//                 {
+//                     id: 'desktop',
+//                     name: 'Desktop',
+//                     subCategories: [
+//                         { id: 'powerSupply', name: 'Power Supply', childCategories: ['Fan', 'Cable', 'Fuse'] },
+//                     ],
+//                 },
+//                 {
+//                     id: 'printer',
+//                     name: 'Printer',
+//                     subCategories: [
+//                         { id: 'paperJam', name: 'Paper Jam', childCategories: ['Roller', 'Sensor', 'Tray'] },
+//                     ],
+//                 },
+//             ],
+//         },
+//         {
+//             id: 'mobile',
+//             name: 'Mobile',
+//             mainCategories: [
+//                 {
+//                     id: 'smartphone',
+//                     name: 'Smartphone Repair',
+//                     subCategories: [
+//                         { id: 'screen', name: 'Screen', childCategories: ['Glass', 'LCD', 'Digitizer'] },
+//                         { id: 'battery', name: 'Battery', childCategories: ['Connector', 'Cell', 'Controller'] },
+//                     ],
+//                 },
+//                 {
+//                     id: 'tablet',
+//                     name: 'Tablet Repair',
+//                     subCategories: [
+//                         { id: 'digitizer', name: 'Digitizer', childCategories: ['Touch', 'Controller', 'Cable'] },
+//                     ],
+//                 },
+//             ],
+//         },
+//     ],
+// };
 
-export default function OffersAdminPage() {
-  const [offers, setOffers] = useState<Offer[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
-  const [selectedFilter, setSelectedFilter] = useState<string>("ALL");
-  const [activeTab, setActiveTab] = useState<"targeting" | "discount" | "scheduling">("targeting");
 
-  // Fetch offers from API
-  const fetchOffers = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch("https://api.bijliwalaaya.in/api/offers", {
-        method: "GET",
+
+
+const cityData: Record<string, string[]> = {
+    maharashtra: ['Mumbai', 'Pune', 'Nagpur', 'Nashik'],
+    delhi: ['New Delhi', 'North Delhi', 'South Delhi', 'East Delhi'],
+    karnataka: ['Bangalore', 'Mysore', 'Hubli', 'Mangalore'],
+    tamilnadu: ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli'],
+};
+
+// Sub-component for Child Category List (Search Removed)
+const ChildCategoryList = ({
+    childCategories,
+    baseId,
+    treeState,
+    toggleNode
+}: {
+    childCategories: string[];
+    baseId: string;
+    treeState: Record<string, boolean>;
+    toggleNode: (id: string) => void;
+}) => {
+    return (
+        <div className="ml-7 mt-2 border-l-2 border-dotted border-slate-300 pl-5 bg-slate-50/50 p-4 rounded-xl border border-slate-100 shadow-sm">
+            <div className="max-h-[240px] overflow-y-auto pr-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400">
+                <div className="flex flex-col gap-1">
+                    {childCategories.map((child) => {
+                        const childId = `${baseId}-${child}`;
+                        return (
+                            <div key={child} className="flex items-center hover:bg-white hover:shadow-sm p-2 rounded-lg transition-all border border-transparent hover:border-slate-100">
+                                <label className="flex items-center gap-3 cursor-pointer select-none text-slate-600 text-sm w-full font-medium">
+                                    <input
+                                        type="checkbox"
+                                        checked={!!treeState[childId]}
+                                        onChange={() => toggleNode(childId)}
+                                        className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer transition-transform active:scale-95"
+                                    />
+                                    <span>{child}</span>
+                                </label>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// New City Selector Component with Search
+const CitySelector = ({
+    cities,
+    selectedCities,
+    onChange,
+    disabled
+}: {
+    cities: string[];
+    selectedCities: string[];
+    onChange: (cities: string[]) => void;
+    disabled: boolean;
+}) => {
+    const [search, setSearch] = useState('');
+
+    const filtered = cities.filter(c =>
+        c.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const handleToggle = (city: string) => {
+        const newSelection = selectedCities.includes(city)
+            ? selectedCities.filter(c => c !== city)
+            : [...selectedCities, city];
+        onChange(newSelection);
+    };
+
+    if (disabled) return (
+        <div className="w-full h-[240px] border-[1.5px] border-slate-200 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 italic">
+            Select a state to load cities...
+        </div>
+    );
+
+    return (
+        <div className="w-full border-[1.5px] border-slate-200 rounded-2xl bg-white p-4 shadow-sm">
+            <div className="mb-3 relative group">
+                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+                <input
+                    type="text"
+                    placeholder="Search cities..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-slate-50 focus:bg-white transition-all focus:ring-4 focus:ring-blue-500/10"
+                />
+            </div>
+            <div className="max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-track-slate-50 scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400">
+                {filtered.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                        {filtered.map(city => (
+                            <label key={city} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedCities.includes(city)}
+                                    onChange={() => handleToggle(city)}
+                                    className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer transition-transform active:scale-95"
+                                />
+                                <span className="text-slate-700">{city}</span>
+                            </label>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center text-slate-400 py-6 italic border border-dashed border-slate-200 rounded-lg">No cities found</div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default function CreateOfferPage() {
+
+    // --- STATE ---
+    const [headerSection, setHeaderSection] = useState({
+  headTitle: "",
+  headDescription: "",
+  headImage: "",
+  headVideo: "",
+});
+
+    const [offers, setOffers] = useState<any[]>([]);
+const [mainCategories, setMainCategories] = useState<any[]>([]);
+const [subCategories, setSubCategories] = useState<Record<string, any[]>>({});
+const [childCategories, setChildCategories] = useState<Record<string, any[]>>({});
+const [loading, setLoading] = useState(false);
+const [saving, setSaving] = useState(false);
+
+useEffect(() => {
+  fetchMainCategories();
+}, []);
+
+const fetchMainCategories = async () => {
+  try {
+    setLoading(true);
+
+    const res = await fetch(
+      "https://api.bijliwalaaya.in/api/product-listing/main",
+      {
         headers: {
-          "Content-Type": "application/json",
           "x-api-token": "super_secure_token",
         },
-      });
-
-      if (!res.ok) {
-        console.error("HTTP Error:", res.status);
-        setOffers([]);
-        return;
       }
+    );
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (data?.success && Array.isArray(data?.data)) {
-        const formatted = data.data.map((item: any) => ({
-          ...item,
-          validTimeSlots: item.validTimeSlots || item.validTimeslots || [],
-        }));
-        setOffers(formatted);
-      } else {
-        setOffers([]);
-      }
-    } catch (error) {
-      console.error("Fetch error:", error);
-      setOffers([]);
-    } finally {
-      setIsLoading(false);
+    if (data.success) {
+      setMainCategories(data.data);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching main categories:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+const fetchSubCategories = async (mainId: string) => {
+  try {
+    const res = await fetch(
+      `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/sub`,
+      {
+        headers: {
+          "x-api-token": "super_secure_token",
+        },
+      }
+    );
 
-  useEffect(() => {
-    fetchOffers();
-  }, []);
+    const data = await res.json();
 
-  // Form state
-  const [formData, setFormData] = useState<Partial<Offer>>({
-    promoCode: "",
-    title: "",
-    description: "",
-    type: "CASHBACK",
-    value: 0,
-    maxDiscount: null,
-    brandName: "",
-    brandLogo: "",
-    bannerImage: "",
-    bannerColor: "#00BAF2",
-    showOnHome: false,
-    priority: 0,
-    applicableModes: ["SERVICE"],
-    mainCategories: [],
-    subCategories: [],
-    childCategories: [],
-    paymentMethods: [],
-    minOrderValue: 0,
-    maxOrderValue: null,
-    totalLimit: 1000,
-    perUserLimit: 1,
-    newUserOnly: false,
-    userType: "ALL",
-    city: [],
-    serviceAreas: [],
-    riderConditions: {
-      minDistance: null,
-      maxDistance: null,
-      startDate: new Date().toISOString().slice(0, 16),
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
-    },
-    validDays: [],
-    validTimeSlots: [{ start: "09:00", end: "18:00" }],
-    visible: true,
-    autoApply: false,
-    exclusive: false,
-    canCombineWithOther: false,
-    status: "ACTIVE"
-  });
-
-  // Input states
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>([]);
-  const [selectedChildCategories, setSelectedChildCategories] = useState<string[]>([]);
-  const [selectedCities, setSelectedCities] = useState<string[]>([]);
-  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>([]);
-  const [frequency, setFrequency] = useState<"ALWAYS" | "WEEKENDS" | "MORNING">("ALWAYS");
-
-  const resetForm = () => {
-    setFormData({
-      promoCode: "",
-      title: "",
-      description: "",
-      type: "CASHBACK",
-      value: 0,
-      maxDiscount: null,
-      brandName: "",
-      brandLogo: "",
-      bannerImage: "",
-      bannerColor: "#00BAF2",
-      showOnHome: false,
-      priority: 0,
-      applicableModes: ["SERVICE"],
-      mainCategories: [],
-      subCategories: [],
-      childCategories: [],
-      paymentMethods: [],
-      minOrderValue: 0,
-      maxOrderValue: null,
-      totalLimit: 1000,
-      perUserLimit: 1,
-      newUserOnly: false,
-      userType: "ALL",
-      city: [],
-      serviceAreas: [],
-      riderConditions: {
-        minDistance: null,
-        maxDistance: null,
-        startDate: new Date().toISOString().slice(0, 16),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
-      },
-      validDays: [],
-      validTimeSlots: [{ start: "09:00", end: "18:00" }],
-      visible: true,
-      autoApply: false,
-      exclusive: false,
-      canCombineWithOther: false,
-      status: "ACTIVE"
-    });
-    setSelectedCategories([]);
-    setSelectedSubCategories([]);
-    setSelectedChildCategories([]);
-    setSelectedCities([]);
-    setSelectedPaymentMethods([]);
-    setFrequency("ALWAYS");
-    setEditingOffer(null);
-    setActiveTab("targeting");
-  };
-
-  const openCreateModal = () => {
-    resetForm();
-    setIsCreateModalOpen(true);
-  };
-
-  const openEditModal = (offer: Offer) => {
-    setEditingOffer(offer);
-    setFormData(offer);
-    setSelectedCategories(offer.mainCategories || []);
-    setSelectedSubCategories(offer.subCategories || []);
-    setSelectedChildCategories(offer.childCategories || []);
-    setSelectedCities(offer.city || []);
-    setSelectedPaymentMethods(offer.paymentMethods || []);
-    setIsCreateModalOpen(true);
-  };
-
-  const openDetailsModal = (offer: Offer) => {
-    setSelectedOffer(offer);
-    setIsDetailsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsDetailsModalOpen(false);
-    setIsCreateModalOpen(false);
-    resetForm();
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    
-    if (type === "checkbox") {
-      const checked = (e.target as HTMLInputElement).checked;
-      setFormData((prev: any) => ({ ...prev, [name]: checked }));
-    } else if (type === "number") {
-      setFormData((prev: any) => ({ ...prev, [name]: value ? Number(value) : null }));
-    } else if (name.includes(".")) {
-      const [parent, child] = name.split(".");
-      setFormData((prev: any) => ({
+    if (data.success) {
+      setSubCategories(prev => ({
         ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: value
-        }
+        [mainId]: data.data
       }));
-    } else {
-      setFormData((prev: any) => ({ ...prev, [name]: value }));
     }
-  };
-
-  const handleTimeslotChange = (index: number, field: "start" | "end", value: string) => {
-    const updatedTimeslots = [...(formData.validTimeSlots || [])];
-    updatedTimeslots[index] = { ...updatedTimeslots[index], [field]: value };
-    setFormData((prev: any) => ({ ...prev, validTimeSlots: updatedTimeslots }));
-  };
-
-  const addTimeslot = () => {
-    setFormData((prev: any) => ({
-      ...prev,
-      validTimeSlots: [...(prev.validTimeSlots || []), { start: "09:00", end: "18:00" }]
-    }));
-  };
-
-  const removeTimeslot = (index: number) => {
-    const updatedTimeslots = (formData.validTimeSlots || []).filter((_: any, i: number) => i !== index);
-    setFormData((prev: any) => ({ ...prev, validTimeSlots: updatedTimeslots }));
-  };
-
-  const saveOffer = async () => {
-    try {
-      if (!formData.title?.trim() || !formData.value) {
-        alert("Title and Value are required");
-        return;
+  } catch (error) {
+    console.error("Error fetching sub categories:", error);
+  }
+};
+const fetchChildCategories = async (mainId: string, subId: string) => {
+  try {
+    const res = await fetch(
+      `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/sub/${subId}/child`,
+      {
+        headers: {
+          "x-api-token": "super_secure_token",
+        },
       }
+    );
 
-      const processedData = {
-        ...formData,
-        promoCode: formData.promoCode || null,
-        maxDiscount: formData.maxDiscount === null ? null : Number(formData.maxDiscount),
-        maxOrderValue: formData.maxOrderValue === null ? null : Number(formData.maxOrderValue),
-        minOrderValue: Number(formData.minOrderValue) || 0,
-        value: Number(formData.value),
-        priority: Number(formData.priority) || 0,
-        totalLimit: Number(formData.totalLimit) || 1000,
-        perUserLimit: Number(formData.perUserLimit) || 1,
-        city: selectedCities,
-        paymentMethods: selectedPaymentMethods,
-        mainCategories: selectedCategories,
-        subCategories: selectedSubCategories,
-        childCategories: selectedChildCategories,
-        applicableModes: ["SERVICE"],
-        validDays: frequency === "ALWAYS" ? [] : frequency === "WEEKENDS" ? ["Saturday", "Sunday"] : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-        riderConditions: {
-          ...formData.riderConditions,
-          startDate: formData.riderConditions?.startDate 
-            ? new Date(formData.riderConditions.startDate).toISOString()
-            : new Date().toISOString(),
-          endDate: formData.riderConditions?.endDate
-            ? new Date(formData.riderConditions.endDate).toISOString()
-            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      };
+    const data = await res.json();
 
-      const url = editingOffer
-        ? `https://api.bijliwalaaya.in/api/offers/${editingOffer._id}`
-        : `https://api.bijliwalaaya.in/api/offers`;
+    if (data.success) {
+      setChildCategories(prev => ({
+        ...prev,
+        [`${mainId}-${subId}`]: data.data
+      }));
+    }
+  } catch (error) {
+    console.error("Error fetching child categories:", error);
+  }
+};
 
-      const method = editingOffer ? "PUT" : "POST";
+// Offers Api
+const handleSaveOffer = async () => {
+  if (saving) return;
 
-      const res = await fetch(url, {
-        method,
+  if (!details.title.trim()) {
+    alert("Title is required");
+    return;
+  }
+
+  if (!details.description.trim()) {
+    alert("Description is required");
+    return;
+  }
+
+  try {
+    setSaving(true);
+
+    const payload = buildPayload();
+
+    const res = await fetch(
+      "https://api.bijliwalaaya.in/api/offers/add-offer",
+      {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-api-token": "super_secure_token"
         },
-        body: JSON.stringify(processedData)
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        alert(editingOffer ? "Updated ✅" : "Created ✅");
-        fetchOffers();
-        closeModal();
-      } else {
-        alert(data.message || "Error");
+        body: JSON.stringify(payload)
       }
-
-    } catch (err) {
-      console.error(err);
-      alert("Network error");
-    }
-  };
-
-  const deleteOffer = async (id: string) => {
-    if (!confirm("Delete this offer?")) return;
-
-    try {
-      const res = await fetch(
-        `https://api.bijliwalaaya.in/api/offers/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-token": "super_secure_token"
-          }
-        }
-      );
-
-      const data = await res.json();
-
-      if (data.success) {
-        alert("Deleted ✅");
-        fetchOffers();
-      } else {
-        alert("Delete failed");
-      }
-
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const toggleVisibility = async (id: string, currentVisible: boolean) => {
-    try {
-      const res = await fetch(
-        `https://api.bijliwalaaya.in/api/offers/${id}/visibility`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-token": "super_secure_token"
-          },
-          body: JSON.stringify({ visible: !currentVisible })
-        }
-      );
-
-      const data = await res.json();
-
-      if (data.success) {
-        setOffers(offers.map(offer => 
-          offer._id === id ? { ...offer, visible: !currentVisible } : offer
-        ));
-      }
-
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const getStatusColor = (status?: string) => {
-    switch(status) {
-      case "ACTIVE": return "bg-green-100 text-green-700";
-      case "INACTIVE": return "bg-red-100 text-red-700";
-      case "SCHEDULED": return "bg-yellow-100 text-yellow-700";
-      case "EXPIRED": return "bg-gray-100 text-gray-700";
-      default: return "bg-gray-100 text-gray-700";
-    }
-  };
-
-  const filteredOffers = selectedFilter === "ALL" 
-    ? offers 
-    : offers.filter(o => o.status === selectedFilter);
-
-  const totalOffers = offers.length;
-  const activeOffers = offers.filter(o => o.status === "ACTIVE").length;
-
-  // Mock data for dropdowns
-  const modules = ["SERVICE", "SHOPPING", "RIDER", "RESELL"];
-  const categories = ["Home Appliances", "Electronics", "Fashion", "Furniture"];
-  const subCategories = ["Repair", "Installation", "Maintenance"];
-  const childCategories = ["AC Repair", "Fridge Repair", "TV Repair", "Washing Machine Repair", "Microwave Repair"];
-  const locations = ["Lucknow", "Delhi", "Mumbai", "Bangalore", "Chennai", "Kolkata", "Pune"];
-  const paymentMethods = ["PAYTM", "PHONEPE", "GOOGLEPAY", "AMAZONPAY", "CREDIT_CARD", "DEBIT_CARD"];
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 text-center">
-          <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <h3 className="text-gray-800 font-medium">Loading offers...</h3>
-        </div>
-      </div>
     );
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("Offer Created Successfully");
+    } else {
+      alert(data.message || "Something went wrong");
+    }
+
+  } catch (error) {
+    console.error("Error saving offer:", error);
+    alert("Server error");
+  } finally {
+    setSaving(false);
   }
+};
 
-  return (
-    <div className="min-h-screen bg-gray-50 font-['Inter']">
-      {/* Main Content */}
-      <main className="w-full flex flex-col">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-8 sticky top-0 z-10">
-          <h1 className="text-xl font-bold text-gray-800">Offers Management</h1>
-          <button
-            onClick={openCreateModal}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-600 transition-colors shadow-sm flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Create New Offer
-          </button>
-        </header>
 
-        {/* Scrollable Content */}
-        <div className="px-4 py-6 overflow-y-auto space-y-6">
-          {/* Stats */}
-          <div className="grid grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-xl border border-gray-200">
-              <div className="text-2xl font-bold text-gray-900">{totalOffers}</div>
-              <div className="text-sm text-gray-500">Total Offers</div>
-            </div>
-            <div className="bg-white p-5 rounded-xl border border-gray-200">
-              <div className="text-2xl font-bold text-green-600">{activeOffers}</div>
-              <div className="text-sm text-gray-500">Active</div>
-            </div>
-            <div className="bg-white p-5 rounded-xl border border-gray-200">
-              <div className="text-2xl font-bold text-yellow-600">{offers.filter(o => o.status === "SCHEDULED").length}</div>
-              <div className="text-sm text-gray-500">Scheduled</div>
-            </div>
-            <div className="bg-white p-5 rounded-xl border border-gray-200">
-              <div className="text-2xl font-bold text-gray-600">{offers.filter(o => o.status === "EXPIRED").length}</div>
-              <div className="text-sm text-gray-500">Expired</div>
-            </div>
-          </div>
+const formatDate = (dateStr: string) => {
+  const [day, month, year] = dateStr.split("/");
+  return `${year}-${month}-${day}`;
+};
 
-          {/* Filters */}
-          <div className="flex gap-2">
-            {["ALL", "ACTIVE", "INACTIVE", "SCHEDULED", "EXPIRED"].map(filter => (
-              <button
-                key={filter}
-                onClick={() => setSelectedFilter(filter)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  selectedFilter === filter 
-                    ? "bg-blue-500 text-white" 
-                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                }`}
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
 
-          {/* Offers Grid */}
-          {filteredOffers.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-              <div className="text-5xl mb-4">🎫</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No offers yet</h3>
-              <p className="text-gray-500">Create your first offer to get started</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredOffers.map((offer) => (
-                <div
-                  key={offer._id}
-                  className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => openDetailsModal(offer)}
-                >
-                  {/* Banner */}
-                  <div 
-                    className="h-32 relative" 
-                    style={{ backgroundColor: offer.bannerColor || '#00BAF2' }}
-                  >
-                    {offer.bannerImage && (
-                      <img src={offer.bannerImage} alt={offer.title} className="w-full h-full object-cover" />
-                    )}
-                    {offer.brandLogo && (
-                      <img 
-                        src={offer.brandLogo} 
-                        alt={offer.brandName} 
-                        className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white p-1 border border-gray-200" 
-                      />
-                    )}
-                    <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(offer.status)}`}>
-                      {offer.status}
-                    </div>
-                  </div>
+const buildPayload = () => {
+  return {
+    title: details.title.trim(),
+    description: details.description.trim(),
 
-                  <div className="p-5">
-                    {/* Header with Visibility Toggle */}
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="font-semibold text-gray-900 line-clamp-1">{offer.title}</h3>
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        <span className="text-xs text-gray-500">Visible</span>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={offer.visible}
-                            onChange={() => toggleVisibility(offer._id, offer.visible || false)}
-                          />
-                          <div className={`w-9 h-5 rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white ${
-                            offer.visible ? 'bg-blue-500' : 'bg-gray-300'
-                          }`}></div>
-                        </label>
-                      </div>
-                    </div>
+    offerActive: true,
+    visibleToUser: promo.visible,
+    offerVisible: true,
+    
+    headTitle: headerSection.headTitle,
+headDescription: headerSection.headDescription,
+headImage: headerSection.headImage,
+headVideo: headerSection.headVideo,
+ 
+    select_services: Object.keys(offerTarget)
+      .filter(key => offerTarget[key as keyof typeof offerTarget] && key !== "all"),
 
-                    {/* Promo Code */}
-                    {offer.promoCode && (
-                      <div className="bg-gray-50 rounded-lg p-2 mb-3 flex items-center justify-between">
-                        <span className="text-xs text-gray-500">USE CODE</span>
-                        <span className="text-sm font-mono font-bold text-blue-600">{offer.promoCode}</span>
-                      </div>
-                    )}
+    select_departments: Object.keys(deptSelection)
+      .filter(key => deptSelection[key] && key !== "all"),
 
-                    {/* Offer Value */}
-                    <div className="text-xl font-bold text-blue-600 mb-2">
-                      {offer.type === "CASHBACK" && `₹${offer.value} Cashback`}
-                      {offer.type === "DISCOUNT" && `${offer.value}% OFF`}
-                      {offer.type === "FLAT_OFF" && `₹${offer.value} OFF`}
-                    </div>
+    select_main_category: mainCategories
+      .filter(main => treeState[main._id])
+      .map(main => ({
+        documentId: main._id,
+        name: main.name
+      })),
 
-                    {/* Categories */}
-                    {offer.mainCategories && offer.mainCategories.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {offer.mainCategories.slice(0, 2).map((cat, idx) => (
-                          <span key={idx} className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-xs font-medium">
-                            {cat}
-                          </span>
-                        ))}
-                        {offer.subCategories?.slice(0, 1).map((sub, idx) => (
-                          <span key={idx} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                            {sub}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+    select_sub_category: Object.values(subCategories)
+      .flat()
+      .filter((sub: any) => treeState[sub._id])
+      .map((sub: any) => ({
+        documentId: sub._id,
+        name: sub.name
+      })),
 
-                    {/* Location & Validity */}
-                    <div className="space-y-1 text-xs text-gray-500">
-                      {offer.city && offer.city.length > 0 && (
-                        <div className="flex items-center gap-1">
-                          <span>📍</span>
-                          <span>{offer.city.slice(0, 2).join(", ")}{offer.city.length > 2 ? ` +${offer.city.length - 2}` : ''}</span>
+    select_child_category: Object.values(childCategories)
+      .flat()
+      .filter((child: any) => treeState[child._id])
+      .map((child: any) => ({
+        documentId: child._id,
+        name: child.name
+      })),
+
+    promocode: promo.code,
+
+    imageUrl: bannerImages[0] || "",
+    videoUrl: videos[0] || "",
+    promoLogo: promoImages[0] || "",
+
+    states: cityTarget.state
+      ? [{ stateName: cityTarget.state }]
+      : [],
+
+    cities: cityTarget.selectedCities.map(city => ({
+      cityName: city
+    })),
+
+    discountType: {
+      type: discount.type.toUpperCase(),
+      maxDiscount: Number(discount.value)
+    },
+
+    discountValue: Number(discount.value),
+
+    limit: limits.totalType === "limited"
+      ? Number(limits.totalValue)
+      : null,
+
+    user_usage_limit: limits.userType === "limited"
+      ? Number(limits.userValue)
+      : null,
+
+    min_spend: minSpend.active
+      ? Number(minSpend.value)
+      : 0,
+
+    validity: [{
+      startDate: formatDate(validity.fromDate),
+      endDate: formatDate(validity.toDate),
+      startTime: validity.fromTime,
+      endTime: validity.toTime
+    }],
+
+    payment_via: payment.all
+      ? ["ALL"]
+      : [
+          payment.cash && "CASH",
+          payment.online && "ONLINE",
+          payment.others && payment.othersText
+        ].filter(Boolean)
+  };
+};
+
+
+
+useEffect(() => {
+  fetchOffers();
+}, []);
+
+const handleUpdateOffer = async (id: string) => {
+  await fetch(
+    `https://api.bijliwalaaya.in/api/offers/${id}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-token": "super_secure_token"
+      },
+      body: JSON.stringify(buildPayload())
+    }
+  );
+};
+
+
+
+
+
+const fetchOffers = async () => {
+  const res = await fetch(
+    "https://api.bijliwalaaya.in/api/offers/all",
+    {
+      headers: {
+        "x-api-token": "super_secure_token"
+      }
+    }
+  );
+
+  const data = await res.json();
+
+  if (data.success) {
+    setOffers(data.data);
+  }
+};
+
+
+    // Offer Target
+    const [offerTarget, setOfferTarget] = useState({
+        services: false,
+        rider: false,
+        resale: false,
+        ecommerce: false,
+        all: false,
+    });
+
+    // Department Selection (Top level checkboxes)
+    const [deptSelection, setDeptSelection] = useState<Record<string, boolean>>({
+        homeAppliances: false,
+        computer: false,
+        mobile: false,
+        all: false,
+    });
+
+    // Category Tree State (Tracks checked status of every node)
+    const [treeState, setTreeState] = useState<Record<string, boolean>>({});
+
+    // Tree UI State (Collapsed/Expanded departments)
+    const [collapsedDepts, setCollapsedDepts] = useState<Record<string, boolean>>({});
+
+    // Basic Details
+    const [details, setDetails] = useState({
+        title: 'Weekend Flash',
+        description: 'Get 20% off on all repairs',
+        link: 'https://example.com/offer',
+    });
+
+    // Media
+    const [bannerImages, setBannerImages] = useState<string[]>([]);
+    const [videos, setVideos] = useState<string[]>([]);
+    const [promoImages, setPromoImages] = useState<string[]>([]);
+    const [tempInputs, setTempInputs] = useState({ banner: '', video: '', promo: '' });
+
+    // City Targeting
+    const [cityTarget, setCityTarget] = useState({
+        allCities: false,
+        state: '',
+        selectedCities: [] as string[],
+    });
+
+    // Promo Config
+    const [promo, setPromo] = useState({
+        code: 'SUMMER20',
+        visible: true,
+    });
+
+    // Discount
+    const [discount, setDiscount] = useState({
+        type: 'percentage',
+        value: 20,
+    });
+
+    // Usage Limits
+    const [limits, setLimits] = useState({
+        totalType: 'unlimited', // 'unlimited' | 'limited'
+        totalValue: '',
+        userType: 'unlimited',
+        userValue: '',
+    });
+
+    // Validity
+    const [validity, setValidity] = useState({
+        fromDate: '25/03/2025',
+        fromTime: '10:00',
+        toDate: '30/03/2025',
+        toTime: '18:00',
+    });
+
+    // Payment
+    const [payment, setPayment] = useState({
+        cash: false,
+        online: false,
+        others: false,
+        all: false,
+        othersText: '',
+    });
+
+    // Min Spend
+    const [minSpend, setMinSpend] = useState({
+        active: false,
+        value: 500,
+    });
+
+    // --- HANDLERS ---
+
+    // Offer Target Handlers
+    const handleOfferTargetChange = (key: keyof typeof offerTarget) => {
+        if (key === 'all') {
+            const newValue = !offerTarget.all;
+            setOfferTarget({
+                services: newValue,
+                rider: newValue,
+                resale: newValue,
+                ecommerce: newValue,
+                all: newValue,
+            });
+        } else {
+            const newState = { ...offerTarget, [key]: !offerTarget[key] };
+            // Check if all individual are checked
+            const allChecked = ['services', 'rider', 'resale', 'ecommerce'].every((k) => newState[k as keyof typeof newState]);
+            setOfferTarget({ ...newState, all: allChecked });
+        }
+    };
+
+    // Department Selection Handlers
+    const handleDeptSelectionChange = (key: string) => {
+  if (key === 'all') {
+    const newValue = !deptSelection.all;
+
+    setDeptSelection({
+      homeAppliances: newValue,
+      computer: newValue,
+      mobile: newValue,
+      all: newValue,
+    });
+
+  } else {
+    const newState = {
+      ...deptSelection,
+      [key]: !deptSelection[key],
+    };
+
+    const allChecked =
+      newState.homeAppliances &&
+      newState.computer &&
+      newState.mobile;
+
+    setDeptSelection({
+      ...newState,
+      all: allChecked,
+    });
+  }
+};
+
+
+            // Auto check/uncheck all tree nodes for all departments
+        
+
+    // Tree LogicHelpers
+  
+    const updateTreeState = (ids: string[], isChecked: boolean) => {
+        setTreeState(prev => {
+            const next = { ...prev };
+            ids.forEach(id => next[id] = isChecked);
+            return next;
+        });
+    };
+
+   const toggleNode = (id: string) => {
+  setTreeState(prev => ({
+    ...prev,
+    [id]: !prev[id]
+  }));
+};
+
+
+    const toggleAllSiblings = (ids: string[], isChecked: boolean) => {
+        setTreeState(prev => {
+            const next = { ...prev };
+            ids.forEach(id => next[id] = isChecked);
+            return next;
+        });
+    };
+
+    // Media Handlers
+    const addMedia = (type: 'banner' | 'video' | 'promo') => {
+        if (type === 'banner' && tempInputs.banner) {
+            setBannerImages([...bannerImages, tempInputs.banner]);
+            setTempInputs({ ...tempInputs, banner: '' });
+        }
+        if (type === 'video' && tempInputs.video) {
+            setVideos([...videos, tempInputs.video]);
+            setTempInputs({ ...tempInputs, video: '' });
+        }
+        if (type === 'promo' && tempInputs.promo) {
+            setPromoImages([...promoImages, tempInputs.promo]);
+            setTempInputs({ ...tempInputs, promo: '' });
+        }
+    };
+
+    const removeMedia = (type: 'banner' | 'video' | 'promo', index: number) => {
+        if (type === 'banner') setBannerImages(bannerImages.filter((_, i) => i !== index));
+        if (type === 'video') setVideos(videos.filter((_, i) => i !== index));
+        if (type === 'promo') setPromoImages(promoImages.filter((_, i) => i !== index));
+    };
+
+    // File Upload Handlers
+    const handleFileUpload = (files: FileList | null, type: 'banner' | 'video' | 'promo') => {
+        if (!files) return;
+        const newUrls: string[] = [];
+        Array.from(files).forEach(file => {
+            const url = URL.createObjectURL(file);
+            newUrls.push(url);
+        });
+
+        if (type === 'banner') setBannerImages(prev => [...prev, ...newUrls]);
+        if (type === 'video') setVideos(prev => [...prev, ...newUrls]);
+        if (type === 'promo') setPromoImages(prev => [...prev, ...newUrls]);
+    };
+
+    const onDropHandler = (e: React.DragEvent, type: 'banner' | 'video' | 'promo') => {
+        e.preventDefault();
+        handleFileUpload(e.dataTransfer.files, type);
+    };
+
+    const onDragOverHandler = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
+
+
+    // Derived UI State
+    const isDeptSectionDisabled = offerTarget.all;
+    const isDeptSectionHidden = !offerTarget.all && offerTarget.rider;
+
+    return (
+        <>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+            <div className="min-h-screen bg-[#f4f5f9] pb-24 relative font-sans text-slate-800">
+
+                {/* Header */}
+                <header className="sticky top-0 z-30 bg-white px-8 py-4 shadow-[0_4px_16px_rgba(0,0,0,0.02)] border-b border-gray-100 flex items-center flex-wrap gap-2">
+                    <h1 className="text-2xl font-semibold text-slate-900 flex items-center flex-wrap gap-2">
+                        <i className="fas fa-tags text-blue-600 mr-2"></i> Offer Management – Create Offer & Details
+                        <span className="bg-blue-50 text-blue-600 text-sm font-semibold px-4 py-1 rounded-full ml-3">complete flow</span>
+                    </h1>
+                </header>
+
+                <main className="flex-1 w-full max-w-[1440px] mx-auto p-4 md:p-8 pb-24">
+
+                    {/* Create Offer Section */}
+                    <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
+                        <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
+                            <i className="fas fa-bullseye text-blue-500"></i> Offer Target
                         </div>
-                      )}
-                      {offer.riderConditions?.endDate && (
-                        <div className="flex items-center gap-1">
-                          <span>📅</span>
-                          <span>Valid until {new Date(offer.riderConditions.endDate).toLocaleDateString()}</span>
-                        </div>
-                      )}
-                      {offer.minOrderValue && offer.minOrderValue > 0 && (
-                        <div className="flex items-center gap-1">
-                          <span>💰</span>
-                          <span>Min order ₹{offer.minOrderValue}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Usage Bar */}
-                    {offer.totalLimit && offer.totalLimit > 0 && (
-                      <div className="mt-3">
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-gray-500">Used</span>
-                          <span className="text-gray-700 font-medium">{offer.usedCount || 0}/{offer.totalLimit}</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-blue-500 rounded-full"
-                            style={{ width: `${((offer.usedCount || 0) / offer.totalLimit) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* Details Modal - Clean Design Matching Your Images */}
-      {isDetailsModalOpen && selectedOffer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold text-gray-800">
-                  Offer Details - <span className="text-blue-500">{selectedOffer.promoCode || selectedOffer.title}</span>
-                </h2>
-                <span className={`px-2 py-0.5 rounded text-xs font-semibold uppercase ${getStatusColor(selectedOffer.status)}`}>
-                  {selectedOffer.status}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    closeModal();
-                    openEditModal(selectedOffer);
-                  }}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600 flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  Edit
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm("Delete this offer?")) {
-                      deleteOffer(selectedOffer._id);
-                      closeModal();
-                    }
-                  }}
-                  className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600 flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Delete
-                </button>
-                <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Content - Clean Layout */}
-            <div className="p-6 space-y-6">
-              {/* Top Row - Basic Info & Order Limits */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Basic Information - Takes 2/3 width */}
-                <div className="lg:col-span-2">
-                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                    <div className="px-6 py-3 border-b border-gray-100 bg-gray-50">
-                      <h2 className="font-semibold text-gray-800">Basic Information</h2>
-                    </div>
-                    <div className="p-6 grid grid-cols-2 gap-6">
-                      <div>
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">PROMO CODE</div>
-                        <div className="text-gray-900 font-medium">{selectedOffer.promoCode || "—"}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">TITLE</div>
-                        <div className="text-gray-900 font-medium">{selectedOffer.title}</div>
-                      </div>
-                      <div className="col-span-2">
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">DESCRIPTION</div>
-                        <div className="text-gray-900">{selectedOffer.description || "—"}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">TYPE</div>
-                        <div className="text-gray-900 font-medium">{selectedOffer.type}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">VALUE</div>
-                        <div className="text-gray-900 font-medium">{selectedOffer.value}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">MAX DISCOUNT</div>
-                        <div className="text-gray-500 italic">{selectedOffer.maxDiscount ? `₹${selectedOffer.maxDiscount}` : "No max limit"}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">PRIORITY</div>
-                        <div className="text-gray-900 font-medium">{selectedOffer.priority || 0}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Limits - Takes 1/3 width */}
-                <div className="lg:col-span-1">
-                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                    <div className="px-6 py-3 border-b border-gray-100 bg-gray-50">
-                      <h2 className="font-semibold text-gray-800">Order Limits</h2>
-                    </div>
-                    <div className="p-6 space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">Min Order Value</span>
-                        <span className="text-sm font-semibold text-gray-900">₹{selectedOffer.minOrderValue || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">Max Order Value</span>
-                        <span className="text-sm text-gray-500 italic">{selectedOffer.maxOrderValue ? `₹${selectedOffer.maxOrderValue}` : "No Max"}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">Total Usage Limit</span>
-                        <span className="text-sm font-semibold text-gray-900">{selectedOffer.totalLimit || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">Limit Per User</span>
-                        <span className="text-sm font-semibold text-gray-900">{selectedOffer.perUserLimit || 1}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Categories Section - Clean Design */}
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="px-6 py-3 border-b border-gray-100 bg-gray-50">
-                  <h2 className="font-semibold text-gray-800">Categories & Targeting</h2>
-                </div>
-                <div className="p-6 space-y-4">
-                  {selectedOffer.mainCategories && selectedOffer.mainCategories.length > 0 && (
-                    <div>
-                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">MAIN CATEGORIES</div>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedOffer.mainCategories.map((cat, idx) => (
-                          <span key={idx} className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-medium border border-blue-100">
-                            {cat}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {selectedOffer.subCategories && selectedOffer.subCategories.length > 0 && (
-                    <div>
-                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">SUB CATEGORIES</div>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedOffer.subCategories.map((sub, idx) => (
-                          <span key={idx} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">
-                            {sub}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {selectedOffer.childCategories && selectedOffer.childCategories.length > 0 && (
-                    <div>
-                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">CHILD CATEGORIES</div>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedOffer.childCategories.map((child, idx) => (
-                          <span key={idx} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                            {child}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Bottom Row - Branding, Settings, Date & Location */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Branding */}
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-3 border-b border-gray-100 bg-gray-50">
-                    <h2 className="font-semibold text-gray-800">Branding</h2>
-                  </div>
-                  <div className="p-6 space-y-3">
-                    <div>
-                      <div className="text-xs font-medium text-gray-500 uppercase mb-1">BRAND NAME</div>
-                      <div className="text-sm font-medium text-gray-900">{selectedOffer.brandName || "—"}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-gray-500 uppercase mb-1">BANNER COLOR</div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded border border-gray-200" style={{ backgroundColor: selectedOffer.bannerColor || '#00BAF2' }}></div>
-                        <span className="text-xs font-mono text-gray-600">{selectedOffer.bannerColor || '#00BAF2'}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Offer Settings */}
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-3 border-b border-gray-100 bg-gray-50">
-                    <h2 className="font-semibold text-gray-800">Offer Settings</h2>
-                  </div>
-                  <div className="p-6 space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-700">Show on Home</span>
-                      <span className={`text-sm font-semibold ${selectedOffer.showOnHome ? 'text-green-600' : 'text-red-500'}`}>
-                        {selectedOffer.showOnHome ? 'Enabled' : 'Disabled'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-700">Auto Apply</span>
-                      <span className={`text-sm font-semibold ${selectedOffer.autoApply ? 'text-green-600' : 'text-red-500'}`}>
-                        {selectedOffer.autoApply ? 'Enabled' : 'Disabled'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-700">Exclusive Offer</span>
-                      <span className={`text-sm font-semibold ${selectedOffer.exclusive ? 'text-green-600' : 'text-red-500'}`}>
-                        {selectedOffer.exclusive ? 'Yes' : 'No'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-700">Can Combine</span>
-                      <span className={`text-sm font-semibold ${selectedOffer.canCombineWithOther ? 'text-green-600' : 'text-red-500'}`}>
-                        {selectedOffer.canCombineWithOther ? 'Yes' : 'No'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-gray-100">
-                      <span className="text-sm text-gray-700 font-medium">Visibility</span>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-sm font-semibold ${selectedOffer.visible ? 'text-green-600' : 'text-red-500'}`}>
-                          {selectedOffer.visible ? 'Visible' : 'Hidden'}
-                        </span>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={selectedOffer.visible}
-                            onChange={() => toggleVisibility(selectedOffer._id, selectedOffer.visible || false)}
-                          />
-                          <div className={`w-9 h-5 rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white ${
-                            selectedOffer.visible ? 'bg-blue-500' : 'bg-gray-300'
-                          }`}></div>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Date, Time & Validity */}
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-3 border-b border-gray-100 bg-gray-50">
-                    <h2 className="font-semibold text-gray-800">Date, Time & Validity</h2>
-                  </div>
-                  <div className="p-6 space-y-3">
-                    <div>
-                      <div className="text-xs font-medium text-gray-500 uppercase mb-1">START DATE</div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {selectedOffer.riderConditions?.startDate 
-                          ? new Date(selectedOffer.riderConditions.startDate).toLocaleString() 
-                          : "—"}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-gray-500 uppercase mb-1">END DATE</div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {selectedOffer.riderConditions?.endDate 
-                          ? new Date(selectedOffer.riderConditions.endDate).toLocaleString() 
-                          : "—"}
-                      </div>
-                    </div>
-                    {selectedOffer.validDays && selectedOffer.validDays.length > 0 && (
-                      <div>
-                        <div className="text-xs font-medium text-gray-500 uppercase mb-2">VALID DAYS</div>
-                        <div className="flex gap-1">
-                          {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map(day => {
-                            const isActive = selectedOffer.validDays?.some(d => d.toUpperCase().startsWith(day));
-                            return (
-                              <span
-                                key={day}
-                                className={`w-8 h-8 flex items-center justify-center text-xs font-bold rounded-full ${
-                                  isActive 
-                                    ? 'bg-blue-500 text-white' 
-                                    : 'bg-gray-100 text-gray-400'
-                                }`}
-                              >
-                                {day.substring(0, 3)}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                    {selectedOffer.validTimeSlots && selectedOffer.validTimeSlots.length > 0 && (
-                      <div>
-                        <div className="text-xs font-medium text-gray-500 uppercase mb-2">ACTIVE TIME SLOTS</div>
-                        {selectedOffer.validTimeSlots.map((slot, idx) => (
-                          <div key={idx} className="text-sm text-gray-700 mb-1">
-                            {slot.start} — {slot.end}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Location & Payment Methods */}
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="px-6 py-3 border-b border-gray-100 bg-gray-50">
-                  <h2 className="font-semibold text-gray-800">Location & Payment Methods</h2>
-                </div>
-                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {selectedOffer.city && selectedOffer.city.length > 0 && (
-                    <div>
-                      <div className="text-xs font-medium text-gray-500 uppercase mb-2">CITIES</div>
-                      <div className="flex flex-wrap gap-1">
-                        {selectedOffer.city.map((city, idx) => (
-                          <span key={idx} className="px-2 py-1 bg-green-50 text-green-700 text-xs font-medium border border-green-100 rounded">
-                            {city}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {selectedOffer.serviceAreas && selectedOffer.serviceAreas.length > 0 && (
-                    <div>
-                      <div className="text-xs font-medium text-gray-500 uppercase mb-2">SERVICE AREAS</div>
-                      <div className="text-sm text-gray-700">{selectedOffer.serviceAreas.join(", ")}</div>
-                    </div>
-                  )}
-                  {selectedOffer.paymentMethods && selectedOffer.paymentMethods.length > 0 && (
-                    <div>
-                      <div className="text-xs font-medium text-gray-500 uppercase mb-2">ACCEPTED PAYMENT METHODS</div>
-                      <div className="flex flex-wrap gap-1">
-                        {selectedOffer.paymentMethods.map((method, idx) => (
-                          <span key={idx} className="px-2 py-1 bg-purple-50 text-purple-700 text-xs font-medium border border-purple-100 rounded">
-                            {method}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-2">
-              <button 
-                onClick={closeModal} 
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-              >
-                Back to List
-              </button>
-              <button
-                onClick={() => {
-                  closeModal();
-                  openEditModal(selectedOffer);
-                }}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              >
-                Edit Offer
-              </button>
-              <button
-                onClick={() => {
-                  if (confirm("Delete this offer?")) {
-                    deleteOffer(selectedOffer._id);
-                    closeModal();
-                  }
-                }}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create/Edit Modal */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-              <h2 className="text-xl font-bold text-gray-800">
-                {editingOffer ? "Edit Offer" : "Create New Offer"}
-              </h2>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-4 px-6 border-b border-gray-200">
-              <button
-                className={`py-3 px-2 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "targeting" 
-                    ? "border-blue-500 text-blue-600" 
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-                onClick={() => setActiveTab("targeting")}
-              >
-                TARGETING & SELECTION
-              </button>
-              <button
-                className={`py-3 px-2 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "discount" 
-                    ? "border-blue-500 text-blue-600" 
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-                onClick={() => setActiveTab("discount")}
-              >
-                DISCOUNT & PAYMENT
-              </button>
-              <button
-                className={`py-3 px-2 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "scheduling" 
-                    ? "border-blue-500 text-blue-600" 
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-                onClick={() => setActiveTab("scheduling")}
-              >
-                SCHEDULING & LIMITS
-              </button>
-            </div>
-
-            <div className="p-6">
-              {/* Targeting & Selection Tab */}
-              {activeTab === "targeting" && (
-                <div className="space-y-6">
-                  {/* Module Selection */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">MODULE SELECTION</h3>
-                    <div className="flex gap-4">
-                      {modules.map(module => (
-                        <label key={module} className="flex items-center gap-2">
-                          <input type="radio" name="module" className="text-blue-500" />
-                          <span className="text-sm text-gray-700">{module}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Categories */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">MAIN CATEGORIES</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {categories.map(cat => (
-                        <label key={cat} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedCategories.includes(cat)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedCategories([...selectedCategories, cat]);
-                              } else {
-                                setSelectedCategories(selectedCategories.filter(c => c !== cat));
-                              }
-                            }}
-                            className="text-blue-500 rounded"
-                          />
-                          <span className="text-sm text-gray-700">{cat}</span>
-                        </label>
-                      ))}
-                    </div>
-
-                    {selectedCategories.length > 0 && (
-                      <>
-                        <h3 className="text-sm font-semibold text-gray-700 mt-4 mb-3">SUB CATEGORIES</h3>
-                        <div className="grid grid-cols-2 gap-3">
-                          {subCategories.map(sub => (
-                            <label key={sub} className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={selectedSubCategories.includes(sub)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedSubCategories([...selectedSubCategories, sub]);
-                                  } else {
-                                    setSelectedSubCategories(selectedSubCategories.filter(s => s !== sub));
-                                  }
-                                }}
-                                className="text-blue-500 rounded"
-                              />
-                              <span className="text-sm text-gray-700">{sub}</span>
+                        <div className="flex flex-wrap gap-8 items-center">
+                            {['services', 'rider', 'resale', 'ecommerce'].map((key) => (
+                                <label key={key} className="flex items-center gap-2 text-base text-slate-800 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={offerTarget[key as keyof typeof offerTarget] as boolean}
+                                        onChange={() => handleOfferTargetChange(key as keyof typeof offerTarget)}
+                                        className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer hover:shadow-[0_0_0_3px_rgba(37,99,235,0.15)] transition-shadow"
+                                    />
+                                    <span className="capitalize">{key}</span>
+                                </label>
+                            ))}
+                            <label className="flex items-center gap-2 text-base text-slate-800 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={offerTarget.all}
+                                    onChange={() => handleOfferTargetChange('all')}
+                                    className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer hover:shadow-[0_0_0_3px_rgba(37,99,235,0.15)] transition-shadow"
+                                />
+                                <span>All</span>
                             </label>
-                          ))}
                         </div>
+                        <div className="text-sm text-slate-500 mt-3 pt-2">
+                            <i className="fa-regular fa-lightbulb mr-1"></i> “All” disables Department; “Rider” hides Department.
+                        </div>
+                    </div>
 
-                        <h3 className="text-sm font-semibold text-gray-700 mt-4 mb-3">CHILD CATEGORIES</h3>
-                        <div className="grid grid-cols-2 gap-3">
-                          {childCategories.map(child => (
-                            <label key={child} className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={selectedChildCategories.includes(child)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedChildCategories([...selectedChildCategories, child]);
-                                  } else {
-                                    setSelectedChildCategories(selectedChildCategories.filter(c => c !== child));
-                                  }
-                                }}
-                                className="text-blue-500 rounded"
-                              />
-                              <span className="text-sm text-gray-700">{child}</span>
+                    <div
+                        className={`bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]
+            ${isDeptSectionDisabled ? 'opacity-50 pointer-events-none bg-slate-50' : ''} 
+            ${isDeptSectionHidden ? 'hidden' : ''}`}
+                    >
+                        <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
+                            <i className="fas fa-layer-group text-blue-500"></i> Department Selection
+                        </div>
+                        <div className="flex flex-wrap gap-8 items-center">
+                            {['homeAppliances', 'computer', 'mobile'].map((key) => {
+                                const label = key === 'homeAppliances' ? 'Home Appliances' : key === 'computer' ? 'Computer' : 'Mobile';
+                                return (
+                                    <label key={key} className="flex items-center gap-2 text-base text-slate-800 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={deptSelection[key]}
+                                            onChange={() => handleDeptSelectionChange(key)}
+                                            className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer hover:shadow-[0_0_0_3px_rgba(37,99,235,0.15)] transition-shadow"
+                                        />
+                                        <span>{label}</span>
+                                    </label>
+                                );
+                            })}
+                            <label className="flex items-center gap-2 text-base text-slate-800 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={deptSelection.all}
+                                    onChange={() => handleDeptSelectionChange('all')}
+                                    className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer hover:shadow-[0_0_0_3px_rgba(37,99,235,0.15)] transition-shadow"
+                                />
+                                <span>All</span>
                             </label>
-                          ))}
                         </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Location Targeting */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">LOCATION TARGETING</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {locations.map(location => (
-                        <label key={location} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedCities.includes(location)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedCities([...selectedCities, location]);
-                              } else {
-                                setSelectedCities(selectedCities.filter(c => c !== location));
-                              }
-                            }}
-                            className="text-blue-500 rounded"
-                          />
-                          <span className="text-sm text-gray-700">{location}</span>
-                        </label>
-                      ))}
+                        <div className="text-sm text-slate-500 mt-3 pt-2">Select departments to show categories. “All” shows all departments.</div>
                     </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Discount & Payment Tab */}
-              {activeTab === "discount" && (
-                <div className="space-y-6">
-                  {/* Discount Configuration */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">DISCOUNT CONFIGURATION</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">TYPE</label>
-                        <select
-                          name="type"
-                          value={formData.type}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        >
-                          <option value="CASHBACK">Cashback</option>
-                          <option value="DISCOUNT">Percentage Discount</option>
-                          <option value="FLAT_OFF">Flat Discount</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                          {formData.type === "DISCOUNT" ? "VALUE (%)" : "VALUE (₹)"}
-                        </label>
-                        <input
-                          type="number"
-                          name="value"
-                          value={formData.value}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                      </div>
-                      {formData.type === "DISCOUNT" && (
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">MAX DISCOUNT (₹)</label>
-                          <input
-                            type="number"
-                            name="maxDiscount"
-                            value={formData.maxDiscount || ""}
-                            onChange={handleInputChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                          />
+                    <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
+                        <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
+                            <i className="fas fa-sitemap text-blue-500"></i> Category hierarchy (Main → Sub → Child)
                         </div>
-                      )}
-                    </div>
-                  </div>
+                        <div className="max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-track-slate-50 scrollbar-thumb-slate-300">
+                          {mainCategories.map((main) => (
+  <div key={main._id} className="mb-5 border rounded-xl p-4">
 
-                  {/* Payment Methods */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">PAYMENT METHODS</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {paymentMethods.map(method => (
-                        <label key={method} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedPaymentMethods.includes(method)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedPaymentMethods([...selectedPaymentMethods, method]);
-                              } else {
-                                setSelectedPaymentMethods(selectedPaymentMethods.filter(m => m !== method));
-                              }
-                            }}
-                            className="text-blue-500 rounded"
-                          />
-                          <span className="text-sm text-gray-700">{method}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
+    {/* MAIN CATEGORY */}
+    <div className="flex items-center gap-3">
+      <input
+        type="checkbox"
+        checked={!!treeState[main._id]}
+        onChange={() => toggleNode(main._id)}
+      />
+      <span>{main.name}</span>
 
-                  {/* Order Value */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">ORDER VALUE</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">MIN ORDER (₹)</label>
-                        <input
-                          type="number"
-                          name="minOrderValue"
-                          value={formData.minOrderValue}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Scheduling & Limits Tab */}
-              {activeTab === "scheduling" && (
-                <div className="space-y-6">
-                  {/* Usage Limits */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">USAGE LIMITS</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">TOTAL USAGE LIMIT</label>
-                        <input
-                          type="number"
-                          name="totalLimit"
-                          value={formData.totalLimit}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">LIMIT PER USER</label>
-                        <input
-                          type="number"
-                          name="perUserLimit"
-                          value={formData.perUserLimit}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Scheduling */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">SCHEDULING</h3>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">START DATE</label>
-                        <input
-                          type="datetime-local"
-                          name="riderConditions.startDate"
-                          value={formData.riderConditions?.startDate || ""}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">END DATE</label>
-                        <input
-                          type="datetime-local"
-                          name="riderConditions.endDate"
-                          value={formData.riderConditions?.endDate || ""}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mb-4">
-                      <label className="block text-xs font-medium text-gray-500 mb-2">FREQUENCY</label>
-                      <div className="flex gap-4">
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name="frequency"
-                            checked={frequency === "ALWAYS"}
-                            onChange={() => setFrequency("ALWAYS")}
-                            className="text-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">ALWAYS</span>
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name="frequency"
-                            checked={frequency === "WEEKENDS"}
-                            onChange={() => setFrequency("WEEKENDS")}
-                            className="text-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">WEEKENDS</span>
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name="frequency"
-                            checked={frequency === "MORNING"}
-                            onChange={() => setFrequency("MORNING")}
-                            className="text-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">MORNING ONLY</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Form Actions */}
-              <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
-                <button
-                  onClick={closeModal}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveOffer}
-                  className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
-                  {editingOffer ? "Update Offer" : "Publish Offer"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* {main.hasSubCategory === true && ( */}
+      {main.hasSubCategory && (
+        <button
+          onClick={() => fetchSubCategories(main._id)}
+          className="text-blue-600 text-sm ml-3"
+        >
+          Load Sub
+        </button>
       )}
     </div>
-  );
+
+    {/* SUB CATEGORY */}
+   {Array.isArray(subCategories[main._id]) &&
+  subCategories[main._id].map((sub: any) => (
+
+      <div key={sub._id} className="ml-6 mt-2">
+
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            checked={!!treeState[sub._id]}
+            onChange={() => toggleNode(sub._id)}
+          />
+          <span>{sub.name}</span>
+
+          <button
+            onClick={() => fetchChildCategories(main._id, sub._id)}
+            className="text-green-600 text-xs ml-3"
+          >
+            Load Child
+          </button>
+        </div>
+
+        {/* CHILD CATEGORY */}
+{Array.isArray(childCategories[`${main._id}-${sub._id}`]) &&
+  childCategories[`${main._id}-${sub._id}`].map((child: any) => (
+
+          <div key={child._id} className="ml-6 mt-1 flex items-center gap-2">
+            <input
+              type="checkbox" 
+              checked={!!treeState[child._id]}
+              onChange={() => toggleNode(child._id)}
+            />
+            <span>{child.name}</span>
+          </div>
+        ))}
+
+      </div>
+    ))}
+
+  </div>
+))}
+                        </div>
+                    </div>
+
+                    {/* Offer Details */}
+                    <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
+                        <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
+                            <i className="fas fa-info-circle text-blue-500"></i> Basic Offer Details
+                        </div>
+                        <div className="flex flex-wrap gap-4 mb-6">
+                            <div className="flex-1 min-w-[300px]">
+                                <label className="block font-medium text-slate-700 mb-1.5 text-sm">Title <span className="text-red-500">*</span></label>
+                                <input
+                                    className="w-full px-4 py-3 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white transition-colors hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.1)]"
+                                    type="text"
+                                    value={details.title}
+                                    onChange={(e) => setDetails({ ...details, title: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-4 mb-6">
+                            <div className="flex-1 min-w-[300px]">
+                                <label className="block font-medium text-slate-700 mb-1.5 text-sm">Description <span className="text-red-500">*</span></label>
+                                <textarea
+                                    className="w-full px-4 py-3 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white min-h-[100px] resize-y transition-colors hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.1)]"
+                                    value={details.description}
+                                    onChange={(e) => setDetails({ ...details, description: e.target.value })}
+                                ></textarea>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-4 mb-6">
+                            <div className="flex-1 min-w-[300px]">
+                                <label className="block font-medium text-slate-700 mb-1.5 text-sm">Link (URL) <span className="text-slate-400 font-normal ml-1">optional</span></label>
+                                <input
+                                    className="w-full px-4 py-3 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white transition-colors hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.1)]"
+                                    type="url"
+                                    value={details.link}
+                                    onChange={(e) => setDetails({ ...details, link: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    </div>
+{/* Header Section */}
+<div className="bg-white rounded-3xl shadow p-7 mb-8 border">
+  <div className="text-xl font-semibold mb-6">
+    Header Section (Top Banner)
+  </div>
+
+  <div className="flex flex-col gap-4">
+
+    <div>
+      <label className="block text-sm font-medium mb-1">Head Title</label>
+      <input
+        type="text"
+        className="w-full px-4 py-2 border rounded-xl"
+        value={headerSection.headTitle}
+        onChange={(e) =>
+          setHeaderSection({ ...headerSection, headTitle: e.target.value })
+        }
+      />
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium mb-1">Head Description</label>
+      <textarea
+        className="w-full px-4 py-2 border rounded-xl"
+        value={headerSection.headDescription}
+        onChange={(e) =>
+          setHeaderSection({
+            ...headerSection,
+            headDescription: e.target.value,
+          })
+        }
+      />
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium mb-1">Head Image URL</label>
+      <input
+        type="text"
+        className="w-full px-4 py-2 border rounded-xl"
+        value={headerSection.headImage}
+        onChange={(e) =>
+          setHeaderSection({ ...headerSection, headImage: e.target.value })
+        }
+      />
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium mb-1">Head Video URL</label>
+      <input
+        type="text"
+        className="w-full px-4 py-2 border rounded-xl"
+        value={headerSection.headVideo}
+        onChange={(e) =>
+          setHeaderSection({ ...headerSection, headVideo: e.target.value })
+        }
+      />
+    </div>
+
+  </div>
+</div>
+
+                    {/* Media Images */}
+                    <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
+                        <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
+                            <i className="fas fa-image text-blue-500"></i> Offer Media
+                        </div>
+                        <div className="flex flex-col gap-8">
+
+                            <div className="bg-blue-50/30 rounded-3xl p-6 border border-blue-100/50">
+                                <h4 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2"><i className="fas fa-images text-blue-500"></i> Banner Images</h4>
+                                <div
+                                    className="border-2 border-dashed border-slate-300 rounded-3xl p-6 text-center bg-white cursor-pointer mb-4 hover:bg-slate-50 transition-colors group"
+                                    onDrop={(e) => onDropHandler(e, 'banner')}
+                                    onDragOver={onDragOverHandler}
+                                    onClick={() => document.getElementById('banner-upload')?.click()}
+                                >
+                                    <input
+                                        type="file"
+                                        id="banner-upload"
+                                        multiple
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => handleFileUpload(e.target.files, 'banner')}
+                                    />
+                                    <i className="fas fa-cloud-upload-alt text-3xl text-slate-400 mb-2 group-hover:text-blue-500 transition-colors"></i>
+                                    <p className="text-slate-500 group-hover:text-slate-700">Drag & drop or click to upload (multiple)</p>
+                                </div>
+                                <div className="flex gap-2 mb-4">
+                                    <input
+                                        type="text"
+                                        className="flex-1 px-4 py-2 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white focus:outline-none focus:border-blue-600"
+                                        placeholder="Image URL"
+                                        value={tempInputs.banner}
+                                        onChange={(e) => setTempInputs({ ...tempInputs, banner: e.target.value })}
+                                    />
+                                    <button className="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700 transition-colors" onClick={() => addMedia('banner')}>Add</button>
+                                </div>
+                                <div className="flex flex-wrap gap-4 mt-2 max-h-[180px] overflow-y-auto p-1">
+                                    {bannerImages.map((url, i) => (
+                                        <div key={i} className="w-[70px] h-[70px] rounded-xl bg-slate-100 relative border border-slate-200 overflow-hidden group">
+                                            <img src={url} alt="preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.src = 'https://placehold.co/70x70/e2e8f0/64748b?text=Error'} />
+                                            <span className="absolute -top-1.5 -right-1.5 bg-white rounded-full w-6 h-6 flex items-center justify-center shadow-md cursor-pointer border border-slate-200 text-slate-500 hover:text-red-500 hover:bg-red-50 transition-colors z-10" onClick={() => removeMedia('banner', i)}><i className="fas fa-times text-xs"></i></span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="bg-blue-50/30 rounded-3xl p-6 border border-blue-100/50">
+                                <h4 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2"><i className="fas fa-video text-blue-500"></i> Videos</h4>
+                                <div
+                                    className="border-2 border-dashed border-slate-300 rounded-3xl p-6 text-center bg-white cursor-pointer mb-4 hover:bg-slate-50 transition-colors group"
+                                    onDrop={(e) => onDropHandler(e, 'video')}
+                                    onDragOver={onDragOverHandler}
+                                    onClick={() => document.getElementById('video-upload')?.click()}
+                                >
+                                    <input
+                                        type="file"
+                                        id="video-upload"
+                                        multiple
+                                        accept="video/*"
+                                        className="hidden"
+                                        onChange={(e) => handleFileUpload(e.target.files, 'video')}
+                                    />
+                                    <i className="fas fa-cloud-upload-alt text-3xl text-slate-400 mb-2 group-hover:text-blue-500 transition-colors"></i>
+                                    <p className="text-slate-500 group-hover:text-slate-700">Drag & drop videos or click to upload</p>
+                                </div>
+                                <div className="flex gap-2 mb-4">
+                                    <input
+                                        type="text"
+                                        className="flex-1 px-4 py-2 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white focus:outline-none focus:border-blue-600"
+                                        placeholder="Video URL"
+                                        value={tempInputs.video}
+                                        onChange={(e) => setTempInputs({ ...tempInputs, video: e.target.value })}
+                                    />
+                                    <button className="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700 transition-colors" onClick={() => addMedia('video')}>Add</button>
+                                </div>
+                                <div className="flex flex-wrap gap-4 mt-2 max-h-[180px] overflow-y-auto p-1">
+                                    {videos.map((url, i) => (
+                                        <div key={i} className="w-[70px] h-[70px] rounded-xl bg-slate-100 flex items-center justify-center relative border border-slate-200 group">
+                                            <i className="fas fa-play text-blue-600 text-xl"></i>
+                                            <span className="absolute -top-1.5 -right-1.5 bg-white rounded-full w-6 h-6 flex items-center justify-center shadow-md cursor-pointer border border-slate-200 text-slate-500 hover:text-red-500 hover:bg-red-50 transition-colors z-10" onClick={() => removeMedia('video', i)}><i className="fas fa-times text-xs"></i></span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    {/* City Targeting */}
+                    <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
+                        <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
+                            <i className="fas fa-city text-blue-500"></i> City Targeting (State-wise)
+                        </div>
+                        <div className="flex flex-wrap gap-8 items-start">
+                            <div className="flex items-center gap-2 pt-3">
+                                <input
+                                    type="checkbox"
+                                    checked={cityTarget.allCities}
+                                    onChange={() => setCityTarget({ ...cityTarget, allCities: !cityTarget.allCities, state: '' })}
+                                    className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer"
+                                />
+                                <span className="text-slate-800">All Cities</span>
+                            </div>
+                            <div className="min-w-[200px]">
+                                <select
+                                    className="w-full px-4 py-3 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white focus:outline-none focus:border-blue-600 disabled:bg-slate-100 disabled:text-slate-400"
+                                    disabled={cityTarget.allCities}
+                                    value={cityTarget.state}
+                                    onChange={(e) => setCityTarget({ ...cityTarget, state: e.target.value, selectedCities: [] })}
+                                >
+                                    <option value="">-- Select State --</option>
+                                    {Object.keys(cityData).map(k => (
+                                        <option key={k} value={k} className="capitalize">{k}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex-1 min-w-[300px]">
+                                <CitySelector
+                                    cities={cityTarget.state ? cityData[cityTarget.state] || [] : []}
+                                    selectedCities={cityTarget.selectedCities}
+                                    onChange={(newSelection) => setCityTarget({ ...cityTarget, selectedCities: newSelection })}
+                                    disabled={cityTarget.allCities || !cityTarget.state}
+                                />
+                            </div>
+                        </div>
+                        <div className="text-sm text-slate-500 mt-4 pt-2 border-t border-slate-50">Select a state to load cities. “All Cities” disables both dropdowns.</div>
+                    </div>
+
+                    {/* Promo Config */}
+                    <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
+                        <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
+                            <i className="fas fa-ticket text-blue-500"></i> Promo Configuration
+                        </div>
+                        <div className="flex flex-wrap gap-4 mb-6">
+                            <div className="flex-1 min-w-[300px]">
+                                <label className="block font-medium text-slate-700 mb-1.5 text-sm">Promo Code</label>
+                                <input
+                                    className="w-full px-4 py-3 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white uppercase focus:outline-none focus:border-blue-600"
+                                    type="text"
+                                    value={promo.code}
+                                    onChange={(e) => setPromo({ ...promo, code: e.target.value.toUpperCase() })}
+                                />
+                            </div>
+                            <div className="flex-1 min-w-[300px] flex items-center gap-4 pt-6">
+                                <span className="font-medium text-slate-700">Visible to Users</span>
+                                <label className="relative inline-block w-[52px] h-[28px]">
+                                    <input
+                                        type="checkbox"
+                                        checked={promo.visible}
+                                        onChange={() => setPromo({ ...promo, visible: !promo.visible })}
+                                        className="opacity-0 w-0 h-0 peer"
+                                    />
+                                    <span className="absolute cursor-pointer top-0 left-0 right-0 bottom-0 bg-slate-300 transition-all duration-200 rounded-[34px] peer-checked:bg-blue-600 before:absolute before:content-[''] before:h-[22px] before:w-[22px] before:left-[3px] before:bottom-[3px] before:bg-white before:transition-all before:duration-200 before:rounded-full peer-checked:before:translate-x-[24px]"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div className="bg-blue-50/30 rounded-3xl p-6 border border-blue-100/50 mt-4">
+                            <h4 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2"><i className="fas fa-image text-blue-500"></i> Promo Images</h4>
+                            <div
+                                className="border-2 border-dashed border-slate-300 rounded-3xl p-6 text-center bg-white cursor-pointer mb-4 hover:bg-slate-50 transition-colors group"
+                                onDrop={(e) => onDropHandler(e, 'promo')}
+                                onDragOver={onDragOverHandler}
+                                onClick={() => document.getElementById('promo-upload')?.click()}
+                            >
+                                <input
+                                    type="file"
+                                    id="promo-upload"
+                                    multiple
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => handleFileUpload(e.target.files, 'promo')}
+                                />
+                                <i className="fas fa-cloud-upload-alt text-3xl text-slate-400 mb-2 group-hover:text-blue-500 transition-colors"></i>
+                                <p className="text-slate-500 group-hover:text-slate-700">Drag & drop or click to upload (multiple)</p>
+                            </div>
+                            <div className="flex gap-2 mb-4">
+                                <input
+                                    type="text"
+                                    className="flex-1 px-4 py-2 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white focus:outline-none focus:border-blue-600"
+                                    placeholder="Promo Image URL"
+                                    value={tempInputs.promo}
+                                    onChange={(e) => setTempInputs({ ...tempInputs, promo: e.target.value })}
+                                />
+                                <button className="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700 transition-colors" onClick={() => addMedia('promo')}>Add</button>
+                            </div>
+                            <div className="flex flex-wrap gap-4 mt-2 max-h-[180px] overflow-y-auto p-1">
+                                {promoImages.map((url, i) => (
+                                    <div key={i} className="w-[70px] h-[70px] rounded-xl bg-slate-100 relative border border-slate-200 overflow-hidden group">
+                                        <img src={url} alt="preview" className="w-full h-full object-cover" onError={(e) => e.currentTarget.src = 'https://placehold.co/70x70/8b5cf6/white?text=promo'} />
+                                        <span className="absolute -top-1.5 -right-1.5 bg-white rounded-full w-6 h-6 flex items-center justify-center shadow-md cursor-pointer border border-slate-200 text-slate-500 hover:text-red-500 hover:bg-red-50 transition-colors z-10" onClick={() => removeMedia('promo', i)}><i className="fas fa-times text-xs"></i></span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Discount Settings */}
+                    <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
+                        <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
+                            <i className="fas fa-percent text-blue-500"></i> Discount Settings
+                        </div>
+                        <div className="flex flex-wrap gap-4 mb-6">
+                            <div className="flex-1 max-w-[200px]">
+                                <label className="block font-medium text-slate-700 mb-1.5 text-sm">Discount Type</label>
+                                <select
+                                    className="w-full px-4 py-3 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white focus:outline-none focus:border-blue-600"
+                                    value={discount.type}
+                                    onChange={(e) => setDiscount({ ...discount, type: e.target.value })}
+                                >
+                                    <option value="percentage">Percentage (%)</option>
+                                    <option value="fixed">Fixed Amount (₹)</option>
+                                    <option value="upto">Upto</option>
+                                </select>
+                            </div>
+                            <div className="flex-1 min-w-[300px]">
+                                <label className="block font-medium text-slate-700 mb-1.5 text-sm">Discount Value <span className="text-red-500">*</span></label>
+                                <div className="flex items-center">
+                                    <span className="bg-slate-100 px-4 py-3 border-[1.5px] border-r-0 border-slate-200 rounded-l-2xl font-medium text-slate-600">
+                                        {discount.type === 'percentage' ? '%' : discount.type === 'fixed' ? '₹' : 'upto ₹'}
+                                    </span>
+                                    <input
+                                        className="w-[150px] px-4 py-3 border-[1.5px] border-slate-200 rounded-r-2xl text-[0.95rem] bg-white focus:outline-none focus:border-blue-600 border-l-0"
+                                        type="number"
+                                        value={discount.value}
+                                        onChange={(e) => setDiscount({ ...discount, value: Number(e.target.value) })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Usage Limits */}
+                    <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
+                        <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
+                            <i className="fas fa-chart-line text-blue-500"></i> Usage Limits
+                        </div>
+                        <div className="flex flex-wrap gap-4 mb-6">
+                            <div className="flex-1 min-w-[300px]">
+                                <label className="block font-medium text-slate-700 mb-1.5 text-sm">Total Use Limit</label>
+                                <div className="flex gap-8 items-center flex-wrap mt-2">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="totalLimit"
+                                            value="unlimited"
+                                            checked={limits.totalType === 'unlimited'}
+                                            onChange={() => setLimits({ ...limits, totalType: 'unlimited' })}
+                                            className="w-[1.1rem] h-[1.1rem] accent-blue-600"
+                                        /> <span className="text-slate-700">No Limit</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="totalLimit"
+                                            value="limited"
+                                            checked={limits.totalType === 'limited'}
+                                            onChange={() => setLimits({ ...limits, totalType: 'limited' })}
+                                            className="w-[1.1rem] h-[1.1rem] accent-blue-600"
+                                        /> <span className="text-slate-700">Limited</span>
+                                    </label>
+                                </div>
+                                {limits.totalType === 'limited' && (
+                                    <div className="mt-3">
+                                     <input
+  className="w-[200px] px-4 py-2 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white focus:outline-none focus:border-blue-600"
+  type="number"
+  placeholder="Max uses"
+  value={limits.totalValue}
+  onChange={(e) =>
+    setLimits({ ...limits, totalValue: e.target.value })
+  }
+/>
+
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-[300px]">
+                                <label className="block font-medium text-slate-700 mb-1.5 text-sm">Per User Limit</label>
+                                <div className="flex gap-8 items-center flex-wrap mt-2">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="userLimit"
+                                            value="unlimited"
+                                            checked={limits.userType === 'unlimited'}
+                                            onChange={() => setLimits({ ...limits, userType: 'unlimited' })}
+                                            className="w-[1.1rem] h-[1.1rem] accent-blue-600"
+                                        /> <span className="text-slate-700">No Limit</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="userLimit"
+                                            value="limited"
+                                            checked={limits.userType === 'limited'}
+                                            onChange={() => setLimits({ ...limits, userType: 'limited' })}
+                                            className="w-[1.1rem] h-[1.1rem] accent-blue-600"
+                                        /> <span className="text-slate-700">Limited</span>
+                                    </label>
+                                </div>
+                                {limits.userType === 'limited' && (
+                                    <div className="mt-3">
+                                     <input
+  className="w-[200px] px-4 py-2 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white focus:outline-none focus:border-blue-600"
+  type="number"
+  placeholder="Per user"
+  value={limits.userValue}
+  onChange={(e) =>
+    setLimits({ ...limits, userValue: e.target.value })
+  }
+/>
+
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Validity */}
+                    <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
+                        <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
+                            <i className="fas fa-calendar-alt text-blue-500"></i> Offer Validity
+                        </div>
+                        <div className="flex flex-wrap gap-4 mb-6">
+                            <div className="flex-1 min-w-[300px]">
+                                <label className="block font-medium text-slate-700 mb-1.5 text-sm">From</label>
+                                <input
+                                    className="w-full px-4 py-3 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white focus:outline-none focus:border-blue-600"
+                                    type="text"
+                                    placeholder="DD/MM/YYYY"
+                                    value={validity.fromDate}
+                                    onChange={(e) => setValidity({ ...validity, fromDate: e.target.value })}
+                                />
+                                <input
+                                    className="w-full px-4 py-3 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white mt-2 focus:outline-none focus:border-blue-600"
+                                    type="text"
+                                    placeholder="HH:MM"
+                                    value={validity.fromTime}
+                                    onChange={(e) => setValidity({ ...validity, fromTime: e.target.value })}
+                                />
+                            </div>
+                            <div className="flex-1 min-w-[300px]">
+                                <label className="block font-medium text-slate-700 mb-1.5 text-sm">To</label>
+                                <input
+                                    className="w-full px-4 py-3 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white focus:outline-none focus:border-blue-600"
+                                    type="text"
+                                    placeholder="DD/MM/YYYY"
+                                    value={validity.toDate}
+                                    onChange={(e) => setValidity({ ...validity, toDate: e.target.value })}
+                                />
+                                <input
+                                    className="w-full px-4 py-3 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white mt-2 focus:outline-none focus:border-blue-600"
+                                    type="text"
+                                    placeholder="HH:MM"
+                                    value={validity.toTime}
+                                    onChange={(e) => setValidity({ ...validity, toTime: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Payment Type */}
+                    <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
+                        <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
+                            <i className="fas fa-credit-card text-blue-500"></i> Payment Type
+                        </div>
+                        <div className="flex flex-wrap gap-8 items-center">
+                            <label className="flex items-center gap-2 cursor-pointer text-slate-800">
+                                <input
+                                    type="checkbox"
+                                    checked={payment.cash}
+                                    disabled={payment.all}
+                                    onChange={() => setPayment({ ...payment, cash: !payment.cash })}
+                                    className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer"
+                                /> <span>Cash</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer text-slate-800">
+                                <input
+                                    type="checkbox"
+                                    checked={payment.online}
+                                    disabled={payment.all}
+                                    onChange={() => setPayment({ ...payment, online: !payment.online })}
+                                    className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer"
+                                /> <span>Online</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer text-slate-800">
+                                <input
+                                    type="checkbox"
+                                    checked={payment.others}
+                                    disabled={payment.all}
+                                    onChange={() => setPayment({ ...payment, others: !payment.others })}
+                                    className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer"
+                                /> <span>Others</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer text-slate-800">
+                                <input
+                                    type="checkbox"
+                                    checked={payment.all}
+                                    onChange={() => setPayment({
+                                        cash: false,
+                                        online: false,
+                                        others: false,
+                                        all: !payment.all,
+                                        othersText: ''
+                                    })}
+                                    className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer"
+                                /> <span>All</span>
+                            </label>
+                        </div>
+                        {payment.others && !payment.all && (
+                            <div className="mt-4 ml-0 md:ml-8 w-full md:w-[250px]">
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-3 border-[1.5px] border-slate-200 rounded-2xl text-[0.95rem] bg-white focus:outline-none focus:border-blue-600"
+                                    placeholder="Specify other payment type"
+                                    value={payment.othersText}
+                                    onChange={(e) => setPayment({ ...payment, othersText: e.target.value })}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Min Spend */}
+                    <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
+                        <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
+                            <i className="fas fa-cart-arrow-down text-blue-500"></i> Minimum Spend Requirement
+                        </div>
+                        <div className="flex flex-wrap gap-4 mb-4">
+                            <div className="flex gap-8 items-center flex-wrap">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="minSpend"
+                                        checked={!minSpend.active}
+                                        onChange={() => setMinSpend({ ...minSpend, active: false })}
+                                        className="w-[1.1rem] h-[1.1rem] accent-blue-600"
+                                    /> <span className="text-slate-700">No Limit</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="minSpend"
+                                        checked={minSpend.active}
+                                        onChange={() => setMinSpend({ ...minSpend, active: true })}
+                                        className="w-[1.1rem] h-[1.1rem] accent-blue-600"
+                                    /> <span className="text-slate-700">Minimum Spend Required</span>
+                                </label>
+                            </div>
+                        </div>
+                        {minSpend.active && (
+                            <div className="flex items-center mt-2">
+                                <span className="bg-slate-100 px-4 py-3 border-[1.5px] border-r-0 border-slate-200 rounded-l-2xl font-medium text-slate-600">₹</span>
+                                <input
+                                    className="w-[150px] px-4 py-3 border-[1.5px] border-slate-200 rounded-r-2xl text-[0.95rem] bg-white focus:outline-none focus:border-blue-600 border-l-0"
+                                    type="number"
+                                    value={minSpend.value}
+                                    onChange={(e) => setMinSpend({ ...minSpend, value: Number(e.target.value) })}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                </main>
+
+                <div className="fixed bottom-6 right-6 md:right-8 bg-white px-8 py-4 rounded-full shadow-[0_8px_28px_rgba(0,0,0,0.12)] flex gap-6 border border-slate-200 z-50">
+                    <button className="bg-white text-slate-700 px-8 py-2.5 rounded-full font-semibold border border-slate-300 hover:bg-slate-50 transition-colors">Cancel</button>
+                   <button disabled={saving} onClick={handleSaveOffer} className="bg-blue-600 text-white px-6 py-2 rounded-full disabled:opacity-50">{saving ? "Saving..." : "Save Offer"}</button>
+
+
+                </div>
+            </div>
+        </>
+    );
 }

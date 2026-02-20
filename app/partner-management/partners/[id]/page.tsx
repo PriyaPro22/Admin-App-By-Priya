@@ -235,6 +235,41 @@ const deleteResidentialProof = async () => {
     setResidentialData(null);
   }
 };
+// Education Details
+const [educationData, setEducationData] = useState<any>(null);
+const [educationLoading, setEducationLoading] = useState(true);
+useEffect(() => {
+  const fetchEducationDetails = async () => {
+    try {
+      setEducationLoading(true);
+
+     const res = await fetch(
+  `https://api.bijliwalaaya.in/api/partner/educational-qualification/${params.id}`,
+  {
+    headers: {
+      "x-api-token": "super_secure_token",
+    },
+  }
+);
+
+
+      const json = await res.json();
+
+      if (json.success) {
+        setEducationData(json.data);
+      } else {
+        setEducationData(null);
+      }
+    } catch (error) {
+      console.error("Education fetch error", error);
+      setEducationData(null);
+    } finally {
+      setEducationLoading(false);
+    }
+  };
+
+  fetchEducationDetails();
+}, [params.id]);
 
 // Document Verification Api
 const saveKycLiveStatus = async (
@@ -1619,6 +1654,8 @@ const backendAttempts =
     </div>
 
     {/* SECTION 2: DOCUMENT VERIFICATION */}
+    {kycData?.kyc_details && (
+
     <div  className="bg-white border-transparent">
       <div className="flex items-center   gap-3 mb-6">
         <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center    justify-center text-[#0070f3]">
@@ -1899,8 +1936,10 @@ const backendAttempts =
 
       </div>
     </div>
+    )}
     {/* Section 3:Vehicle Verification */}
    {/* ================= VEHICLE VERIFICATION ================= */}
+   {(rcVehicle || nonRcVehicle) && (
 <div className="bg-white rounded-2xl border p-6">
   {/* HEADER */}
   <div className="flex items-center gap-2 mb-4">
@@ -2237,6 +2276,7 @@ const backendAttempts =
 </div>
 
 </div>
+   )}
 
 
 
@@ -2564,96 +2604,49 @@ const backendAttempts =
 
 {/* Section 4 */}
 {/* ================= EDUCATION DETAILS ================= */}
-<div
-  className={`rounded-[24px] p-6 border shadow-sm mt-8
-  ${isDark ? "bg-[#111C44] border-gray-800" : "bg-white border-gray-200"}`}
->
-  {/* Header */}
-  <div className="flex items-center gap-3 mb-6">
-    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-      🎓
+
+
+{!educationLoading && educationData && (
+  <div
+    className={`rounded-[24px] p-6 border shadow-sm mt-8
+    ${isDark ? "bg-[#111C44] border-gray-800" : "bg-white border-gray-200"}`}
+  >
+    <div className="flex items-center gap-3 mb-6">
+      <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+        🎓
+      </div>
+      <h4 className={`text-lg font-extrabold ${isDark ? "text-white" : "text-[#2B3674]"}`}>
+        Education Details
+      </h4>
     </div>
-    <h4
-      className={`text-lg font-extrabold ${
-        isDark ? "text-white" : "text-[#2B3674]"
-      }`}
-    >
-      Education Details
-    </h4>
-  </div>
 
-  {/* Qualification */}
-  <div className="mb-4">
-    <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
-      Highest Qualification
-    </p>
-    <p
-      className={`text-[15px] font-extrabold ${
-        isDark ? "text-white" : "text-[#2B3674]"
-      }`}
-    >
-      ITI / Diploma
-    </p>
-  </div>
+    <div className="mb-4">
+      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+        Highest Qualification
+      </p>
+      <p className="text-[15px] font-extrabold">
+        {educationData.highestQualification}
+      </p>
+    </div>
 
-  {/* Status */}
-  <div className="mb-4">
-    <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
-      Status
-    </p>
-    <span className="inline-block bg-green-100 text-green-600 text-xs font-bold px-3 py-1 rounded-md">
-      COMPLETED
-    </span>
-  </div>
-
-  {/* Upload Time */}
-  <div className="mb-6">
-    <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
-      Upload Timestamp
-    </p>
-    <p
-      className={`text-[13px] font-bold ${
-        isDark ? "text-gray-300" : "text-[#2B3674]"
-      }`}
-    >
-      09/02/2026 06:16:13 PM
-    </p>
-  </div>
-
-  {/* Document Preview */}
-  <div className="mb-6">
-    <div
-      className={`w-full h-36 rounded-xl border border-dashed
-      ${isDark ? "border-gray-600 bg-[#1B254B]" : "border-gray-300 bg-gray-50"}
-      flex items-center justify-center overflow-hidden`}
-    >
-      {/* IMAGE PREVIEW */}
-      {/* agar image URL ho to <img /> use karna */}
-      <span className="text-xs text-gray-400">
-        Uploaded Document Preview
+    <div className="mb-4">
+      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+        Status
+      </p>
+      <span className="inline-block bg-green-100 text-green-600 text-xs font-bold px-3 py-1 rounded-md">
+        {educationData.status}
       </span>
     </div>
-  </div>
 
-  {/* Action Buttons */}
-  {/* <div className="flex gap-4">
-    <button
-      onClick={() => setShowApproveModal(true)}
-      className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl
-      font-bold text-sm hover:bg-blue-600 transition-all"
-    >
-      Approve
-    </button>
-
-    <button
-      onClick={() => setShowRejectModal(true)}
-      className="flex-1 border border-red-300 text-red-500 py-3
-      rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
-    >
-      Reject
-    </button>
-  </div> */}
-  {renderKycNote("education_done")}
+    <div className="mb-6">
+      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
+        Upload Timestamp
+      </p>
+      <p className="text-[13px] font-bold">
+        {educationData.upload_timestamp}
+      </p>
+    </div>
+      {renderKycNote("education_done")}
 
   <div className="flex gap-4">
   <button
@@ -2678,19 +2671,18 @@ const backendAttempts =
     Reject
   </button>
 </div>
+  </div>
+)}
 
-</div>
 {/* Residential Proof */}
-{/* ================= RESIDENTIAL PROOF ================= */}
-{/* ================= RESIDENTIAL PROOF ================= */}
-{!residentialLoading && residentialData && (
+ {!residentialLoading && residentialData && (
   <div
     className={`rounded-[24px] p-6 border shadow-sm mt-8
     ${isDark ? "bg-[#111C44] border-gray-800" : "bg-white border-gray-200"}`}
   >
     <div className="flex items-center gap-3 mb-6">
       <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-        📍  
+        📍
       </div>
       <h4 className={`text-lg font-extrabold ${isDark ? "text-white" : "text-[#2B3674]"}`}>
         Residential Proof
@@ -2726,56 +2718,24 @@ const backendAttempts =
         </p>
       </div>
     </div>
+     <div className="flex gap-4 mt-6">
+    <button
+      className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-600 transition-all"
+    >
+      Approve
+    </button>
 
-    <div className="mb-4">
-      <p className="text-[11px] font-bold text-gray-400 uppercase mb-1">
-        Full Address
-      </p>
-      <p className="text-[14px] font-semibold leading-relaxed">
-        {residentialData.addressLine1}
-        {residentialData.addressLine2 && `, ${residentialData.addressLine2}`}
-      </p>
-    </div>
-
-    {/* Document Preview */}
-    {residentialData.proofImage && (
-      <div
-        onClick={() => setPreviewImage(residentialData.proofImage)}
-        className="w-full h-40 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 ring-blue-400 transition"
-      >
-        <img
-          src={residentialData.proofImage}
-          alt="Residential Proof"
-          className="h-full w-full object-cover"
-        />
-      </div>
-    )}
-
-    {renderKycNote("address_done")}
-
-    <div className="flex gap-4 mt-6">
-      <button
-        onClick={() => {
-          setCurrentSection("address_done");
-          setShowApproveModal(true);
-        }}
-        className="flex-1 bg-[#0070f3] text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-600 transition-all"
-      >
-        Approve
-      </button>
-
-      <button
-        onClick={() => {
-          setCurrentSection("address_done");
-          setShowRejectModal(true);
-        }}
-        className="flex-1 border border-red-300 text-red-500 py-3 rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
-      >
-        Reject
-      </button>
-    </div>
+    <button
+      className="flex-1 border border-red-300 text-red-500 py-3 rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
+    >
+      Reject
+    </button>
+  </div>
   </div>
 )}
+ 
+
+
 
 
 
