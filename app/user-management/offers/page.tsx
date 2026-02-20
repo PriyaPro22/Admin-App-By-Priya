@@ -1891,15 +1891,380 @@ export default function CreateOfferPage() {
 
         </main>
 
+        {/* ─── Fixed Bottom Save Bar ───────────────────────────── */}
         <div className="fixed bottom-6 right-6 md:right-8 bg-white px-8 py-4 rounded-full shadow-[0_8px_28px_rgba(0,0,0,0.12)] flex gap-6 border border-slate-200 z-50">
           <button className="bg-white text-slate-700 px-8 py-2.5 rounded-full font-semibold border border-slate-300 hover:bg-slate-50 transition-colors">Cancel</button>
           <button disabled={saving} onClick={handleSaveOffer} className="bg-blue-600 text-white px-6 py-2 rounded-full disabled:opacity-50">{saving ? "Saving..." : "Save Offer"}</button>
-
-
         </div>
+
+        {/* ─── Offers List Section ─────────────────────────────── */}
+        <OffersList key={offers.length} offers={offers} onRefresh={fetchOffers} />
+
       </div>
     </>
   );
 }
 
+/* ══════════════════════════════════════════════════════════════
+   OFFERS LIST COMPONENT
+══════════════════════════════════════════════════════════════ */
 
+function OffersList({ offers, onRefresh }: { offers: any[]; onRefresh: () => void }) {
+  const [deleting, setDeleting] = React.useState<string | null>(null);
+  const [editOffer, setEditOffer] = React.useState<any | null>(null);
+  const [updating, setUpdating] = React.useState(false);
+  const [editForm, setEditForm] = React.useState<any>({});
+
+  const openEdit = (offer: any) => {
+    setEditOffer(offer);
+    setEditForm({
+      title: offer.title || "",
+      description: offer.description || "",
+      promocode: offer.promocode || "",
+      discountValue: offer.discountValue ?? 0,
+      discountType: offer.discountType?.type || "PERCENTAGE",
+      min_spend: offer.min_spend ?? 0,
+      offerActive: offer.offerActive ?? true,
+      visibleToUser: offer.visibleToUser ?? true,
+      offerVisible: offer.offerVisible ?? true,
+      headTitle: offer.headTitle || "",
+      headDescription: offer.headDescription || "",
+    });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this offer?")) return;
+    setDeleting(id);
+    try {
+      const res = await fetch(`https://api.bijliwalaaya.in/api/offers/${id}`, {
+        method: "DELETE",
+        headers: { "x-api-token": "super_secure_token" },
+      });
+      if (res.ok) {
+        alert("Offer deleted successfully ✅");
+        onRefresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert("Delete failed: " + (data.message || `Status ${res.status}`));
+      }
+    } catch (err) {
+      alert("Network error while deleting.");
+      console.error(err);
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!editOffer) return;
+    setUpdating(true);
+    try {
+      const payload = {
+        ...editForm,
+        discountType: { type: editForm.discountType, maxDiscount: Number(editForm.discountValue) },
+        discountValue: Number(editForm.discountValue),
+        min_spend: Number(editForm.min_spend),
+      };
+      const res = await fetch(`https://api.bijliwalaaya.in/api/offers/${editOffer._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-api-token": "super_secure_token" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success || res.ok) {
+        alert("Offer updated successfully ✅");
+        setEditOffer(null);
+        onRefresh();
+      } else {
+        alert("Update failed: " + (data.message || "Unknown error"));
+      }
+    } catch {
+      alert("Server error");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const fmt = (iso: string) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  };
+
+  return (
+    <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 pb-32 mt-4">
+      {/* Section Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+            <i className="fas fa-list text-white text-sm"></i>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">All Offers</h2>
+            <p className="text-sm text-slate-400">{offers.length} offer{offers.length !== 1 ? "s" : ""} found</p>
+          </div>
+        </div>
+        <button onClick={onRefresh} className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:border-blue-400 hover:text-blue-600 transition-colors shadow-sm">
+          <i className="fas fa-sync-alt text-xs"></i> Refresh
+        </button>
+      </div>
+
+      {offers.length === 0 ? (
+        <div className="bg-white rounded-3xl border border-dashed border-slate-200 p-16 text-center">
+          <i className="fas fa-tag text-5xl text-slate-200 mb-4 block"></i>
+          <p className="text-slate-400 text-lg">No offers yet. Create your first offer above!</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {offers.map((offer: any) => (
+            <div key={offer._id} className="bg-white rounded-3xl border border-slate-100 shadow-[0_8px_28px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden group">
+
+              {/* Card Top Banner */}
+              <div className="relative h-[160px] bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 overflow-hidden">
+                {offer.imageUrl && (
+                  <img src={offer.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" />
+                )}
+                <div className="absolute inset-0 p-5 flex flex-col justify-between">
+                  <div className="flex items-start justify-between">
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full shadow ${offer.offerActive ? "bg-emerald-400/90 text-white" : "bg-slate-500/80 text-white"}`}>
+                      {offer.offerActive ? "● Active" : "● Inactive"}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openEdit(offer)}
+                        className="w-8 h-8 bg-white/20 backdrop-blur hover:bg-white/40 rounded-xl flex items-center justify-center text-white transition-colors"
+                        title="Edit"
+                      >
+                        <i className="fas fa-pen text-xs"></i>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(offer._id)}
+                        disabled={deleting === offer._id}
+                        className="w-8 h-8 bg-white/20 backdrop-blur hover:bg-red-500/80 rounded-xl flex items-center justify-center text-white transition-colors disabled:opacity-50"
+                        title="Delete"
+                      >
+                        {deleting === offer._id
+                          ? <i className="fas fa-spinner fa-spin text-xs"></i>
+                          : <i className="fas fa-trash text-xs"></i>
+                        }
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-white text-xl font-bold drop-shadow line-clamp-1">{offer.title}</h3>
+                    <p className="text-white/70 text-sm mt-0.5 line-clamp-1">{offer.description}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Body */}
+              <div className="p-5 flex flex-col gap-4">
+
+                {/* Promo + Discount row */}
+                <div className="flex flex-wrap gap-3">
+                  {offer.promocode && (
+                    <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
+                      <i className="fas fa-ticket-alt text-amber-500 text-xs"></i>
+                      <span className="font-bold text-amber-700 text-sm tracking-wider">{offer.promocode}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl">
+                    <i className="fas fa-tags text-blue-500 text-xs"></i>
+                    <span className="font-bold text-blue-700 text-sm">
+                      {offer.discountValue}{offer.discountType?.type === "PERCENTAGE" ? "% OFF" : " ₹ OFF"}
+                    </span>
+                  </div>
+                  {offer.min_spend > 0 && (
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+                      <i className="fas fa-cart-plus text-slate-400 text-xs"></i>
+                      <span className="text-slate-600 text-sm">Min ₹{offer.min_spend}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Validity */}
+                {offer.validity?.length > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <i className="fas fa-calendar-alt text-indigo-400"></i>
+                    <span>{fmt(offer.validity[0].startDate)} — {fmt(offer.validity[0].endDate)}</span>
+                    {offer.validity[0].startTime && (
+                      <span className="text-xs text-slate-400">({offer.validity[0].startTime} – {offer.validity[0].endTime})</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Categories */}
+                <div className="flex flex-col gap-2">
+                  {offer.select_departments?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      <span className="text-[10px] font-semibold uppercase text-slate-400 w-full">Departments</span>
+                      {offer.select_departments.map((d: string) => (
+                        <span key={d} className="bg-violet-50 text-violet-700 border border-violet-200 text-xs px-2.5 py-0.5 rounded-full font-medium">{d}</span>
+                      ))}
+                    </div>
+                  )}
+                  {offer.select_main_category?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      <span className="text-[10px] font-semibold uppercase text-slate-400 w-full">Main Categories</span>
+                      {offer.select_main_category.map((c: any) => (
+                        <span key={c.documentId} className="bg-blue-50 text-blue-700 border border-blue-200 text-xs px-2.5 py-0.5 rounded-full font-medium">{c.name}</span>
+                      ))}
+                    </div>
+                  )}
+                  {offer.select_sub_category?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      <span className="text-[10px] font-semibold uppercase text-slate-400 w-full">Sub Categories</span>
+                      {offer.select_sub_category.map((c: any) => (
+                        <span key={c.documentId} className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-2.5 py-0.5 rounded-full font-medium">{c.name}</span>
+                      ))}
+                    </div>
+                  )}
+                  {offer.select_child_category?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      <span className="text-[10px] font-semibold uppercase text-slate-400 w-full">Child Categories</span>
+                      {offer.select_child_category.map((c: any, i: number) => (
+                        <span key={`${c.documentId}-${i}`} className="bg-orange-50 text-orange-700 border border-orange-200 text-xs px-2.5 py-0.5 rounded-full font-medium">{c.name}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Location + Payment */}
+                <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
+                  {offer.states?.length > 0 && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <i className="fas fa-map-marker-alt text-rose-400"></i>
+                      {offer.states.map((s: any) => s.stateName).join(", ")}
+                      {offer.cities?.length > 0 && ` › ${offer.cities.map((c: any) => c.cityName).join(", ")}`}
+                    </div>
+                  )}
+                  {offer.payment_via?.length > 0 && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 ml-auto">
+                      <i className="fas fa-credit-card text-blue-400"></i>
+                      {offer.payment_via.join(" · ")}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+
+      {/* ─── Edit Offer Modal ────────────────────────────────── */}
+      {editOffer && (
+        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl my-8">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-200">
+                  <i className="fas fa-pen text-white text-sm"></i>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800">Edit Offer</h3>
+                  <p className="text-xs text-slate-400 mt-0.5 truncate max-w-[260px]">{editOffer.title}</p>
+                </div>
+              </div>
+              <button onClick={() => setEditOffer(null)} className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors">
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-8 py-6 flex flex-col gap-5 max-h-[60vh] overflow-y-auto">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Title <span className="text-red-500">*</span></label>
+                  <input value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                    className="w-full px-4 py-2.5 border-[1.5px] border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                    placeholder="Offer title" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Promo Code</label>
+                  <input value={editForm.promocode} onChange={e => setEditForm({ ...editForm, promocode: e.target.value })}
+                    className="w-full px-4 py-2.5 border-[1.5px] border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                    placeholder="PROMO20" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Description</label>
+                <textarea value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-2.5 border-[1.5px] border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 resize-none"
+                  placeholder="Offer description" />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Discount Type</label>
+                  <select value={editForm.discountType} onChange={e => setEditForm({ ...editForm, discountType: e.target.value })}
+                    className="w-full px-4 py-2.5 border-[1.5px] border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-white">
+                    <option value="PERCENTAGE">Percentage</option>
+                    <option value="FLAT">Flat</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Discount Value</label>
+                  <input type="number" value={editForm.discountValue} onChange={e => setEditForm({ ...editForm, discountValue: e.target.value })}
+                    className="w-full px-4 py-2.5 border-[1.5px] border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Min Spend (₹)</label>
+                  <input type="number" value={editForm.min_spend} onChange={e => setEditForm({ ...editForm, min_spend: e.target.value })}
+                    className="w-full px-4 py-2.5 border-[1.5px] border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Head Title</label>
+                  <input value={editForm.headTitle} onChange={e => setEditForm({ ...editForm, headTitle: e.target.value })}
+                    className="w-full px-4 py-2.5 border-[1.5px] border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                    placeholder="Header title" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Head Description</label>
+                  <input value={editForm.headDescription} onChange={e => setEditForm({ ...editForm, headDescription: e.target.value })}
+                    className="w-full px-4 py-2.5 border-[1.5px] border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                    placeholder="Header description" />
+                </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="flex flex-wrap gap-4 pt-2 border-t border-slate-100">
+                {[
+                  { key: "offerActive", label: "Offer Active", icon: "fas fa-power-off", color: "emerald" },
+                  { key: "visibleToUser", label: "Visible to User", icon: "fas fa-eye", color: "blue" },
+                  { key: "offerVisible", label: "Offer Visible", icon: "fas fa-toggle-on", color: "indigo" },
+                ].map(({ key, label, icon, color }) => (
+                  <label key={key} className={`flex items-center gap-2.5 cursor-pointer px-4 py-2 rounded-xl border transition-all text-sm font-semibold select-none ${editForm[key] ? `bg-${color}-50 border-${color}-200 text-${color}-700` : "bg-slate-50 border-slate-200 text-slate-500"}`}>
+                    <input type="checkbox" className="hidden" checked={!!editForm[key]} onChange={() => setEditForm({ ...editForm, [key]: !editForm[key] })} />
+                    <i className={`${icon} text-xs`}></i>
+                    {label}
+                    <span className={`ml-1 w-8 h-4 rounded-full transition-colors relative ${editForm[key] ? "bg-${color}-500" : "bg-slate-300"}`}>
+                      <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all ${editForm[key] ? "left-4" : "left-0.5"}`}></span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-8 py-5 border-t border-slate-100 flex gap-3 justify-end bg-slate-50/50 rounded-b-3xl">
+              <button onClick={() => setEditOffer(null)} className="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-100 transition-colors text-sm">
+                Cancel
+              </button>
+              <button onClick={handleUpdate} disabled={updating} className="px-8 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-60 text-sm flex items-center gap-2">
+                {updating ? <><i className="fas fa-spinner fa-spin text-xs"></i> Saving...</> : <><i className="fas fa-check text-xs"></i> Save Changes</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
