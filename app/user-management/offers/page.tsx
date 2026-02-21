@@ -11,11 +11,89 @@ type Department = { id: string; name: string; mainCategories?: MainCategory[] };
 
 
 
-const cityData: Record<string, string[]> = {
-  maharashtra: ['Mumbai', 'Pune', 'Nagpur', 'Nashik'],
-  delhi: ['New Delhi', 'North Delhi', 'South Delhi', 'East Delhi'],
-  karnataka: ['Bangalore', 'Mysore', 'Hubli', 'Mangalore'],
-  tamilnadu: ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli'],
+export const cityData: Record<string, string[]> = {
+
+  // ───────────── UTTAR PRADESH (75 Districts) ─────────────
+  "Uttar Pradesh": [
+    "Agra","Aligarh","Ambedkar Nagar","Amethi","Amroha","Auraiya","Ayodhya",
+    "Azamgarh","Baghpat","Bahraich","Ballia","Balrampur","Banda","Barabanki",
+    "Bareilly","Basti","Bhadohi","Bijnor","Budaun","Bulandshahr","Chandauli",
+    "Chitrakoot","Deoria","Etah","Etawah","Farrukhabad","Fatehpur","Firozabad",
+    "Gautam Buddha Nagar","Ghaziabad","Ghazipur","Gonda","Gorakhpur","Hamirpur",
+    "Hapur","Hardoi","Hathras","Jalaun","Jaunpur","Jhansi","Kannauj",
+    "Kanpur Dehat","Kanpur Nagar","Kasganj","Kaushambi","Kheri",
+    "Kushinagar","Lalitpur","Lucknow","Maharajganj","Mahoba",
+    "Mainpuri","Mathura","Mau","Meerut","Mirzapur","Moradabad",
+    "Muzaffarnagar","Pilibhit","Pratapgarh","Prayagraj",
+    "Raebareli","Rampur","Saharanpur","Sambhal",
+    "Sant Kabir Nagar","Shahjahanpur","Shamli","Shravasti",
+    "Siddharthnagar","Sitapur","Sonbhadra","Sultanpur",
+    "Unnao","Varanasi"
+  ],
+
+  // ───────────── HARYANA (22 Districts) ─────────────
+  "Haryana": [
+    "Ambala","Bhiwani","Charkhi Dadri","Faridabad","Fatehabad",
+    "Gurugram","Hisar","Jhajjar","Jind","Kaithal",
+    "Karnal","Kurukshetra","Mahendragarh","Nuh",
+    "Palwal","Panchkula","Panipat","Rewari",
+    "Rohtak","Sirsa","Sonipat","Yamunanagar"
+  ],
+
+  // ───────────── BIHAR (38 Districts) ─────────────
+  "Bihar": [
+    "Araria","Arwal","Aurangabad","Banka","Begusarai","Bhagalpur","Bhojpur",
+    "Buxar","Darbhanga","East Champaran","Gaya","Gopalganj","Jamui",
+    "Jehanabad","Kaimur","Katihar","Khagaria","Kishanganj",
+    "Lakhisarai","Madhepura","Madhubani","Munger","Muzaffarpur",
+    "Nalanda","Nawada","Patna","Purnia","Rohtas",
+    "Saharsa","Samastipur","Saran","Sheikhpura",
+    "Sheohar","Sitamarhi","Siwan","Supaul",
+    "Vaishali","West Champaran"
+  ],
+
+  // ───────────── DELHI (11 Districts) ─────────────
+  "Delhi": [
+    "Central Delhi","East Delhi","New Delhi","North Delhi",
+    "North East Delhi","North West Delhi","Shahdara",
+    "South Delhi","South East Delhi",
+    "South West Delhi","West Delhi"
+  ],
+  "Chhattisgarh": [
+  "Balod",
+  "Baloda Bazar",
+  "Balrampur",
+  "Bastar",
+  "Bemetara",
+  "Bijapur",
+  "Bilaspur",
+  "Dantewada",
+  "Dhamtari",
+  "Durg",
+  "Gariaband",
+  "Gaurela-Pendra-Marwahi",
+  "Janjgir-Champa",
+  "Jashpur",
+  "Kabirdham",
+  "Kanker",
+  "Kondagaon",
+  "Korba",
+  "Korea",
+  "Mahasamund",
+  "Manendragarh-Chirmiri-Bharatpur",
+  "Mohla-Manpur-Ambagarh Chowki",
+  "Mungeli",
+  "Narayanpur",
+  "Raigarh",
+  "Raipur",
+  "Rajnandgaon",
+  "Sakti",
+  "Sarangarh-Bilaigarh",
+  "Sukma",
+  "Surajpur",
+  "Surguja",
+  "Khairagarh-Chhuikhadan-Gandai"
+]
 };
 
 // Sub-component for Child Category List (Search Removed)
@@ -687,9 +765,23 @@ export default function CreateOfferPage() {
     };
 
     // ── Limits ────────────────────────────────────────────────────────────
-    payload.limit = limits.totalType === "limited" ? Number(limits.totalValue) || 0 : 0;
-    payload.user_usage_limit = limits.userType === "limited" ? Number(limits.userValue) || 0 : 0;
-    payload.min_spend = minSpend.active ? Number(minSpend.value) || 0 : 0;
+   // ── Limits ────────────────────────────────────────────────────────────
+// ── Limits ────────────────────────────────────────────────────────────
+payload.limit =
+  limits.totalType === "limited"
+    ? Number(limits.totalValue) || 0
+    : "No Limit";
+
+payload.user_usage_limit =
+  limits.userType === "limited"
+    ? Number(limits.userValue) || 0
+    : "No Limit";
+
+// ── Minimum Spend ─────────────────────────────────────────────────────
+payload.min_spend =
+  minSpend.active
+    ? Number(minSpend.value) || 0
+    : "No Limit";
 
     // ── Validity (real array → Mongoose embedded docs) ────────────────────
     payload.validity = [{
@@ -968,7 +1060,162 @@ export default function CreateOfferPage() {
         </header>
 
         <main className="flex-1 w-full max-w-[1440px] mx-auto p-4 md:p-8 pb-24">
+          {/* Header Section */}
+          {/* Header Section */}
+          <div className="bg-white rounded-3xl shadow p-7 mb-8 border">
 
+            <div className="text-xl font-semibold mb-6 flex items-center gap-2">
+              <i className="fas fa-heading text-blue-500"></i>
+              Header Section (Top Banner)
+            </div>
+
+            {/* Head Title */}
+            <div className="mb-5">
+              <label className="block text-sm font-medium mb-2">
+                Head Title
+              </label>
+              <input
+                type="text"
+                className="w-full px-4 py-3 border rounded-2xl focus:outline-none focus:border-blue-600"
+                value={headerSection.headTitle}
+                onChange={(e) =>
+                  setHeaderSection(prev => ({
+                    ...prev,
+                    headTitle: e.target.value
+                  }))
+                }
+              />
+            </div>
+
+            {/* Head Description */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">
+                Head Description
+              </label>
+              <textarea
+                className="w-full px-4 py-3 border rounded-2xl min-h-[90px] focus:outline-none focus:border-blue-600"
+                value={headerSection.headDescription}
+                onChange={(e) =>
+                  setHeaderSection(prev => ({
+                    ...prev,
+                    headDescription: e.target.value
+                  }))
+                }
+              />
+            </div>
+
+            {/* ================= HEADER IMAGE ================= */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">
+                Header Image
+              </label>
+
+              {/* Hidden Input */}
+              <input
+                type="file"
+                id="header-image-upload"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setHeaderImageFile(file);
+                  setHeaderSection(prev => ({ ...prev, headImage: URL.createObjectURL(file) }));
+                }}
+              />
+
+              {/* Drop Area */}
+              <div
+                className="border-2 border-dashed border-slate-300 rounded-3xl p-6 text-center bg-slate-50 cursor-pointer hover:bg-slate-100 transition"
+                onClick={() => document.getElementById("header-image-upload")?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (!file) return;
+                  setHeaderImageFile(file);
+                  setHeaderSection(prev => ({ ...prev, headImage: URL.createObjectURL(file) }));
+                }}
+              >
+                <i className="fas fa-cloud-upload-alt text-3xl text-slate-400 mb-2"></i>
+                <p className="text-slate-500">Drag &amp; drop image or click to upload</p>
+              </div>
+
+              {/* Preview */}
+              {headerSection.headImage && (
+                <div className="mt-4 relative w-[140px] h-[90px] border rounded-xl overflow-hidden">
+                  <img src={headerSection.headImage} className="w-full h-full object-cover" />
+                  <span
+                    className="absolute -top-2 -right-2 bg-white w-6 h-6 flex items-center justify-center rounded-full shadow cursor-pointer text-red-500"
+                    onClick={() => {
+                      setHeaderSection(prev => ({ ...prev, headImage: "" }));
+                      setHeadImageCloudUrl("");
+                    }}
+                  >
+                    ✕
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* ================= HEADER VIDEO ================= */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">
+                Header Video
+              </label>
+
+              {/* Hidden Input */}
+              <input
+                type="file"
+                id="header-video-upload"
+                accept="video/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setHeaderVideoFile(file);
+                  setHeaderSection(prev => ({ ...prev, headVideo: URL.createObjectURL(file) }));
+                }}
+              />
+
+              {/* Drop Area */}
+              <div
+                className="border-2 border-dashed border-slate-300 rounded-3xl p-6 text-center bg-slate-50 cursor-pointer hover:bg-slate-100 transition"
+                onClick={() => document.getElementById("header-video-upload")?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (!file) return;
+                  setHeaderVideoFile(file);
+                  setHeaderSection(prev => ({ ...prev, headVideo: URL.createObjectURL(file) }));
+                }}
+              >
+                <i className="fas fa-cloud-upload-alt text-3xl text-slate-400 mb-2"></i>
+                <p className="text-slate-500">Drag &amp; drop video or click to upload</p>
+              </div>
+
+              {/* Preview */}
+              {headerSection.headVideo && (
+                <div className="mt-4 relative w-[140px] h-[90px] border rounded-xl flex items-center justify-center bg-slate-100">
+                  <i className="fas fa-play text-blue-600 text-xl"></i>
+                  <span
+                    className="absolute -top-2 -right-2 bg-white w-6 h-6 flex items-center justify-center rounded-full shadow cursor-pointer text-red-500"
+                    onClick={() => {
+                      setHeaderSection(prev => ({
+                        ...prev,
+                        headVideo: ""
+                      }));
+                      setHeaderVideoFile(null);
+                    }}
+                  >
+                    ✕
+                  </span>
+                </div>
+              )}
+            </div>
+
+          </div>
           {/* Create Offer Section */}
           <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
             <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
@@ -1231,7 +1478,7 @@ export default function CreateOfferPage() {
               );
             })}
           </div>
-
+ 
           {/* Offer Details */}
           <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
             <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
@@ -1270,162 +1517,7 @@ export default function CreateOfferPage() {
               </div>
             </div>
           </div>
-          {/* Header Section */}
-          {/* Header Section */}
-          <div className="bg-white rounded-3xl shadow p-7 mb-8 border">
-
-            <div className="text-xl font-semibold mb-6 flex items-center gap-2">
-              <i className="fas fa-heading text-blue-500"></i>
-              Header Section (Top Banner)
-            </div>
-
-            {/* Head Title */}
-            <div className="mb-5">
-              <label className="block text-sm font-medium mb-2">
-                Head Title
-              </label>
-              <input
-                type="text"
-                className="w-full px-4 py-3 border rounded-2xl focus:outline-none focus:border-blue-600"
-                value={headerSection.headTitle}
-                onChange={(e) =>
-                  setHeaderSection(prev => ({
-                    ...prev,
-                    headTitle: e.target.value
-                  }))
-                }
-              />
-            </div>
-
-            {/* Head Description */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">
-                Head Description
-              </label>
-              <textarea
-                className="w-full px-4 py-3 border rounded-2xl min-h-[90px] focus:outline-none focus:border-blue-600"
-                value={headerSection.headDescription}
-                onChange={(e) =>
-                  setHeaderSection(prev => ({
-                    ...prev,
-                    headDescription: e.target.value
-                  }))
-                }
-              />
-            </div>
-
-            {/* ================= HEADER IMAGE ================= */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">
-                Header Image
-              </label>
-
-              {/* Hidden Input */}
-              <input
-                type="file"
-                id="header-image-upload"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setHeaderImageFile(file);
-                  setHeaderSection(prev => ({ ...prev, headImage: URL.createObjectURL(file) }));
-                }}
-              />
-
-              {/* Drop Area */}
-              <div
-                className="border-2 border-dashed border-slate-300 rounded-3xl p-6 text-center bg-slate-50 cursor-pointer hover:bg-slate-100 transition"
-                onClick={() => document.getElementById("header-image-upload")?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const file = e.dataTransfer.files?.[0];
-                  if (!file) return;
-                  setHeaderImageFile(file);
-                  setHeaderSection(prev => ({ ...prev, headImage: URL.createObjectURL(file) }));
-                }}
-              >
-                <i className="fas fa-cloud-upload-alt text-3xl text-slate-400 mb-2"></i>
-                <p className="text-slate-500">Drag &amp; drop image or click to upload</p>
-              </div>
-
-              {/* Preview */}
-              {headerSection.headImage && (
-                <div className="mt-4 relative w-[140px] h-[90px] border rounded-xl overflow-hidden">
-                  <img src={headerSection.headImage} className="w-full h-full object-cover" />
-                  <span
-                    className="absolute -top-2 -right-2 bg-white w-6 h-6 flex items-center justify-center rounded-full shadow cursor-pointer text-red-500"
-                    onClick={() => {
-                      setHeaderSection(prev => ({ ...prev, headImage: "" }));
-                      setHeadImageCloudUrl("");
-                    }}
-                  >
-                    ✕
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* ================= HEADER VIDEO ================= */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">
-                Header Video
-              </label>
-
-              {/* Hidden Input */}
-              <input
-                type="file"
-                id="header-video-upload"
-                accept="video/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setHeaderVideoFile(file);
-                  setHeaderSection(prev => ({ ...prev, headVideo: URL.createObjectURL(file) }));
-                }}
-              />
-
-              {/* Drop Area */}
-              <div
-                className="border-2 border-dashed border-slate-300 rounded-3xl p-6 text-center bg-slate-50 cursor-pointer hover:bg-slate-100 transition"
-                onClick={() => document.getElementById("header-video-upload")?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const file = e.dataTransfer.files?.[0];
-                  if (!file) return;
-                  setHeaderVideoFile(file);
-                  setHeaderSection(prev => ({ ...prev, headVideo: URL.createObjectURL(file) }));
-                }}
-              >
-                <i className="fas fa-cloud-upload-alt text-3xl text-slate-400 mb-2"></i>
-                <p className="text-slate-500">Drag &amp; drop video or click to upload</p>
-              </div>
-
-              {/* Preview */}
-              {headerSection.headVideo && (
-                <div className="mt-4 relative w-[140px] h-[90px] border rounded-xl flex items-center justify-center bg-slate-100">
-                  <i className="fas fa-play text-blue-600 text-xl"></i>
-                  <span
-                    className="absolute -top-2 -right-2 bg-white w-6 h-6 flex items-center justify-center rounded-full shadow cursor-pointer text-red-500"
-                    onClick={() => {
-                      setHeaderSection(prev => ({
-                        ...prev,
-                        headVideo: ""
-                      }));
-                      setHeaderVideoFile(null);
-                    }}
-                  >
-                    ✕
-                  </span>
-                </div>
-              )}
-            </div>
-
-          </div>
+        
 
           {/* Media Images */}
           <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
@@ -1516,7 +1608,7 @@ export default function CreateOfferPage() {
           </div>
 
           {/* City Targeting */}
-          <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
+          {/* <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
             <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
               <i className="fas fa-city text-blue-500"></i> City Targeting (State-wise)
             </div>
@@ -1553,7 +1645,96 @@ export default function CreateOfferPage() {
               </div>
             </div>
             <div className="text-sm text-slate-500 mt-4 pt-2 border-t border-slate-50">Select a state to load cities. “All Cities” disables both dropdowns.</div>
-          </div>
+          </div> */}
+          <div className="bg-white rounded-3xl shadow p-7 mb-8 border">
+   <div className="text-xl font-semibold text-slate-800 flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-6">
+              <i className="fas fa-city text-blue-500"></i> City Targeting (State-wise)
+            </div>
+  <div className="flex items-center gap-4 mb-4">
+
+    {/* All Cities */}
+    <label className="flex items-center gap-2">
+      <input
+        type="checkbox"
+        checked={cityTarget.allCities}
+        onChange={() =>
+          setCityTarget({
+            allCities: !cityTarget.allCities,
+            state: "",
+            selectedCities: []
+          })
+        }
+        className="w-4 h-4 accent-blue-600"
+      />
+      All Cities
+    </label>
+
+    {/* State Dropdown */}
+    <select
+      value={cityTarget.state}
+      disabled={cityTarget.allCities}
+      onChange={(e) =>
+        setCityTarget({
+          ...cityTarget,
+          state: e.target.value,
+          selectedCities: []
+        })
+      }
+      className="px-4 py-2 border rounded-xl"
+    >
+      <option value="">Select State</option>
+      {Object.keys(cityData).map(state => (
+        <option key={state} value={state}>
+          {state}
+        </option>
+      ))}
+    </select>
+  </div>
+
+  {/* Select All Buttons */}
+  {!cityTarget.allCities && cityTarget.state && (
+    <div className="flex gap-3 mb-2">
+      <button
+        type="button"
+        onClick={() =>
+          setCityTarget(prev => ({
+            ...prev,
+            selectedCities: [...cityData[prev.state]]
+          }))
+        }
+        className="bg-blue-600 text-white px-3 py-1 rounded-lg"
+      >
+        Select All
+      </button>
+
+      <button
+        type="button"
+        onClick={() =>
+          setCityTarget(prev => ({
+            ...prev,
+            selectedCities: []
+          }))
+        }
+        className="bg-gray-300 px-3 py-1 rounded-lg"
+      >
+        Clear All
+      </button>
+    </div>
+  )}
+
+  {/* City List */}
+  <CitySelector
+    cities={cityTarget.state ? cityData[cityTarget.state] : []}
+    selectedCities={cityTarget.selectedCities}
+    onChange={(newSelection) =>
+      setCityTarget(prev => ({
+        ...prev,
+        selectedCities: newSelection
+      }))
+    }
+    disabled={cityTarget.allCities || !cityTarget.state}
+  />
+</div>
 
           {/* Promo Config */}
           <div className="bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.02)] p-7 mb-8 border border-slate-100 transition-shadow hover:shadow-[0_16px_32px_rgba(0,0,0,0.04)]">
@@ -1801,7 +1982,16 @@ export default function CreateOfferPage() {
                   disabled={payment.all}
                   onChange={() => setPayment({ ...payment, cash: !payment.cash })}
                   className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer"
-                /> <span>Cash</span>
+                /> <span>Pay After Service</span>
+              </label>
+                <label className="flex items-center gap-2 cursor-pointer text-slate-800">
+                <input
+                  type="checkbox"
+                  checked={payment.cash}
+                  disabled={payment.all}
+                  onChange={() => setPayment({ ...payment, cash: !payment.cash })}
+                  className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer"
+                /> <span>Advance Payment</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer text-slate-800">
                 <input
@@ -1810,7 +2000,7 @@ export default function CreateOfferPage() {
                   disabled={payment.all}
                   onChange={() => setPayment({ ...payment, online: !payment.online })}
                   className="w-[1.1rem] h-[1.1rem] accent-blue-600 rounded cursor-pointer"
-                /> <span>Online</span>
+                /> <span> Upi</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer text-slate-800">
                 <input
@@ -2205,6 +2395,7 @@ function OffersList({ offers, onRefresh }: { offers: any[]; onRefresh: () => voi
                     className="w-full px-4 py-2.5 border-[1.5px] border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-white">
                     <option value="PERCENTAGE">Percentage</option>
                     <option value="FLAT">Flat</option>
+                    <option value="FLAT">UpTo</option>
                   </select>
                 </div>
                 <div>

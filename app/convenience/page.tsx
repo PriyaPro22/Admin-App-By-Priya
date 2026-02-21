@@ -19,7 +19,7 @@ interface CityPolicy {
 // ✅ FIXED: Removed `import { Policy } from "@mui/icons-material"` — it conflicted with this interface
 interface Policy {
   _id: string;
-  state_name: string;
+  stateName: string;
   stateTitle: string;
   stateDescription?: string;
   area_type: 'all' | 'urban' | 'rural';
@@ -38,7 +38,6 @@ export default function ConveyancePolicyPage() {
   const API_BASE = "https://api.bijliwalaaya.in/api/conveyance-policies";
 
   const headers = {
-    "Content-Type": "application/json",
     "x-api-token": "super_secure_token",
   };
 
@@ -88,7 +87,7 @@ export default function ConveyancePolicyPage() {
     freeRadius: '',
     perKmRate: '',
     threshold: '',
-    image: null as string | null
+    image: null as File | null
   });
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -106,7 +105,7 @@ export default function ConveyancePolicyPage() {
 
     if (Array.isArray(policies)) {
       policies.forEach((policy: Policy) => {
-        if (policy.state_name) {
+        if (policy.stateName) {
           stateCount++;
         }
         if (policy.cities && Array.isArray(policy.cities) && policy.cities.length > 0) {
@@ -155,7 +154,7 @@ export default function ConveyancePolicyPage() {
 
     setFormData({
       level: 'state',
-      stateName: policy.state_name || "",
+      stateName:policy.stateName|| "",
       cityName: "",
       stateTitle: policy.stateTitle || "",
       stateDescription: policy.stateDescription || "",
@@ -165,7 +164,7 @@ export default function ConveyancePolicyPage() {
       freeRadius: policy.free_radius_km?.toString() || "",
       perKmRate: policy.per_km_rate?.toString() || "",
       threshold: policy.availability_threshold?.toString() || "",
-      image: policy.imageUrl || null
+    image: File | null
     });
 
     setImagePreview(policy.imageUrl || null);
@@ -231,29 +230,42 @@ export default function ConveyancePolicyPage() {
   };
 
   // Handle image upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const imageData = reader.result as string;
-        setImagePreview(imageData);
-        setFormData(prev => ({ ...prev, image: imageData }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  // const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (file) {
+  //     const reader = new FileReader();
+  //     reader.onloadend = () => {
+  //       const imageData = reader.result as string;
+  //       setImagePreview(imageData);
+  //       setFormData(prev => ({ ...prev, image: imageData }));
+  //     };
+  //     reader.readAsDataURL(file);
+  //   }
+  // };
+const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
+  setImagePreview(URL.createObjectURL(file));
+
+  setFormData(prev => ({
+    ...prev,
+    image: file   // 👈 FILE store karo, base64 nahi
+  }));
+};
   // Toggle State Visibility
   const toggleStateVisibility = async (policyId: string, currentStatus: boolean) => {
     try {
-      const res = await fetch(`${API_BASE}/${policyId}`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({
-          state_active: !currentStatus
-        }),
-      });
+    const res = await fetch(`${API_BASE}/${policyId}`, {
+  method: "PATCH",
+  headers: {
+    "Content-Type": "application/json",
+    "x-api-token": "super_secure_token"
+  },
+  body: JSON.stringify({
+    state_active: !currentStatus
+  }),
+});
 
       const data = await res.json();
 
@@ -318,117 +330,114 @@ export default function ConveyancePolicyPage() {
     }
   };
 
-  // Save policy
-  const savePolicy = async () => {
-    try {
-      if (
-        !formData.freeRadius ||
-        !formData.perKmRate ||
-        !formData.threshold
-      ) {
-        alert("Please fill all required fields");
+const savePolicy = async () => {
+  try {
+    if (!formData.freeRadius || !formData.perKmRate || !formData.threshold) {
+      alert("Please fill all required fields");
+      return;
+    }
+
+    let url = API_BASE;
+    let method: "POST" | "PATCH" = "POST";
+    let body: any = {};
+
+    // =========================
+    // STATE EDIT
+    // =========================
+    if (editingType === "state" && editingPolicy) {
+      url = `${API_BASE}/${editingPolicy._id}`;
+      method = "PATCH";
+
+      body = {
+        stateName: editingPolicy.stateName,
+        stateTitle: formData.stateTitle,
+        stateDescription: formData.stateDescription,
+        area_type: formData.areaType,
+        free_radius_km: Number(formData.freeRadius),
+        per_km_rate: Number(formData.perKmRate),
+        availability_threshold: Number(formData.threshold),
+        state_active: editingPolicy.state_active,
+      };
+    }
+
+    // =========================
+    // CITY EDIT
+    // =========================
+    else if (editingType === "city" && editingPolicy) {
+      url = `${API_BASE}/${editingPolicy._id}/cities`;
+      method = "PATCH";
+
+      body = {
+        stateName: editingPolicy.stateName,
+        city_name: formData.cityName,
+        cityTitle: formData.cityTitle,
+        cityDescription: formData.cityDescription,
+        area_type: formData.areaType,
+        free_radius_km: Number(formData.freeRadius),
+        per_km_rate: Number(formData.perKmRate),
+        availability_threshold: Number(formData.threshold),
+        is_active: true,
+      };
+    }
+
+    // =========================
+    // CREATE NEW STATE + CITY
+    // =========================
+    else {
+      if (!formData.stateName || !formData.cityName) {
+        alert("State and City are required");
         return;
       }
 
-      let url = API_BASE;
-      let method = "POST";
-      let body: any = {};
-
-      // =========================
-      // ✅ FIXED: STATE EDIT — was using wrong url (API_BASE) and wrong method ("Post")
-      // Now correctly uses PATCH to ${API_BASE}/${id}
-      // =========================
-      if (editingType === 'state' && editingPolicy) {
-        url = `${API_BASE}/${editingPolicy._id}`;
-        method = "PATCH";
-
-        body = {
-          state_name: editingPolicy.state_name,
-          stateTitle: formData.stateTitle,
-          stateDescription: formData.stateDescription,
-          area_type: formData.areaType,
-          free_radius_km: Number(formData.freeRadius),
-          per_km_rate: Number(formData.perKmRate),
-          availability_threshold: Number(formData.threshold),
-          imageUrl: formData.image,
-          state_active: editingPolicy.state_active
-        };
-      }
-
-      // =========================
-      // 🔥 CITY EDIT
-      // =========================
-      else if (editingType === 'city' && editingPolicy) {
-        url = `${API_BASE}/${editingPolicy._id}/cities`;
-        method = "PATCH";
-
-        body = {
-          state_name: editingPolicy.state_name,
-          city_name: formData.cityName,
-          cityTitle: formData.cityTitle,
-          cityDescription: formData.cityDescription,
-          area_type: formData.areaType,
-          free_radius_km: Number(formData.freeRadius),
-          per_km_rate: Number(formData.perKmRate),
-          availability_threshold: Number(formData.threshold),
-          imageUrl: formData.image,
-          is_active: true
-        };
-      }
-
-      // =========================
-      // 🔥 CREATE NEW STATE WITH CITY
-      // =========================
-      else {
-        body = {
-          state_name: formData.stateName,
-          stateTitle: formData.stateTitle,
-          stateDescription: formData.stateDescription,
-          area_type: formData.areaType,
-          free_radius_km: Number(formData.freeRadius),
-          per_km_rate: Number(formData.perKmRate),
-          availability_threshold: Number(formData.threshold),
-          imageUrl: formData.image,
-          state_active: true,
-          cities: formData.cityName ? [
-            {
-              city_name: formData.cityName,
-              cityTitle: formData.cityTitle || formData.stateTitle,
-              cityDescription: formData.cityDescription || formData.stateDescription,
-              area_type: formData.areaType,
-              free_radius_km: Number(formData.freeRadius),
-              per_km_rate: Number(formData.perKmRate),
-              availability_threshold: Number(formData.threshold),
-              imageUrl: formData.image,
-              is_active: true
-            }
-          ] : []
-        };
-      }
-
-      const res = await fetch(url, {
-        method,
-        headers,
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        alert(editingPolicy ? "Updated Successfully ✅" : "Created Successfully ✅");
-        fetchPolicies();
-        closeModal();
-      } else {
-        alert(data.message || "Something went wrong");
-      }
-
-    } catch (error) {
-      console.error("SAVE Error:", error);
-      alert("Network error. Please try again.");
+      body = {
+        stateName: formData.stateName,
+        stateTitle: formData.stateTitle,
+        stateDescription: formData.stateDescription,
+        area_type: formData.areaType,
+        free_radius_km: Number(formData.freeRadius),
+        per_km_rate: Number(formData.perKmRate),
+        availability_threshold: Number(formData.threshold),
+        state_active: true,
+        cities: [
+          {
+            city_name: formData.cityName,
+            cityTitle: formData.cityTitle || formData.stateTitle,
+            cityDescription:
+              formData.cityDescription || formData.stateDescription,
+            area_type: formData.areaType,
+            free_radius_km: Number(formData.freeRadius),
+            per_km_rate: Number(formData.perKmRate),
+            availability_threshold: Number(formData.threshold),
+            is_active: true,
+          },
+        ],
+      };
     }
-  };
 
+    const res = await fetch(url, {
+      method,
+      headers: {
+        "x-api-token": "super_secure_token",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert(editingPolicy ? "Updated Successfully ✅" : "Created Successfully ✅");
+      fetchPolicies();
+      closeModal();
+    } else {
+      alert(data.message || "Something went wrong");
+    }
+  } catch (error) {
+    console.error("SAVE Error:", error);
+    alert("Network error");
+  }
+};
   // Delete state policy
+ 
   const deletePolicy = async (policyId: string) => {
     const confirmDelete = confirm("Are you sure you want to delete this policy?");
 
@@ -872,7 +881,7 @@ export default function ConveyancePolicyPage() {
                               gap: "10px"
                             }}>
                               <div
-                                onClick={() => toggleCityVisibility(policy._id, city.city_name, city.is_active)}
+                               onClick={() => toggleCityVisibility(policy._id,  policy.stateName,city.city_name,city.is_active)}
                                 style={{
                                   position: "relative",
                                   width: "40px",
@@ -1285,7 +1294,7 @@ export default function ConveyancePolicyPage() {
                     Free Radius (km) - How many kilometers are free?
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     name="freeRadius"
                     value={formData.freeRadius}
                     onChange={handleInputChange}
@@ -1311,7 +1320,7 @@ export default function ConveyancePolicyPage() {
                     Per Km Rate (₹) - Rate per kilometer.
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     name="perKmRate"
                     value={formData.perKmRate}
                     onChange={handleInputChange}
@@ -1337,7 +1346,7 @@ export default function ConveyancePolicyPage() {
                     Availability Threshold - Minimum technicians to show confirmed price?
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     name="threshold"
                     value={formData.threshold}
                     onChange={handleInputChange}
