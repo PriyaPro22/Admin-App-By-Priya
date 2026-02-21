@@ -13,6 +13,7 @@ export default function UserManagementPage() {
         { name: "Cancellation Form", href: "/user-management/cancellation-form", icon: FileX, color: "text-red-600", bg: "bg-red-50" },
          { name: "Cancellation Policy", href: "/user-management/cancellation-policy", icon: FileText, color: "text-red-600", bg: "bg-red-50" },
           { name: "Offers", href: "/user-management/offers", icon: FileText, color: "text-red-600", bg: "bg-red-50" },
+           { name: "Banner", href: "/user-management/banner", icon: FileText, color: "text-red-600", bg: "bg-red-50" },
     ];
 
     return (
