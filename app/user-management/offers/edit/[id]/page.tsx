@@ -1,47 +1,33 @@
-useEffect(() => {
-  if (params.id) {
-    fetchSingleOffer();
-  }
-}, [params.id]);
+"use client";
 
-const fetchSingleOffer = async () => {
-  const res = await fetch(
-    `https://api.bijliwalaaya.in/api/offers/${params.id}`,
-    {
-      headers: {
-        "x-api-token": "super_secure_token"
-      }
+import { useEffect, useState } from "react";
+
+export default function Page({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const [details, setDetails] = useState<any>(null);
+
+  useEffect(() => {
+    if (params.id) {
+      fetchSingleOffer();
     }
-  );
+  }, [params.id]);
 
-  const data = await res.json();
+  const fetchSingleOffer = async () => {
+    const res = await fetch(
+      `https://api.bijliwalaaya.in/api/offers/${params.id}`,
+      {
+        headers: {
+          "x-api-token": "super_secure_token",
+        },
+      }
+    );
 
-  if (data.success) {
-    const offer = data.data;
+    const data = await res.json();
+    console.log(data);
+  };
 
-    setDetails({
-      title: offer.title,
-      description: offer.description,
-      link: ""
-    });
-
-    setPromo({
-      code: offer.promocode,
-      visible: offer.visibleToUser
-    });
-
-    setBannerImages([offer.imageUrl]);
-    setVideos([offer.videoUrl]);
-    setPromoImages([offer.promoLogo]);
-
-    setDiscount({
-      type: offer.discountType.type.toLowerCase(),
-      value: offer.discountValue
-    });
-
-    setMinSpend({
-      active: offer.min_spend > 0,
-      value: offer.min_spend
-    });
-  }
-};
+  return <div>Edit Offer {params.id}</div>;
+}
