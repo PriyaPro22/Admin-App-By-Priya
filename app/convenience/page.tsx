@@ -3,10 +3,22 @@
 import { useState, useEffect } from "react";
 
 // Types
+// interface CityPolicy {
+//   city_name: string;
+//   is_active: boolean;
+//   cityTitle: string;
+//   cityDescription?: string;
+//   area_type: 'all' | 'urban' | 'rural';
+//   free_radius_km: number;
+//   per_km_rate: number;
+//   availability_threshold: number;
+//   imageUrl?: string | null;
+//   videoUrl?: string | null;
+// }
 interface CityPolicy {
   city_name: string;
+  cityTitle?: string;   // 👈 ADD THIS
   is_active: boolean;
-  cityTitle: string;
   cityDescription?: string;
   area_type: 'all' | 'urban' | 'rural';
   free_radius_km: number;
@@ -15,7 +27,6 @@ interface CityPolicy {
   imageUrl?: string | null;
   videoUrl?: string | null;
 }
-
 // ✅ FIXED: Removed `import { Policy } from "@mui/icons-material"` — it conflicted with this interface
 interface Policy {
   _id: string;
@@ -164,7 +175,7 @@ export default function ConveyancePolicyPage() {
       freeRadius: policy.free_radius_km?.toString() || "",
       perKmRate: policy.per_km_rate?.toString() || "",
       threshold: policy.availability_threshold?.toString() || "",
-    image: File | null
+    image: null
     });
 
     setImagePreview(policy.imageUrl || null);
@@ -181,7 +192,7 @@ export default function ConveyancePolicyPage() {
 
     setFormData({
       level: 'city',
-      stateName: policy.state_name || "",
+     stateName: policy.stateName || "",
       cityName: city.city_name || "",
       stateTitle: policy.stateTitle || "",
       stateDescription: policy.stateDescription || "",
@@ -289,47 +300,35 @@ const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
   };
 
   // Toggle City Visibility
-  const toggleCityVisibility = async (policyId: string, stateName: string, cityName: string, currentStatus: boolean) => {
-    try {
-      const res = await fetch(`${API_BASE}/${policyId}/cities`, {
+  const toggleCityVisibility = async (
+  stateName: string,
+  cityName: string,
+  currentStatus: boolean
+) => {
+  try {
+    const res = await fetch(
+      `${API_BASE}/${stateName}/cities/visibility`,
+      {
         method: "PATCH",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-token": "super_secure_token",
+        },
         body: JSON.stringify({
-          state_name: stateName,
           city_name: cityName,
-          is_active: !currentStatus
+          is_active: !currentStatus,
         }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        alert(`City ${!currentStatus ? 'Activated' : 'Deactivated'} Successfully ✅`);
-        setPolicies(prevPolicies =>
-          prevPolicies.map(policy => {
-            if (policy._id === policyId && policy.cities) {
-              return {
-                ...policy,
-                cities: policy.cities.map(city =>
-                  city.city_name === cityName
-                    ? { ...city, is_active: !currentStatus }
-                    : city
-                )
-              };
-            }
-            return policy;
-          })
-        );
-        fetchPolicies();
-      } else {
-        alert(data.message || "Failed to update visibility");
       }
-    } catch (error) {
-      console.error("Toggle City Error:", error);
-      alert("Network error. Please try again.");
-    }
-  };
+    );
 
+    const data = await res.json();
+    if (data.success) {
+      fetchPolicies();
+    }
+  } catch (err) {
+    console.error(err);
+  }
+};
 const savePolicy = async () => {
   try {
     if (!formData.freeRadius || !formData.perKmRate || !formData.threshold) {
@@ -414,14 +413,40 @@ const savePolicy = async () => {
       };
     }
 
-    const res = await fetch(url, {
-      method,
-      headers: {
-        "x-api-token": "super_secure_token",
-      },
-      body: JSON.stringify(body),
-    });
+    // const res = await fetch(url, {
+    //   method,
+    //   headers: {
+    //     "x-api-token": "super_secure_token",
+    //   },
+    //   body: JSON.stringify(body),
+    // });
+const formDataToSend = new FormData();
 
+// append normal fields
+// Object.keys(body).forEach((key) => {
+//   formDataToSend.append(key, body[key]);
+// });
+Object.keys(body).forEach((key) => {
+  if (Array.isArray(body[key])) {
+    formDataToSend.append(key, JSON.stringify(body[key]));
+  } else {
+    formDataToSend.append(key, body[key]);
+  }
+});
+
+// append image file
+if (formData.image) {
+  formDataToSend.append("image", formData.image);
+}
+
+const res = await fetch(url, {
+  method,
+  headers: {
+    "x-api-token": "super_secure_token",
+    // ❌ DON'T set Content-Type manually
+  },
+  body: formDataToSend,
+});
     const data = await res.json();
 
     if (data.success) {
@@ -438,31 +463,51 @@ const savePolicy = async () => {
 };
   // Delete state policy
  
-  const deletePolicy = async (policyId: string) => {
-    const confirmDelete = confirm("Are you sure you want to delete this policy?");
+  // const deletePolicy = async (policyId: string) => {
+  //   const confirmDelete = confirm("Are you sure you want to delete this policy?");
 
-    if (!confirmDelete) return;
+  //   if (!confirmDelete) return;
 
-    try {
-      const res = await fetch(`${API_BASE}/${policyId}`, {
-        method: "DELETE",
-        headers,
-      });
+  //   try {
+  //     const res = await fetch(`${API_BASE}/${policyId}`, {
+  //       method: "DELETE",
+  //       headers,
+  //     });
 
-      const data = await res.json();
+  //     const data = await res.json();
 
-      if (data.success) {
-        alert("Policy Deleted Successfully ✅");
-        fetchPolicies();
-      } else {
-        alert(data.message || "Delete failed");
-      }
+  //     if (data.success) {
+  //       alert("Policy Deleted Successfully ✅");
+  //       fetchPolicies();
+  //     } else {
+  //       alert(data.message || "Delete failed");
+  //     }
 
-    } catch (error) {
-      console.error("DELETE Error:", error);
+  //   } catch (error) {
+  //     console.error("DELETE Error:", error);
+  //   }
+  // };
+const deletePolicy = async (stateName: string) => {
+  if (!confirm("Are you sure you want to delete this policy?")) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/${stateName}`, {
+      method: "DELETE",
+      headers,
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("Policy Deleted Successfully ✅");
+      fetchPolicies();
+    } else {
+      alert(data.message || "Delete failed");
     }
-  };
-
+  } catch (error) {
+    console.error("DELETE Error:", error);
+  }
+};
   // Delete city
   const deleteCity = async (policyId: string, cityName: string) => {
     const confirmDelete = confirm("Are you sure you want to delete this city?");
@@ -657,7 +702,7 @@ const savePolicy = async () => {
                     alignItems: "center",
                     gap: "10px"
                   }}>
-                    {policy.stateTitle || policy.state_name}
+                  {policy.stateTitle || policy.stateName}
                     <span style={{
                       fontSize: "12px",
                       padding: "4px 8px",
@@ -680,7 +725,7 @@ const savePolicy = async () => {
                       {policy.state_active ? '🟢 Active' : '🔴 Close'}
                     </span>
                     <div
-                      onClick={() => toggleStateVisibility(policy._id, policy.state_active)}
+                      onClick={() => toggleStateVisibility(policy.stateName, policy.state_active)}
                       style={{
                         position: "relative",
                         width: "60px",
@@ -710,7 +755,7 @@ const savePolicy = async () => {
                   color: "#666",
                   marginBottom: "10px"
                 }}>
-                  📍 {policy.state_name}
+                📍 {policy.stateName}
                 </div>
 
                 <div style={{
@@ -810,7 +855,7 @@ const savePolicy = async () => {
                     ✏️ Edit
                   </button>
                   <button
-                    onClick={() => deletePolicy(policy._id)}
+                    onClick={() => deletePolicy(policy.stateName)}
                     style={{
                       flex: 1,
                       padding: "8px 15px",
@@ -881,7 +926,9 @@ const savePolicy = async () => {
                               gap: "10px"
                             }}>
                               <div
-                               onClick={() => toggleCityVisibility(policy._id,  policy.stateName,city.city_name,city.is_active)}
+                            onClick={() =>
+  toggleCityVisibility(policy.stateName, city.city_name, city.is_active)
+}
                                 style={{
                                   position: "relative",
                                   width: "40px",

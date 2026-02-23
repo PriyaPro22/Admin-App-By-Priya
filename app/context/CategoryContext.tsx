@@ -808,10 +808,6 @@ const addDeepChildCategory = async (data: any) => {
       "deepCategoryVisible",
       String(data.deepCategoryVisible ?? true)
     );
-    formData.append(
-      "visible",
-      String(data.visible ?? data.deepCategoryVisible ?? true)
-    );
     formData.append("webviewUrl", data.webviewUrl || "");
 
     // 🔹 Time Fields
@@ -1062,7 +1058,8 @@ const addSubDeepChildCategory = async (data: any) => {
     formData.append("secondTitle", data.secondTitle || "");
     formData.append("description", data.description || "");
     formData.append("subDeepCategoryVisible", String(data.subDeepCategoryVisible ?? true));
-    formData.append("visible", String(data.visible ?? data.subDeepCategoryVisible ?? true));
+    
+    // formData.append("visible", String(data.visible ?? data.subDeepCategoryVisible ?? true));
     formData.append("webviewUrl", data.webviewUrl || "");
 
     // 🔹 Time Fields

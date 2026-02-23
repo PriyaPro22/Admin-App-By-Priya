@@ -15,7 +15,7 @@ export const cityData: Record<string, string[]> = {
 
   // ───────────── UTTAR PRADESH (75 Districts) ─────────────
   "Uttar Pradesh": [
-    "Agra","Aligarh","Ambedkar Nagar","Amethi","Amroha","Auraiya","Ayodhya",
+   "All", "Agra","Aligarh","Ambedkar Nagar","Amethi","Amroha","Auraiya","Ayodhya",
     "Azamgarh","Baghpat","Bahraich","Ballia","Balrampur","Banda","Barabanki",
     "Bareilly","Basti","Bhadohi","Bijnor","Budaun","Bulandshahr","Chandauli",
     "Chitrakoot","Deoria","Etah","Etawah","Farrukhabad","Fatehpur","Firozabad",
