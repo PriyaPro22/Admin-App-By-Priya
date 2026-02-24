@@ -142,7 +142,9 @@ const requestBody = {
   }
 };
 
-const handleCategoryInput = (e) => {
+const handleCategoryInput = (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
   const value = e.target.value;
   setSelectedCategory(value);
 
@@ -153,7 +155,7 @@ const handleCategoryInput = (e) => {
 
   const lowerValue = value.toLowerCase();
 
-  const sorted = [...categories].sort((a, b) => {
+  const sorted = [...categories].sort((a: any, b: any) => {
     const aStarts = a.name.toLowerCase().startsWith(lowerValue);
     const bStarts = b.name.toLowerCase().startsWith(lowerValue);
 

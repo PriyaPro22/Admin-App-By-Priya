@@ -388,7 +388,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Save } from "lucide-react";
+import { Save, MonitorSmartphone } from "lucide-react";
 import { useCategory } from "../../context/CategoryContext";
 import { BASE_URL, API_TOKEN } from "../../utils/api";
 
@@ -591,6 +591,41 @@ const ChildCategoryForm = ({ onSuccess, editingCategory }: ChildCategoryFormProp
       <div className="rounded-lg border border-blue-500 bg-gray-200 p-4">
         <h3 className="mb-4 text-lg font-bold">Edit Child Category</h3>
 
+        {/* ✅ Live Preview — Edit Mode */}
+        <div style={{ background: "#fff", border: "1.5px solid #bfcfff", borderRadius: "10px", padding: "12px 14px", marginBottom: "14px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <MonitorSmartphone size={14} color="#1d4ed8" />
+              <span style={{ fontSize: "12px", fontWeight: "600", color: "#1d4ed8" }}>Live Preview</span>
+            </div>
+            <span style={{ fontSize: "11px", fontWeight: "600", color: formData.visible ? "#16a34a" : "#dc2626" }}>
+              {formData.visible ? "Visible" : "Hidden"}
+            </span>
+          </div>
+          <div>
+            <p style={{ margin: "0 0 6px 0", fontWeight: "700", fontSize: "14px", color: formData.name ? "#111827" : "#9ca3af" }}>
+              {formData.name || "Category Name..."}
+            </p>
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+              {editingCategory?.mainCategoryName && (
+                <span style={{ fontSize: "11px", padding: "1px 8px", borderRadius: "20px", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #dbeafe", fontWeight: "500" }}>
+                  {editingCategory.mainCategoryName}
+                </span>
+              )}
+              {editingCategory?.subCategoryName && (
+                <span style={{ fontSize: "11px", padding: "1px 8px", borderRadius: "20px", background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", fontWeight: "500" }}>
+                  {editingCategory.subCategoryName}
+                </span>
+              )}
+              {editingCategory?.type && (
+                <span style={{ fontSize: "11px", padding: "1px 8px", borderRadius: "20px", background: "#fef9c3", color: "#a16207", border: "1px solid #fde047", fontWeight: "500" }}>
+                  {editingCategory.type}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
         <label className="font-bold">Category Name</label>
         <input
           name="name"
@@ -624,6 +659,39 @@ const ChildCategoryForm = ({ onSuccess, editingCategory }: ChildCategoryFormProp
   return (
     <div className="rounded-lg border border-red-500 bg-gray-200 p-4">
       <h3 className="mb-4 text-lg font-bold">Manage Child Category</h3>
+
+      {/* ✅ Live Preview — Add Mode */}
+      <div style={{ background: "#fff", border: "1.5px solid #bfcfff", borderRadius: "10px", padding: "12px 14px", marginBottom: "14px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <MonitorSmartphone size={14} color="#1d4ed8" />
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#1d4ed8" }}>Live Preview</span>
+          </div>
+          <span style={{ fontSize: "11px", fontWeight: "600", color: formData.visible ? "#16a34a" : "#dc2626" }}>
+            {formData.visible ? "Visible" : "Hidden"}
+          </span>
+        </div>
+        <div>
+          {mainSearch && (
+            <span style={{ fontSize: "11px", padding: "1px 8px", borderRadius: "20px", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #dbeafe", fontWeight: "500", marginRight: "6px" }}>
+              {mainSearch}
+            </span>
+          )}
+          {subSearch && (
+            <span style={{ fontSize: "11px", padding: "1px 8px", borderRadius: "20px", background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", fontWeight: "500", marginRight: "6px" }}>
+              {subSearch}
+            </span>
+          )}
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "6px" }}>
+            {formData.repair && <span style={{ fontSize: "11px", padding: "1px 8px", borderRadius: "20px", background: "#fef9c3", color: "#a16207", border: "1px solid #fde047", fontWeight: "500" }}>Repair</span>}
+            {formData.services && <span style={{ fontSize: "11px", padding: "1px 8px", borderRadius: "20px", background: "#fef9c3", color: "#a16207", border: "1px solid #fde047", fontWeight: "500" }}>Services</span>}
+            {formData.installation && <span style={{ fontSize: "11px", padding: "1px 8px", borderRadius: "20px", background: "#fef9c3", color: "#a16207", border: "1px solid #fde047", fontWeight: "500" }}>Installation</span>}
+            {!formData.repair && !formData.services && !formData.installation && (
+              <span style={{ fontSize: "12px", color: "#9ca3af" }}>Select a type below...</span>
+            )}
+          </div>
+        </div>
+      </div>
 
       <label className="font-bold">Select Main Category</label>
       <input

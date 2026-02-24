@@ -757,60 +757,64 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
         </div>
       </div>
 
-      {/* ✅ Live Preview for Sub Deep Child Category */}
-      <div style={{ background: "linear-gradient(135deg, #fdf4ff 0%, #f3e8ff 100%)", border: "2px solid #d8b4fe", borderRadius: "12px", padding: "14px", marginBottom: "16px" }}>
+      {/* ✅ Live Preview for Sub Deep Child Category — clean admin style */}
+      <div style={{ background: "#fff", border: "1.5px solid #bfcfff", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px" }}>
+        {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#a855f7", boxShadow: "0 0 6px #a855f7" }} />
-            <span style={{ fontSize: "11px", fontWeight: "700", color: "#7e22ce", textTransform: "uppercase" as const, letterSpacing: "0.8px" }}>Live Preview</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#1d4ed8" }}>Live Preview</span>
           </div>
-          <span style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "20px", background: formData.subDeepCategoryVisible ? "#dcfce7" : "#fee2e2", color: formData.subDeepCategoryVisible ? "#16a34a" : "#dc2626", fontWeight: "600" }}>
+          <span style={{ fontSize: "11px", fontWeight: "600", color: formData.subDeepCategoryVisible ? "#16a34a" : "#dc2626" }}>
             {formData.subDeepCategoryVisible ? "Visible" : "Hidden"}
           </span>
         </div>
-        <div style={{ background: "white", borderRadius: "10px", padding: "12px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-          <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
-            <div style={{ width: "64px", height: "64px", borderRadius: "10px", flexShrink: 0, background: "#f1f5f9", border: "2px dashed #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-              {formData.photo instanceof File ? (
-                <img src={URL.createObjectURL(formData.photo)} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : formData.imageUrl ? (
-                <img src={formData.imageUrl} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
-              ) : (
-                <ImageIcon size={20} color="#94a3b8" />
-              )}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: "0 0 2px 0", fontWeight: "700", fontSize: "14px", color: formData.firstTitle ? "#1e293b" : "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {formData.firstTitle || "First Title..."}
-              </p>
-              {formData.secondTitle && (
-                <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formData.secondTitle}</p>
-              )}
-              {formData.description && (
-                <p style={{ margin: "0 0 6px 0", fontSize: "11px", color: "#94a3b8" }}>{formData.description.slice(0, 80)}{formData.description.length > 80 ? "..." : ""}</p>
-              )}
-              {formData.originalPrice && (() => {
-                const orig = parseFloat(formData.originalPrice) || 0;
-                const discVal = parseFloat(formData.discountValue) || 0;
-                const afterDisc = formData.discountType === "percentage" ? Math.max(0, orig - orig * discVal / 100) : Math.max(0, orig - discVal);
-                const gstRate = parseFloat(formData.gst) || 0;
-                const total = formData.gstType === "inclusive" ? afterDisc : afterDisc + (afterDisc * gstRate / 100);
-                return (
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" as const }}>
-                    <span style={{ fontSize: "15px", fontWeight: "800", color: "#1e293b" }}>₹{total.toFixed(0)}</span>
-                    {discVal > 0 && <span style={{ fontSize: "11px", textDecoration: "line-through", color: "#94a3b8" }}>₹{orig}</span>}
-                    {discVal > 0 && <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "20px", background: "#fef3c7", color: "#d97706", fontWeight: "700" }}>{formData.discountType === "percentage" ? `${discVal}% OFF` : `₹${discVal} OFF`}</span>}
-                    {gstRate > 0 && <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "20px", background: "#ede9fe", color: "#7c3aed", fontWeight: "600" }}>GST {gstRate}%</span>}
-                  </div>
-                );
-              })()}
-              {(formData.minTime || formData.maxTime) && (
-                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "4px", fontSize: "11px", color: "#64748b" }}>
-                  <Clock size={11} />
-                  <span>{formData.minTime || "?"} - {formData.maxTime || "?"} mins</span>
+        {/* Content */}
+        <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+          {/* Image */}
+          <div style={{ width: "56px", height: "56px", borderRadius: "8px", flexShrink: 0, background: "#f8fafc", border: "1.5px dashed #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            {formData.photo instanceof File ? (
+              <img src={URL.createObjectURL(formData.photo)} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "7px" }} />
+            ) : formData.imageUrl ? (
+              <img src={formData.imageUrl} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "7px" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
+            ) : (
+              <ImageIcon size={20} color="#94a3b8" />
+            )}
+          </div>
+          {/* Info */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: "0 0 2px 0", fontWeight: "700", fontSize: "14px", color: formData.firstTitle ? "#111827" : "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {formData.firstTitle || "First Title..."}
+            </p>
+            {formData.secondTitle && (
+              <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formData.secondTitle}</p>
+            )}
+            {formData.description && (
+              <p style={{ margin: "0 0 6px 0", fontSize: "11px", color: "#9ca3af" }}>{formData.description.slice(0, 80)}{formData.description.length > 80 ? "..." : ""}</p>
+            )}
+            {/* Price */}
+            {formData.originalPrice && (() => {
+              const orig = parseFloat(formData.originalPrice) || 0;
+              const discVal = parseFloat(formData.discountValue) || 0;
+              const afterDisc = formData.discountType === "percentage" ? Math.max(0, orig - orig * discVal / 100) : Math.max(0, orig - discVal);
+              const gstRate = parseFloat(formData.gst) || 0;
+              const total = formData.gstType === "inclusive" ? afterDisc : afterDisc + (afterDisc * gstRate / 100);
+              return (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" as const, marginBottom: "4px" }}>
+                  <span style={{ fontSize: "14px", fontWeight: "800", color: "#111827" }}>₹{total.toFixed(0)}</span>
+                  {discVal > 0 && <span style={{ fontSize: "11px", textDecoration: "line-through", color: "#9ca3af" }}>₹{orig}</span>}
+                  {discVal > 0 && <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "20px", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #dbeafe", fontWeight: "600" }}>{formData.discountType === "percentage" ? `${discVal}% OFF` : `₹${discVal} OFF`}</span>}
+                  {gstRate > 0 && <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "20px", background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", fontWeight: "600" }}>GST {gstRate}%</span>}
                 </div>
-              )}
-            </div>
+              );
+            })()}
+            {/* Time */}
+            {(formData.minTime || formData.maxTime) && (
+              <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#64748b" }}>
+                <Clock size={11} />
+                <span>{formData.minTime || "?"} – {formData.maxTime || "?"} mins</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

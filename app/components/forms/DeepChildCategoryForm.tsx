@@ -735,67 +735,65 @@ const DeepChildCategoryForm: React.FC<DeepChildCategoryFormProps> = ({
         </div>
       </div>
 
-      {/* ✅ Live Preview for Deep Child Category */}
-      <div style={{ background: "linear-gradient(135deg, #fefce8 0%, #fef9c3 100%)", border: "2px solid #fde047", borderRadius: "12px", padding: "14px", marginBottom: "16px" }}>
+      {/* ✅ Live Preview for Deep Child Category — clean admin style */}
+      <div style={{ background: "#fff", border: "1.5px solid #bfcfff", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px" }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#eab308", boxShadow: "0 0 6px #eab308" }} />
-            <span style={{ fontSize: "11px", fontWeight: "700", color: "#a16207", textTransform: "uppercase" as const, letterSpacing: "0.8px" }}>Live Preview</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#1d4ed8" }}>Live Preview</span>
           </div>
-          <span style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "20px", background: formData.isDeepVisible ? "#dcfce7" : "#fee2e2", color: formData.isDeepVisible ? "#16a34a" : "#dc2626", fontWeight: "600" }}>
+          <span style={{ fontSize: "11px", fontWeight: "600", color: formData.isDeepVisible ? "#16a34a" : "#dc2626" }}>
             {formData.isDeepVisible ? "Visible" : "Hidden"}
           </span>
         </div>
         {/* Content */}
-        <div style={{ background: "white", borderRadius: "10px", padding: "12px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-          <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
-            {/* Image */}
-            <div style={{ width: "68px", height: "68px", borderRadius: "10px", flexShrink: 0, background: "#f1f5f9", border: "2px dashed #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-              {formData.photo instanceof File ? (
-                <img src={URL.createObjectURL(formData.photo)} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : formData.imageUrl ? (
-                <img src={formData.imageUrl} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
-              ) : (
-                <ImageIcon size={22} color="#94a3b8" />
-              )}
-            </div>
-            {/* Info */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: "0 0 2px 0", fontWeight: "700", fontSize: "14px", color: formData.firstTitle ? "#1e293b" : "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {formData.firstTitle || "First Title..."}
-              </p>
-              {formData.secondTitle && (
-                <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formData.secondTitle}</p>
-              )}
-              {formData.description && (
-                <p style={{ margin: "0 0 6px 0", fontSize: "11px", color: "#94a3b8", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>{formData.description}</p>
-              )}
-              {/* Price row */}
-              {formData.originalPrice && (
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" as const }}>
-                  <span style={{ fontSize: "15px", fontWeight: "800", color: "#1e293b" }}>₹{totalPrice.toFixed(0)}</span>
-                  {formData.discountValue && parseFloat(formData.discountValue) > 0 && (
-                    <span style={{ fontSize: "11px", textDecoration: "line-through", color: "#94a3b8" }}>₹{formData.originalPrice}</span>
-                  )}
-                  {formData.discountValue && parseFloat(formData.discountValue) > 0 && (
-                    <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "20px", background: "#fef3c7", color: "#d97706", fontWeight: "700" }}>
-                      {formData.discountType === "percentage" ? `${formData.discountValue}% OFF` : `₹${formData.discountValue} OFF`}
-                    </span>
-                  )}
-                  {formData.gst && formData.gst !== "0" && (
-                    <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "20px", background: "#ede9fe", color: "#7c3aed", fontWeight: "600" }}>GST {formData.gst}%</span>
-                  )}
-                </div>
-              )}
-              {/* Time */}
-              {(formData.minTime || formData.maxTime) && (
-                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "4px", fontSize: "11px", color: "#64748b" }}>
-                  <Clock size={11} />
-                  <span>{formData.minTime || "?"} - {formData.maxTime || "?"} mins</span>
-                </div>
-              )}
-            </div>
+        <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+          {/* Image */}
+          <div style={{ width: "56px", height: "56px", borderRadius: "8px", flexShrink: 0, background: "#f8fafc", border: "1.5px dashed #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            {formData.photo instanceof File ? (
+              <img src={URL.createObjectURL(formData.photo)} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "7px" }} />
+            ) : formData.imageUrl ? (
+              <img src={formData.imageUrl} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "7px" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
+            ) : (
+              <ImageIcon size={20} color="#94a3b8" />
+            )}
+          </div>
+          {/* Info */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: "0 0 2px 0", fontWeight: "700", fontSize: "14px", color: formData.firstTitle ? "#111827" : "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {formData.firstTitle || "First Title..."}
+            </p>
+            {formData.secondTitle && (
+              <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formData.secondTitle}</p>
+            )}
+            {formData.description && (
+              <p style={{ margin: "0 0 6px 0", fontSize: "11px", color: "#9ca3af", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>{formData.description}</p>
+            )}
+            {/* Price row */}
+            {formData.originalPrice && (
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" as const, marginBottom: "4px" }}>
+                <span style={{ fontSize: "14px", fontWeight: "800", color: "#111827" }}>₹{totalPrice.toFixed(0)}</span>
+                {formData.discountValue && parseFloat(formData.discountValue) > 0 && (
+                  <span style={{ fontSize: "11px", textDecoration: "line-through", color: "#9ca3af" }}>₹{formData.originalPrice}</span>
+                )}
+                {formData.discountValue && parseFloat(formData.discountValue) > 0 && (
+                  <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "20px", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #dbeafe", fontWeight: "600" }}>
+                    {formData.discountType === "percentage" ? `${formData.discountValue}% OFF` : `₹${formData.discountValue} OFF`}
+                  </span>
+                )}
+                {formData.gst && formData.gst !== "0" && (
+                  <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "20px", background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", fontWeight: "600" }}>GST {formData.gst}%</span>
+                )}
+              </div>
+            )}
+            {/* Time */}
+            {(formData.minTime || formData.maxTime) && (
+              <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#64748b" }}>
+                <Clock size={11} />
+                <span>{formData.minTime || "?"} – {formData.maxTime || "?"} mins</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

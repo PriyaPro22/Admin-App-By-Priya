@@ -285,13 +285,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Save, Eye, EyeOff, ImageIcon } from "lucide-react";
+import { Save, EyeOff, ImageIcon, MonitorSmartphone } from "lucide-react";
 import ToggleSwitch from "../ui/ToggleSwitch";
 import { ImageBoxUploader } from "../ui/ImageUploader";
 import { useCategory } from "../../context/CategoryContext";
 import { generateCategoryId } from "../../utils/generateCategoryId";
 
-// ✅ Sub Category Live Preview Card
+// ✅ Sub Category Live Preview Card — clean admin panel style
 const SubLivePreviewCard = ({
   subCategoryName,
   mainCategoryName,
@@ -307,36 +307,36 @@ const SubLivePreviewCard = ({
   nameVisibility: boolean;
   imageVisibility: boolean;
 }) => (
-  <div style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", border: "2px solid #86efac", borderRadius: "12px", padding: "14px", marginBottom: "14px" }}>
+  <div style={{ background: "#fff", border: "1.5px solid #bfcfff", borderRadius: "10px", padding: "12px 14px", marginBottom: "14px" }}>
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 6px #22c55e" }} />
-        <span style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.8px" }}>Live Preview</span>
+      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <MonitorSmartphone size={14} color="#1d4ed8" />
+        <span style={{ fontSize: "12px", fontWeight: "600", color: "#1d4ed8" }}>Live Preview</span>
       </div>
-      <span style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "20px", background: visibility ? "#dcfce7" : "#fee2e2", color: visibility ? "#16a34a" : "#dc2626", fontWeight: "600" }}>
+      <span style={{ fontSize: "11px", fontWeight: "600", color: visibility ? "#16a34a" : "#dc2626" }}>
         {visibility ? "Visible" : "Hidden"}
       </span>
     </div>
-    <div style={{ display: "flex", alignItems: "center", gap: "12px", background: "white", borderRadius: "10px", padding: "10px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-      <div style={{ width: "56px", height: "56px", borderRadius: "8px", flexShrink: 0, background: imagePreviewUrl ? "transparent" : "#f1f5f9", border: "2px dashed #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", opacity: imageVisibility ? 1 : 0.4 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      <div style={{ width: "52px", height: "52px", borderRadius: "8px", flexShrink: 0, border: "1.5px dashed #cbd5e1", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", opacity: imageVisibility ? 1 : 0.35 }}>
         {imagePreviewUrl ? (
-          <img src={imagePreviewUrl} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <img src={imagePreviewUrl} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "7px" }} />
         ) : (
           <ImageIcon size={20} color="#94a3b8" />
         )}
       </div>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         {nameVisibility ? (
-          <p style={{ margin: 0, fontWeight: "700", fontSize: "14px", color: subCategoryName ? "#1e293b" : "#94a3b8" }}>
+          <p style={{ margin: 0, fontWeight: "700", fontSize: "14px", color: subCategoryName ? "#111827" : "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {subCategoryName || "Sub Category Name..."}
           </p>
         ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "#94a3b8" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "#9ca3af" }}>
             <EyeOff size={12} /><span style={{ fontSize: "12px" }}>Name hidden</span>
           </div>
         )}
         {mainCategoryName && (
-          <span style={{ fontSize: "11px", marginTop: "4px", display: "block", padding: "1px 8px", borderRadius: "20px", background: "#ede9fe", color: "#7c3aed", fontWeight: "600", width: "fit-content" }}>
+          <span style={{ fontSize: "11px", marginTop: "5px", display: "inline-block", padding: "1px 8px", borderRadius: "20px", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #dbeafe", fontWeight: "500" }}>
             Under: {mainCategoryName}
           </span>
         )}

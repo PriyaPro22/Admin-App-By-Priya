@@ -1,8 +1,7 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Save, Eye, EyeOff, ImageIcon } from "lucide-react";
+import { Save, EyeOff, ImageIcon, MonitorSmartphone } from "lucide-react";
 import ToggleSwitch from "../ui/ToggleSwitch";
 import { ImageBoxUploader } from "../ui/ImageUploader";
 import { useCategory } from "../../context/CategoryContext";
@@ -20,7 +19,7 @@ interface Props {
   onSuccess?: () => void;
 }
 
-// ✅ Live Preview Card Component
+// ✅ Live Preview Card — clean style matching admin "Live App Preview" panel
 const LivePreviewCard = ({
   categoryName,
   parentCategory,
@@ -37,208 +36,78 @@ const LivePreviewCard = ({
   nameVisibility: boolean;
   imageVisibility: boolean;
   isSubCategory: boolean;
-}) => {
-  return (
-    <div
-      style={{
-        background: "linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%)",
-        border: "2px solid #c7d7fd",
-        borderRadius: "12px",
-        padding: "16px",
-        marginBottom: "16px",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: "12px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div
-            style={{
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
-              background: "#22c55e",
-              boxShadow: "0 0 6px #22c55e",
-              animation: "pulse 2s infinite",
-            }}
-          />
-          <span
-            style={{
-              fontSize: "11px",
-              fontWeight: "700",
-              color: "#4f46e5",
-              textTransform: "uppercase",
-              letterSpacing: "0.8px",
-            }}
-          >
-            Live Preview
-          </span>
-        </div>
-        <span
-          style={{
-            fontSize: "10px",
-            padding: "2px 8px",
-            borderRadius: "20px",
-            background: visibility ? "#dcfce7" : "#fee2e2",
-            color: visibility ? "#16a34a" : "#dc2626",
-            fontWeight: "600",
-          }}
-        >
-          {visibility ? "Visible" : "Hidden"}
-        </span>
+}) => (
+  <div
+    style={{
+      background: "#fff",
+      border: "1.5px solid #bfcfff",
+      borderRadius: "10px",
+      padding: "12px 14px",
+      marginBottom: "14px",
+    }}
+  >
+    {/* Header */}
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <MonitorSmartphone size={14} color="#1d4ed8" />
+        <span style={{ fontSize: "12px", fontWeight: "600", color: "#1d4ed8" }}>Live Preview</span>
       </div>
-
-      {/* Preview Content */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "14px",
-          background: "white",
-          borderRadius: "10px",
-          padding: "12px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-        }}
-      >
-        {/* Image Preview */}
-        <div
-          style={{
-            width: "64px",
-            height: "64px",
-            borderRadius: "10px",
-            flexShrink: 0,
-            background: imagePreviewUrl ? "transparent" : "#f1f5f9",
-            border: "2px dashed #cbd5e1",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-            position: "relative",
-            opacity: imageVisibility ? 1 : 0.4,
-          }}
-        >
-          {imagePreviewUrl ? (
-            <img
-              src={imagePreviewUrl}
-              alt="preview"
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                borderRadius: "8px",
-              }}
-            />
-          ) : (
-            <ImageIcon size={24} color="#94a3b8" />
-          )}
-          {!imageVisibility && (
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                background: "rgba(0,0,0,0.3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: "8px",
-              }}
-            >
-              <EyeOff size={14} color="white" />
-            </div>
-          )}
-        </div>
-
-        {/* Info */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              marginBottom: "4px",
-            }}
-          >
-            {nameVisibility ? (
-              <h3
-                style={{
-                  fontSize: "15px",
-                  fontWeight: "700",
-                  color: "#1e293b",
-                  margin: 0,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {categoryName || (
-                  <span style={{ color: "#94a3b8", fontWeight: "400" }}>
-                    Category Name...
-                  </span>
-                )}
-              </h3>
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  color: "#94a3b8",
-                }}
-              >
-                <EyeOff size={13} />
-                <span style={{ fontSize: "12px" }}>Name hidden</span>
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-            <span
-              style={{
-                fontSize: "11px",
-                padding: "2px 8px",
-                borderRadius: "20px",
-                background: "#ede9fe",
-                color: "#7c3aed",
-                fontWeight: "600",
-              }}
-            >
-              {parentCategory}
-            </span>
-            {isSubCategory && (
-              <span
-                style={{
-                  fontSize: "11px",
-                  padding: "2px 8px",
-                  borderRadius: "20px",
-                  background: "#dbeafe",
-                  color: "#1d4ed8",
-                  fontWeight: "600",
-                }}
-              >
-                Has Sub Category
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-      `}</style>
+      <span style={{ fontSize: "11px", fontWeight: "600", color: visibility ? "#16a34a" : "#dc2626" }}>
+        {visibility ? "Visible" : "Hidden"}
+      </span>
     </div>
-  );
-};
+
+    {/* Content */}
+    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      {/* Image */}
+      <div
+        style={{
+          width: "52px",
+          height: "52px",
+          borderRadius: "8px",
+          flexShrink: 0,
+          border: "1.5px dashed #cbd5e1",
+          background: "#f8fafc",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          opacity: imageVisibility ? 1 : 0.35,
+        }}
+      >
+        {imagePreviewUrl ? (
+          <img src={imagePreviewUrl} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "7px" }} />
+        ) : (
+          <ImageIcon size={20} color="#94a3b8" />
+        )}
+      </div>
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {nameVisibility ? (
+          <p style={{ margin: 0, fontWeight: "700", fontSize: "14px", color: categoryName ? "#111827" : "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {categoryName || "Category Name..."}
+          </p>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "#9ca3af" }}>
+            <EyeOff size={12} />
+            <span style={{ fontSize: "12px" }}>Name hidden</span>
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "5px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "11px", padding: "1px 8px", borderRadius: "20px", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #dbeafe", fontWeight: "500" }}>
+            {parentCategory}
+          </span>
+          {isSubCategory && (
+            <span style={{ fontSize: "11px", padding: "1px 8px", borderRadius: "20px", background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", fontWeight: "500" }}>
+              Has Sub Category
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
   const { addMainCategory, updateMainCategory } = useCategory();
@@ -293,12 +162,10 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
           parentId: formData.selectCategory,
           imageFile: formData.imageFile,
         });
-
         toast.success("Category updated successfully");
         onSuccess?.();
       } else {
         const generatedId = generateCategoryId(formData.categoryName);
-
         await addMainCategory({
           _id: generatedId,
           name: formData.categoryName.trim(),
@@ -309,7 +176,6 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
           parentId: formData.selectCategory,
           imageFile: formData.imageFile,
         });
-
         toast.success("Category added successfully");
         onSuccess?.();
       }
@@ -331,11 +197,11 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
     }
   };
 
-  // Compute image preview URL
   const imagePreviewUrl = formData.imageFile
     ? URL.createObjectURL(formData.imageFile)
     : editingCategory?.imageUri || undefined;
 
+  // ── EDIT mode ──────────────────────────────────────────────────────────────
   if (editingCategory) {
     return (
       <div className="flex flex-col gap-6 bg-white p-2">
@@ -343,7 +209,6 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
           <h2 className="text-xl font-bold text-gray-900">Update Main Category</h2>
         </div>
 
-        {/* ✅ Live Preview */}
         <LivePreviewCard
           categoryName={formData.categoryName}
           parentCategory={formData.selectCategory}
@@ -369,9 +234,7 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
             className="w-full appearance-none rounded-lg border-2 border-blue-900 bg-white px-4 py-3 text-lg font-medium text-gray-900 focus:border-blue-700 focus:outline-none"
           >
             {fixedParentCategories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
 
@@ -385,10 +248,7 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
 
           <div className="mt-2">
             <label className="mb-2 block text-sm font-bold text-gray-700">Update Image</label>
-            <ImageBoxUploader
-              onImageSelected={handleImageChange}
-              previewUrl={imagePreviewUrl}
-            />
+            <ImageBoxUploader onImageSelected={handleImageChange} previewUrl={imagePreviewUrl} />
           </div>
         </div>
 
@@ -403,6 +263,7 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
     );
   }
 
+  // ── ADD mode ───────────────────────────────────────────────────────────────
   return (
     <div className="rounded-lg border border-blue-900 bg-gray-100 p-4 shadow-md">
       <div className="mb-4 flex items-center justify-between bg-white p-3 border rounded">
@@ -416,7 +277,6 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
         </div>
       </div>
 
-      {/* ✅ Live Preview */}
       <LivePreviewCard
         categoryName={formData.categoryName}
         parentCategory={formData.selectCategory}
@@ -435,9 +295,7 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
           className="w-full border p-2 rounded"
         >
           {fixedParentCategories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
-            </option>
+            <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
         </select>
       </div>
@@ -466,11 +324,7 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
         <div className="flex items-center gap-4">
           <ImageBoxUploader
             onImageSelected={handleImageChange}
-            previewUrl={
-              formData.imageFile
-                ? URL.createObjectURL(formData.imageFile)
-                : undefined
-            }
+            previewUrl={formData.imageFile ? URL.createObjectURL(formData.imageFile) : undefined}
           />
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-gray-700">Image Visible</span>
