@@ -11,8 +11,8 @@ type Department = { id: string; name: string; mainCategories?: MainCategory[] };
 
 
 
-export const cityData: Record<string, string[]> = {
-
+// export const cityData: Record<string, string[]> = {
+const cityData: Record<string, string[]> = {
   // ───────────── UTTAR PRADESH (75 Districts) ─────────────
   "Uttar Pradesh": [
    "All", "Agra","Aligarh","Ambedkar Nagar","Amethi","Amroha","Auraiya","Ayodhya",
