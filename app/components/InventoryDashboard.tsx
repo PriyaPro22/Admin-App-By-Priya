@@ -25,12 +25,53 @@ const sanitizeUrl = (url?: string) => {
 
 
 const InventoryDashboard = () => {
+    const InventoryDashboard = () => {
+
+const [mainCategories, setMainCategories] = useState<any[]>([]);
+const [searchTerm, setSearchTerm] = useState("");
+
+// Filter
+const filteredMainCategories = mainCategories
+  .filter((item) => {
+    if (!searchTerm) return true;
+
+    return item.firstTitle
+      ?.toLowerCase()
+      .includes(searchTerm.toLowerCase());
+  })
+  .sort((a, b) => {
+    if (!searchTerm) return 0;
+
+    const term = searchTerm.toLowerCase();
+
+    const aStarts = a.firstTitle?.toLowerCase().startsWith(term);
+    const bStarts = b.firstTitle?.toLowerCase().startsWith(term);
+
+    if (aStarts && !bStarts) return -1;
+    if (!aStarts && bStarts) return 1;
+
+    return 0;
+  });
+
+return (
+  <div>
+    {filteredMainCategories.map((item) => (
+      <div key={item.documentId}>
+        {item.firstTitle}
+      </div>
+    ))}
+  </div>
+);
+
+
+    }
      const router = useRouter(); 
     const [activeForm, setActiveForm] = useState<string | null>(null);
     const [activeView, setActiveView] = useState<string | null>(null); // 'mainList', 'subList', 'childList'
     const [isProductListingSelected, setIsProductListingSelected] = useState(false);
     const [isSparePartSelected, setIsSparePartSelected] = useState(false);
 
+    const [searchTerm, setSearchTerm] = useState("");
     const { theme } = useTheme();
     const isDark = theme === "dark";
 
@@ -1338,11 +1379,18 @@ useEffect(() => {
                                 <div className="absolute inset-y-0 left-0 flex items-center pl-5 pointer-events-none">
                                     <Search className="h-6 w-6 text-gray-400" />
                                 </div>
-                                <input
-                                    type="text"
-                                    placeholder="Search.."
-                                    className={`w-full rounded-3xl py-4 pl-14 pr-6 text-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner ${isDark ? 'bg-[#111C44] text-white placeholder-gray-500' : 'bg-gray-200 text-gray-700 placeholder-gray-500'}`}
-                                />
+                             <input
+  type="text"
+  placeholder="Search.."
+  value={searchTerm}
+  autoComplete="off"
+  onChange={(e) => setSearchTerm(e.target.value)}
+  className={`w-full rounded-3xl py-4 pl-14 pr-6 text-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner ${
+    isDark
+      ? "bg-[#111C44] text-white placeholder-gray-500"
+      : "bg-gray-200 text-gray-700 placeholder-gray-500"
+  }`}
+/>
                             </div>
 
                             <CategoryList

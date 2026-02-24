@@ -44,9 +44,7 @@ npm start
 
 ## 📚 Documentation
 
-Detailed documentation available in:
-- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Complete deployment instructions
-- **[TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md)** - Quality assurance checklist
+The project follows standard Next.js App Router structure. For API details and state management, refer to the code in `app/context` and `app/components`.
 
 ---
 
@@ -121,9 +119,8 @@ npm run lint     # Run linter
 ## 📞 Support
 
 For issues or questions:
-1. Check **DEPLOYMENT_GUIDE.md**
-2. Review error logs in browser console
-3. Contact development team
+1. Review error logs in browser console
+2. Contact development team
 
 ---
 
