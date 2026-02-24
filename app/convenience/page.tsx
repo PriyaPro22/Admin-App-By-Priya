@@ -820,7 +820,7 @@ const deletePolicy = async (stateName: string) => {
                 {policy.imageUrl && (
                   <img
                     src={policy.imageUrl}
-                    alt={policy.state_name}
+                    alt={policy.stateName}
                     style={{
                       maxWidth: "200px",
                       maxHeight: "150px",
