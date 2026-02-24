@@ -285,11 +285,65 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Save } from "lucide-react";
+import { Save, Eye, EyeOff, ImageIcon } from "lucide-react";
 import ToggleSwitch from "../ui/ToggleSwitch";
 import { ImageBoxUploader } from "../ui/ImageUploader";
 import { useCategory } from "../../context/CategoryContext";
 import { generateCategoryId } from "../../utils/generateCategoryId";
+
+// ✅ Sub Category Live Preview Card
+const SubLivePreviewCard = ({
+  subCategoryName,
+  mainCategoryName,
+  imagePreviewUrl,
+  visibility,
+  nameVisibility,
+  imageVisibility,
+}: {
+  subCategoryName: string;
+  mainCategoryName: string;
+  imagePreviewUrl?: string;
+  visibility: boolean;
+  nameVisibility: boolean;
+  imageVisibility: boolean;
+}) => (
+  <div style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", border: "2px solid #86efac", borderRadius: "12px", padding: "14px", marginBottom: "14px" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 6px #22c55e" }} />
+        <span style={{ fontSize: "11px", fontWeight: "700", color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.8px" }}>Live Preview</span>
+      </div>
+      <span style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "20px", background: visibility ? "#dcfce7" : "#fee2e2", color: visibility ? "#16a34a" : "#dc2626", fontWeight: "600" }}>
+        {visibility ? "Visible" : "Hidden"}
+      </span>
+    </div>
+    <div style={{ display: "flex", alignItems: "center", gap: "12px", background: "white", borderRadius: "10px", padding: "10px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+      <div style={{ width: "56px", height: "56px", borderRadius: "8px", flexShrink: 0, background: imagePreviewUrl ? "transparent" : "#f1f5f9", border: "2px dashed #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", opacity: imageVisibility ? 1 : 0.4 }}>
+        {imagePreviewUrl ? (
+          <img src={imagePreviewUrl} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <ImageIcon size={20} color="#94a3b8" />
+        )}
+      </div>
+      <div style={{ flex: 1 }}>
+        {nameVisibility ? (
+          <p style={{ margin: 0, fontWeight: "700", fontSize: "14px", color: subCategoryName ? "#1e293b" : "#94a3b8" }}>
+            {subCategoryName || "Sub Category Name..."}
+          </p>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "#94a3b8" }}>
+            <EyeOff size={12} /><span style={{ fontSize: "12px" }}>Name hidden</span>
+          </div>
+        )}
+        {mainCategoryName && (
+          <span style={{ fontSize: "11px", marginTop: "4px", display: "block", padding: "1px 8px", borderRadius: "20px", background: "#ede9fe", color: "#7c3aed", fontWeight: "600", width: "fit-content" }}>
+            Under: {mainCategoryName}
+          </span>
+        )}
+      </div>
+    </div>
+  </div>
+);
 
 const SubCategoryForm = ({ editingCategory, onSuccess }: { editingCategory?: any; onSuccess?: () => void }) => {
   const { addSubCategory, updateSubCategory, mainCategories } = useCategory();
@@ -404,6 +458,16 @@ const SubCategoryForm = ({ editingCategory, onSuccess }: { editingCategory?: any
           <h2 className="text-xl font-bold text-gray-900">Update Sub Category</h2>
         </div>
 
+        {/* ✅ Live Preview */}
+        <SubLivePreviewCard
+          subCategoryName={formData.subCategoryName}
+          mainCategoryName={editingCategory.mainCategoryName || ""}
+          imagePreviewUrl={formData.image ? URL.createObjectURL(formData.image) : editingCategory.imageUri || undefined}
+          visibility={formData.visibility}
+          nameVisibility={formData.nameVisibility}
+          imageVisibility={formData.imageVisibility}
+        />
+
         <div className="flex flex-col gap-4">
           <input
             type="text"
@@ -450,6 +514,16 @@ const SubCategoryForm = ({ editingCategory, onSuccess }: { editingCategory?: any
           />
         </div>
       </div>
+
+      {/* ✅ Live Preview */}
+      <SubLivePreviewCard
+        subCategoryName={formData.subCategoryName}
+        mainCategoryName={formData.mainCategoryId ? (mainCategories.find(c => c._id === formData.mainCategoryId)?.name || search) : search}
+        imagePreviewUrl={formData.image ? URL.createObjectURL(formData.image) : undefined}
+        visibility={formData.visibility}
+        nameVisibility={formData.nameVisibility}
+        imageVisibility={formData.imageVisibility}
+      />
 
       <h1 className="text-black font-bold mb-2">Select Main Category Name</h1>
       <div className="relative mb-4">

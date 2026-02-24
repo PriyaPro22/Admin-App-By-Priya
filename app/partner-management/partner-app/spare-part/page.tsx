@@ -7,7 +7,8 @@ import { Pencil, Trash2, CalendarDays, Search,Plus, Save } from "lucide-react";
 
 export default function InventoryPage() {
   const [showForm, setShowForm] = useState(false);
-  const [editingPart, setEditingPart] = useState(null);
+  // const [editingPart, setEditingPart] = useState(null);
+const [editingPart, setEditingPart] = useState<any>(null);
 
 //   Dynamic Data
 const [categories, setCategories] = useState([]);
@@ -25,7 +26,8 @@ const [selectedCategory, setSelectedCategory] = useState("");
 
 const [filteredCategories, setFilteredCategories] = useState([]); // filtered data
 // Delete Modal
-const [deleteItem, setDeleteItem] = useState(null);
+// const [deleteItem, setDeleteItem] = useState(null);
+const [deleteItem, setDeleteItem] = useState<any>(null);
 const [deleting, setDeleting] = useState(false);
 // handle edit
 const [editLoading, setEditLoading] = useState(false);
@@ -282,7 +284,8 @@ const handleDepartmentChange = (e) => {
 //   });
 
   // Inventory Data
- const [inventory, setInventory] = useState([]);
+//  const [inventory, setInventory] = useState([]);
+const [inventory, setInventory] = useState<any[]>([]);
 // Productlistin spare part get
 const [mainCategories, setMainCategories] = useState([]);
 const [loadingMainCategory, setLoadingMainCategory] = useState(false);
