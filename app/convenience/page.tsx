@@ -202,7 +202,7 @@ export default function ConveyancePolicyPage() {
       freeRadius: city.free_radius_km?.toString() || policy.free_radius_km?.toString() || "",
       perKmRate: city.per_km_rate?.toString() || policy.per_km_rate?.toString() || "",
       threshold: city.availability_threshold?.toString() || policy.availability_threshold?.toString() || "",
-      image: city.imageUrl || policy.imageUrl || null
+     image: null
     });
 
     setImagePreview(city.imageUrl || policy.imageUrl || null);
