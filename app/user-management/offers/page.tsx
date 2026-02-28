@@ -243,7 +243,7 @@ export default function CreateOfferPage() {
       fd.append("description", "__temp__");
 
       const res = await fetch(
-        "https://api.bijliwalaaya.in/api/offers/add-offer",
+        "https://live.bijliwalaaya.in/api/offers/add-offer",
         { method: "POST", headers: { "x-api-token": "super_secure_token" }, body: fd }
       );
       if (!res.ok) return null;
@@ -259,7 +259,7 @@ export default function CreateOfferPage() {
       // ✅ Immediately delete the temp offer (awaited so it actually completes)
       if (_id) {
         try {
-          await fetch(`https://api.bijliwalaaya.in/api/offers/${_id}`, {
+          await fetch(`https://live.bijliwalaaya.in/api/offers/${_id}`, {
             method: "DELETE",
             headers: { "x-api-token": "super_secure_token" },
           });
@@ -304,7 +304,7 @@ export default function CreateOfferPage() {
       setLoading(true);
 
       const res = await fetch(
-        "https://api.bijliwalaaya.in/api/product-listing/main",
+        "https://live.bijliwalaaya.in/api/product-listing/main",
         {
           headers: {
             "x-api-token": "super_secure_token",
@@ -339,7 +339,7 @@ export default function CreateOfferPage() {
   const fetchSubCategories = async (mainId: string) => {
     try {
       const res = await fetch(
-        `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/sub`,
+        `https://live.bijliwalaaya.in/api/product-listing/main/${mainId}/sub`,
         {
           headers: {
             "x-api-token": "super_secure_token",
@@ -385,7 +385,7 @@ export default function CreateOfferPage() {
   const fetchChildCategories = async (mainId: string, subId: string) => {
     try {
       const res = await fetch(
-        `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/sub/${subId}/child`,
+        `https://live.bijliwalaaya.in/api/product-listing/main/${mainId}/sub/${subId}/child`,
         {
           headers: { "x-api-token": "super_secure_token" },
         }
@@ -406,7 +406,7 @@ export default function CreateOfferPage() {
   const fetchDirectChildCategories = async (mainId: string) => {
     try {
       const res = await fetch(
-        `https://api.bijliwalaaya.in/api/product-listing/main/${mainId}/child`,
+        `https://live.bijliwalaaya.in/api/product-listing/main/${mainId}/child`,
         {
           headers: { "x-api-token": "super_secure_token" },
         }
@@ -457,7 +457,7 @@ export default function CreateOfferPage() {
   //     );
 
   //     const res = await fetch(
-  //       "https://api.bijliwalaaya.in/api/offers/add-offer",
+  //       "https://live.bijliwalaaya.in/api/offers/add-offer",
   //       {
   //         method: "POST",
   //         headers: {
@@ -494,7 +494,7 @@ export default function CreateOfferPage() {
       // ─────────────────────────────────────────────────────────────────────
       const payload = buildPayload();
       const createRes = await fetch(
-        "https://api.bijliwalaaya.in/api/offers/add-offer",
+        "https://live.bijliwalaaya.in/api/offers/add-offer",
         {
           method: "POST",
           headers: { "x-api-token": "super_secure_token", "Content-Type": "application/json" },
@@ -527,7 +527,7 @@ export default function CreateOfferPage() {
         if (headerVideoFile) fd.append("headVideo", headerVideoFile);
 
         const updateRes = await fetch(
-          `https://api.bijliwalaaya.in/api/offers/${offerId}`,
+          `https://live.bijliwalaaya.in/api/offers/${offerId}`,
           {
             method: "PUT",
             headers: { "x-api-token": "super_secure_token" },
@@ -811,7 +811,7 @@ payload.min_spend =
 
   const handleUpdateOffer = async (id: string) => {
     await fetch(
-      `https://api.bijliwalaaya.in/api/offers/${id}`,
+      `https://live.bijliwalaaya.in/api/offers/${id}`,
       {
         method: "PUT",
         headers: {
@@ -829,7 +829,7 @@ payload.min_spend =
 
   const fetchOffers = async () => {
     const res = await fetch(
-      "https://api.bijliwalaaya.in/api/offers/all",
+      "https://live.bijliwalaaya.in/api/offers/all",
       {
         headers: {
           "x-api-token": "super_secure_token"
@@ -2126,7 +2126,7 @@ function OffersList({ offers, onRefresh }: { offers: any[]; onRefresh: () => voi
     if (!confirm("Are you sure you want to delete this offer?")) return;
     setDeleting(id);
     try {
-      const res = await fetch(`https://api.bijliwalaaya.in/api/offers/${id}`, {
+      const res = await fetch(`https://live.bijliwalaaya.in/api/offers/${id}`, {
         method: "DELETE",
         headers: { "x-api-token": "super_secure_token" },
       });
@@ -2155,7 +2155,7 @@ function OffersList({ offers, onRefresh }: { offers: any[]; onRefresh: () => voi
         discountValue: Number(editForm.discountValue),
         min_spend: Number(editForm.min_spend),
       };
-      const res = await fetch(`https://api.bijliwalaaya.in/api/offers/${editOffer._id}`, {
+      const res = await fetch(`https://live.bijliwalaaya.in/api/offers/${editOffer._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "x-api-token": "super_secure_token" },
         body: JSON.stringify(payload),

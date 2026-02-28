@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import { Trash2, Edit, Plus, GripVertical, Check, X, ChevronDown, ChevronRight, Search, ArrowLeft, MoreVertical, Eye, EyeOff, Box, ArrowRight } from "lucide-react";
 import MainCategoryForm from "./forms/MainCategoryForm";
 import SubCategoryForm from "./forms/SubCategoryForm";
+import { BASE_URL, API_TOKEN } from "@/app/utils/config";
 import ChildCategoryForm from "./forms/ChildCategoryForm";
 import DeepChildCategoryForm from "./forms/DeepChildCategoryForm";
 import SubDeepChildCategoryForm from "./forms/SubDeepChildCategoryForm";
@@ -87,6 +88,9 @@ return (
 
     const [selectedDeepChildCategoryId, setSelectedDeepChildCategoryId] = useState<string | null>(null);
     const [selectedDeepChildCategoryName, setSelectedDeepChildCategoryName] = useState<string | null>(null);
+
+
+
 
     // ✅ DEEP CATEGORY (Parent) - JO URL ME deepKey BANEGA
 const [selectedDeepCategoryId, setSelectedDeepCategoryId] = useState<string | null>(null);
@@ -332,6 +336,8 @@ const handleDeepChildCategoryClick = (item: any) => {
         }
     };
 
+
+
     // ✅ Image Select for "Add Image" Modal
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -546,13 +552,13 @@ const handleDeepChildCategoryClick = (item: any) => {
     const sanitizeUrl = (url: string) => {
         if (!url) return "";
         // Replace legacy domain
-        let finalUrl = url.replace("serverapi.bijliwalaaya.in", "api.bijliwalaaya.in");
+        let finalUrl = url.replace("serverlive.bijliwalaaya.in", "live.bijliwalaaya.in");
 
         // If relative path (starts with uploads/), prepend domain
         if (!finalUrl.startsWith("http")) {
             // Remove leading slash if present to avoid double slash
             const cleanPath = finalUrl.startsWith("/") ? finalUrl.slice(1) : finalUrl;
-            finalUrl = `https://api.bijliwalaaya.in/${cleanPath}`;
+            finalUrl = `https://live.bijliwalaaya.in/${cleanPath}`;
         }
         return finalUrl;
     };

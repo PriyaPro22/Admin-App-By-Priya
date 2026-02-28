@@ -138,22 +138,22 @@ useEffect(() => {
                 const headers = { 'x-api-token': 'super_secure_token' };
 
                 // Fetch Total Partners Count
-                const totalRes = await fetch('https://api.bijliwalaaya.in/api/partner/stats/count', { headers });
+                const totalRes = await fetch('https://live.bijliwalaaya.in/api/partner/stats/count', { headers });
                 const totalData = await totalRes.json();
                 if (totalData.success) setTotalPartnersCount(totalData.totalPartners);
 
                 // Fetch Pending Partners Count
-                const pendingRes = await fetch('https://api.bijliwalaaya.in/api/partner/admin/pending-count', { headers });
+                const pendingRes = await fetch('https://live.bijliwalaaya.in/api/partner/admin/pending-count', { headers });
                 const pendingData = await pendingRes.json();
                 if (pendingData.success) setPendingPartnersCount(pendingData.pendingPartners);
 
                 // Fetch Active Partners Count
-                const activeRes = await fetch('https://api.bijliwalaaya.in/api/partner/admin/active-count', { headers });
+                const activeRes = await fetch('https://live.bijliwalaaya.in/api/partner/admin/active-count', { headers });
                 const activeData = await activeRes.json();
                 if (activeData.success) setActivePartnersCount(activeData.activePartners);
 
                 // Fetch Blocked Partners Count
-                const blockedRes = await fetch('https://api.bijliwalaaya.in/api/partner/admin/block-count', { headers });
+                const blockedRes = await fetch('https://live.bijliwalaaya.in/api/partner/admin/block-count', { headers });
                 const blockedData = await blockedRes.json();
                 if (blockedData.success) setBlockedPartnersCount(blockedData.blockedPartners);
 
@@ -174,7 +174,7 @@ useEffect(() => {
         const fetchPartners = async () => {
             try {
                 const res = await fetch(
-                    "https://api.bijliwalaaya.in/api/partner/admin/all-partners",
+                    "https://live.bijliwalaaya.in/api/partner/admin/all-partners",
                     {
                         headers: { "x-api-token": "super_secure_token" },
                     }

@@ -67,7 +67,7 @@ const [showFinalRejectModal, setShowFinalRejectModal] = useState(false);
 const fetchSingleKycNote = async (pageKey: string) => {
   try {
     const res = await fetch(
-      `https://api.bijliwalaaya.in/api/partner/kyc-live-status/${params.id}/${pageKey}`,
+      `https://live.bijliwalaaya.in/api/partner/kyc-live-status/${params.id}/${pageKey}`,
       {
         headers: {
           "x-api-token": "super_secure_token",
@@ -131,7 +131,7 @@ const [selectedStep, setSelectedStep] = useState<any>(null);
 const [residentialData, setResidentialData] = useState<any>(null);
 const [residentialLoading, setResidentialLoading] = useState(true);
 
-const BASE_URL = "https://api.bijliwalaaya.in/api/partner";
+const BASE_URL = "https://live.bijliwalaaya.in/api/partner";
 const TOKEN = "super_secure_token"; // 🔥 yahan apna token lagao
 
 useEffect(() => {
@@ -244,7 +244,7 @@ useEffect(() => {
       setEducationLoading(true);
 
      const res = await fetch(
-  `https://api.bijliwalaaya.in/api/partner/educational-qualification/${params.id}`,
+  `https://live.bijliwalaaya.in/api/partner/educational-qualification/${params.id}`,
   {
     headers: {
       "x-api-token": "super_secure_token",
@@ -279,7 +279,7 @@ const saveKycLiveStatus = async (
 ) => {
   try {
     const res = await fetch(
-      `https://api.bijliwalaaya.in/api/partner/kyc-live-status/${params.id}`,
+      `https://live.bijliwalaaya.in/api/partner/kyc-live-status/${params.id}`,
       {
         method: "POST",
         headers: {
@@ -309,7 +309,7 @@ const saveKycLiveStatus = async (
 const updatePartnerFinalStatus = async (approved: boolean) => {
   try {
     const res = await fetch(
-      `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+      `https://live.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
       {
         method: "PATCH",
         headers: {
@@ -343,7 +343,7 @@ const updateVerificationStatus = async (
 ) => {
   try {
     const res = await fetch(
-      `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+      `https://live.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
       {
         method: "PATCH",
         headers: {
@@ -399,7 +399,7 @@ useEffect(() => {
   const fetchKycDetails = async () => {
     try {
       const res = await fetch(
-        `https://api.bijliwalaaya.in/api/partner/kyc-details/${params.id}`,
+        `https://live.bijliwalaaya.in/api/partner/kyc-details/${params.id}`,
         {
           headers: {
             "x-api-token": "super_secure_token",
@@ -443,7 +443,7 @@ const [attemptCount, setAttemptCount] = useState(0);
 const handleIncrement = async () => {
   try {
     const res = await fetch(
-      `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+      `https://live.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
       {
         method: "PATCH",
         headers: {
@@ -484,7 +484,7 @@ const updateStepStatus = async () => {
 
   try {
     const res = await fetch(
-      `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+      `https://live.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
       {
         method: "PATCH",
         headers: {
@@ -525,7 +525,7 @@ const updateStepStatus = async () => {
 const fetchVerificationStatus=async ()=>{
   try {
     const res =await fetch(
-      `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+      `https://live.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
       {
         headers:{
           "x-api-token":"super_secure_token",
@@ -584,7 +584,7 @@ useEffect(() => {
   const fetchJobCategory = async () => {
     try {
       const res = await fetch(
-        `https://api.bijliwalaaya.in/api/partner/job-category/${params.id}`,
+        `https://live.bijliwalaaya.in/api/partner/job-category/${params.id}`,
         {
           headers: {
             "x-api-token": "super_secure_token",
@@ -617,7 +617,7 @@ useEffect(() => {
   const fetchPaymentDetails = async () => {
     try {
       const res = await fetch(
-        `https://api.bijliwalaaya.in/api/partner/payments/${params.id}`,
+        `https://live.bijliwalaaya.in/api/partner/payments/${params.id}`,
         {
           headers: {
             "x-api-token": "super_secure_token",
@@ -693,7 +693,7 @@ useEffect(() => {
       setRcLoading(true);
 
       const res = await fetch(
-        `https://api.bijliwalaaya.in/api/partner/vehicle-details/${params.id}/RC`,
+        `https://live.bijliwalaaya.in/api/partner/vehicle-details/${params.id}/RC`,
         {
           headers: {
             "x-api-token": "super_secure_token",
@@ -726,7 +726,7 @@ const fetchNonRcVehicle = async () => {
     setNonRcLoading(true);
 
     const res = await fetch(
-      `https://api.bijliwalaaya.in/api/partner/vehicle-details/${params.id}/NONRC`,
+      `https://live.bijliwalaaya.in/api/partner/vehicle-details/${params.id}/NONRC`,
       {
         headers: {
           "x-api-token": "super_secure_token",
@@ -772,7 +772,7 @@ useEffect(() => {
       setBankLoading(true);
 
       const res = await fetch(
-        `https://api.bijliwalaaya.in/api/partner/bank-details/${params.id}`,
+        `https://live.bijliwalaaya.in/api/partner/bank-details/${params.id}`,
         {
           headers: {
             "x-api-token": "super_secure_token",
@@ -833,7 +833,7 @@ const aadhaarAddress = aadhaarData?.split_address
     const fetchVerificationStatus = async () => {
       try {
         const res = await fetch(
-          `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+          `https://live.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
           {
             headers: {
               "x-api-token": "super_secure_token",
@@ -869,7 +869,7 @@ useEffect(() => {
   const fetchJobServices = async () => {
     try {
       const res = await fetch(
-        `https://api.bijliwalaaya.in/api/partner/job-services/${params.id}`,
+        `https://live.bijliwalaaya.in/api/partner/job-services/${params.id}`,
         {
           headers: {
             "x-api-token": "super_secure_token",
@@ -1004,7 +1004,7 @@ const verificationSteps = stepKeyMap.map((key, i) => {
     const fetchJobLocation = async () => {
       try {
         const res = await fetch(
-          `https://api.bijliwalaaya.in/api/partner/job-location/${params.id}`,
+          `https://live.bijliwalaaya.in/api/partner/job-location/${params.id}`,
           {
             headers: {
               "x-api-token": "super_secure_token",
@@ -1032,7 +1032,7 @@ const backendAttempts =
     const fetchPartnerDetails = async () => {
       try {
         const res = await fetch(
-          "https://api.bijliwalaaya.in/api/partner/admin/all-partners",
+          "https://live.bijliwalaaya.in/api/partner/admin/all-partners",
           {
             headers: {
               "x-api-token": "super_secure_token",
@@ -2850,7 +2850,7 @@ if (updatedNote) {
 }
      // 3️⃣ Get fresh verification status directly
 const res = await fetch(
-  `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+  `https://live.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
   {
     headers: {
       "x-api-token": "super_secure_token",
@@ -3098,7 +3098,7 @@ if (updatedNote) {
 
     // 3️⃣ 🔥 Fetch latest verification status
     const res = await fetch(
-      `https://api.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
+      `https://live.bijliwalaaya.in/api/partner/verification-status/${params.id}`,
       {
         headers: { "x-api-token": "super_secure_token" },
       }

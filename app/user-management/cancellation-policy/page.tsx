@@ -20,7 +20,7 @@ export default function CancellationPolicyPage() {
   const [error, setError] = useState<string | null>(null);
 
   // API URL
-  const API_BASE = "https://api.bijliwalaaya.in/api/cancellation-policy";
+  const API_BASE = "https://live.bijliwalaaya.in/api/cancellation-policy";
 
   // GET All Policies - FIXED
   const fetchPolicies = async () => {

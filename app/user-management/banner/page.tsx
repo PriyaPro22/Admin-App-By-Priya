@@ -67,7 +67,7 @@
 // // //     assetPromo: ""
 // // //   });
 
-// // //   const BASE_URL = "https://api.bijliwalaaya.in/api/banner";
+// // //   const BASE_URL = "https://live.bijliwalaaya.in/api/banner";
 // // //   const TOKEN = "super_secure_token";
  
 // // //   const headers = { "x-api-token": TOKEN };
@@ -538,7 +538,7 @@
 // //   const [assetUrl, setAssetUrl] = useState("");
 // //   const [assetPromo, setAssetPromo] = useState("");
 
-// //   const BASE_URL = "https://api.bijliwalaaya.in/api/banner";
+// //   const BASE_URL = "https://live.bijliwalaaya.in/api/banner";
 // //   const TOKEN = "super_secure_token";
 // //   const headers = { "x-api-token": TOKEN };
 
@@ -1093,7 +1093,7 @@
 // const mapSize = (size: string) => {
 //   return size.toLowerCase().replace(/\s+/g, "_");
 // };
-//   const BASE_URL = "https://api.bijliwalaaya.in/api/banner";
+//   const BASE_URL = "https://live.bijliwalaaya.in/api/banner";
 //   const TOKEN = "super_secure_token";
 //   const headers = { "x-api-token": TOKEN };
 
@@ -1774,7 +1774,7 @@ export default function BannerStudioV10() {
     return size.toLowerCase().replace(/\s+/g, "_"); // "Big Slider" -> "big_slider"
   };
 
-  const BASE_URL = "https://api.bijliwalaaya.in/api/banner";
+  const BASE_URL = "https://live.bijliwalaaya.in/api/banner";
   const TOKEN = "super_secure_token";
   const headers = { "x-api-token": TOKEN };
 

@@ -97,24 +97,24 @@ export default function PartnerManagement() {
                 const headers = { 'x-api-token': 'super_secure_token' };
 
                 // Fetch Stats (Existing logic)
-                const totalRes = await fetch('https://api.bijliwalaaya.in/api/partner/stats/count', { headers });
+                const totalRes = await fetch('https://live.bijliwalaaya.in/api/partner/stats/count', { headers });
                 const totalData = await totalRes.json();
                 if (totalData.success) setTotalPartnersCount(totalData.totalPartners);
 
-                const pendingRes = await fetch('https://api.bijliwalaaya.in/api/partner/admin/pending-count', { headers });
+                const pendingRes = await fetch('https://live.bijliwalaaya.in/api/partner/admin/pending-count', { headers });
                 const pendingData = await pendingRes.json();
                 if (pendingData.success) setPendingPartnersCount(pendingData.pendingPartners);
 
-                const activeRes = await fetch('https://api.bijliwalaaya.in/api/partner/admin/active-count', { headers });
+                const activeRes = await fetch('https://live.bijliwalaaya.in/api/partner/admin/active-count', { headers });
                 const activeData = await activeRes.json();
                 if (activeData.success) setActivePartnersCount(activeData.activePartners);
 
-                const blockedRes = await fetch('https://api.bijliwalaaya.in/api/partner/admin/block-count', { headers });
+                const blockedRes = await fetch('https://live.bijliwalaaya.in/api/partner/admin/block-count', { headers });
                 const blockedData = await blockedRes.json();
                 if (blockedData.success) setBlockedPartnersCount(blockedData.blockedPartners);
 
                 // Fetch All Partners List
-                const listRes = await fetch('https://api.bijliwalaaya.in/api/partner/admin/all-partners', { headers });
+                const listRes = await fetch('https://live.bijliwalaaya.in/api/partner/admin/all-partners', { headers });
                 const listData = await listRes.json();
 
                 if (listData.success && Array.isArray(listData.data)) {

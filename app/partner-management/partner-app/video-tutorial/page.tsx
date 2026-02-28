@@ -14,7 +14,7 @@ const MaterialIcon = ({ name, className = "" }: { name: string; className?: stri
 );
 
 // API configuration
-const API_BASE_URL = "https://api.bijliwalaaya.in/api";
+const API_BASE_URL = "https://live.bijliwalaaya.in/api";
 const X_API_TOKEN = "super_secure_token";
 
 // Axios instance with default headers

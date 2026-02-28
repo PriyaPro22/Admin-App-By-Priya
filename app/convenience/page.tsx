@@ -46,7 +46,7 @@ interface Policy {
 export default function ConveyancePolicyPage() {
   // Dynamic Data Get
   const [policies, setPolicies] = useState<Policy[]>([]);
-  const API_BASE = "https://api.bijliwalaaya.in/api/conveyance-policies";
+  const API_BASE = "https://live.bijliwalaaya.in/api/conveyance-policies";
 
   const headers = {
     "x-api-token": "super_secure_token",

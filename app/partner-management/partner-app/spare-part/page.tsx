@@ -101,13 +101,15 @@ const requestBody = {
   }
 };
 
-
+// const BASE_URL=process.env
+// const BASE_URL = process.env.NEXT_PUBLIC_API_DOMAIN;
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
     // 🔥 ADD / EDIT Logic
-    let url = "https://api.bijliwalaaya.in/api/partner-rate-card";
+    let url = `${BASE_URL}/api/partner-rate-card`;
     let method = "POST";
 
     if (editingPart) {
-      url = `https://api.bijliwalaaya.in/api/partner-rate-card/${editingPart.id}`;
+      url = url = `${BASE_URL}/api/partner-rate-card/${editingPart.id}`;
       method = "PUT";
     }
 
@@ -174,7 +176,7 @@ const fetchCategoriesByDepartment = async (department) => {
     const encodedDepartment = encodeURIComponent(department);
 
     const res = await fetch(
-      `https://api.bijliwalaaya.in/api/product-listing/category/by-parent/${encodedDepartment}`,
+      `https://live.bijliwalaaya.in/api/product-listing/category/by-parent/${encodedDepartment}`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -231,7 +233,7 @@ const handleDepartmentChange = (e) => {
 //     setEditingPart(part);
 
 //     const res = await fetch(
-//       `https://api.bijliwalaaya.in/api/partner-rate-card/${part.id}`,
+//       `https://live.bijliwalaaya.in/api/partner-rate-card/${part.id}`,
 //       {
 //         method: "GET",
 //         headers: {
@@ -297,7 +299,7 @@ const [loadingMainCategory, setLoadingMainCategory] = useState(false);
 //     setLoadingMainCategory(true);
 
 //     const res = await fetch(
-//       "https://api.bijliwalaaya.in/api/product-listing/main",
+//       "https://live.bijliwalaaya.in/api/product-listing/main",
 //       {
 //         method: "GET",
 //         headers: {
@@ -336,7 +338,7 @@ const [loadingMainCategory, setLoadingMainCategory] = useState(false);
 //     setLoadingSubCategory(true);
 
 //     const res = await fetch(
-//       `https://api.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub`,
+//       `https://live.bijliwalaaya.in/api/product-listing/main/${mainCategoryId}/sub`,
 //       {
 //         method: "GET",
 //         headers: {
@@ -447,7 +449,7 @@ const handleEdit = async (item) => {
     setEditLoading(true);
 
     const res = await fetch(
-      `https://api.bijliwalaaya.in/api/partner-rate-card/${item.id}`,
+      `https://live.bijliwalaaya.in/api/partner-rate-card/${item.id}`,
       {
         method: "GET",
         headers: {
@@ -555,7 +557,7 @@ useEffect(() => {
 const fetchRateCard = async () => {
   try {
     const res = await fetch(
-      "https://api.bijliwalaaya.in/api/partner-rate-card",
+      "https://live.bijliwalaaya.in/api/partner-rate-card",
       {
         method: "GET",
         headers: {
@@ -622,7 +624,7 @@ const handleAddNew = () => {
 
   try {
     const res = await fetch(
-      `https://api.bijliwalaaya.in/api/partner-rate-card/${deleteItem.id}/spare-parts/${deleteItem.partKey}`,
+      `https://live.bijliwalaaya.in/api/partner-rate-card/${deleteItem.id}/spare-parts/${deleteItem.partKey}`,
       {
         method: "DELETE",
         headers: {
@@ -1132,7 +1134,6 @@ const handleAddNew = () => {
     </div>
   </div>
 )}
-
     </div>
   );
 }

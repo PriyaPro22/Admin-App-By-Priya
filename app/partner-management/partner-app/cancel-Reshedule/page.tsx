@@ -233,10 +233,10 @@ import { Pencil, Trash2 } from "lucide-react";
 const TOKEN = "super_secure_token";
 
 const RESCHEDULE_URL =
-  "https://api.bijliwalaaya.in/api/reschedule-reasons";
+  "https://live.bijliwalaaya.in/api/reschedule-reasons";
 
 const CANCELLATION_URL =
-  "https://api.bijliwalaaya.in/api/cancellation-reasons"; // 👈 make sure this endpoint exists
+  "https://live.bijliwalaaya.in/api/cancellation-reasons"; // 👈 make sure this endpoint exists
 
 export default function CancellationRescheduleReasons() {
   const [rescheduleReasons, setRescheduleReasons] = useState<any[]>([]);
