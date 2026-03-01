@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
     Users,
@@ -28,6 +30,46 @@ import {
 import { useTheme } from "../context/ThemeContext";
 
 const Dashboard = () => {
+    const router = useRouter();
+
+// useEffect(() => {
+//     const verifyToken = async () => {
+//         const token = localStorage.getItem("adminToken");
+
+//         if (!token) {
+//             router.push("/login");
+//             return;
+//         }
+
+//         try {
+//             const response = await fetch(
+//                 "https://live.bijliwalaaya.in/api/adm",
+//                 {
+//                     headers: {
+//                         Authorization: `Bearer ${token}`,
+//                     },
+//                 }
+//             );
+
+//             if (!response.ok) {
+//                 localStorage.removeItem("adminToken");
+//                 router.push("/login");
+//                 return;
+//             }
+
+//             const data = await response.json();
+//             console.log("Dashboard API Data:", data);
+
+//         } catch (error) {
+//             localStorage.removeItem("adminToken");
+//             router.push("/login");
+//         }
+//     };
+
+//     verifyToken();
+// }, [router]);
+
+
     const { theme, toggleTheme } = useTheme();
     const [searchQuery, setSearchQuery] = useState("");
 

@@ -1,4 +1,4 @@
-"use client";
+<div className="relative bg-white/10 dark:bg-slate-900/20 backdrop-blur-[80px] rounded-[3rem] p-10 pb-12 border border-white/60 dark:border-white/10 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.1)] overflow-hidden"></div>"use client";
 
 import React, { useState } from "react";
 import { ArrowLeft, Save } from "lucide-react";
