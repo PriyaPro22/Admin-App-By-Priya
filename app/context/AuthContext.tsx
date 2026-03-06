@@ -17,8 +17,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const authStatus = localStorage.getItem('isAdminAuthenticated');
-        if (authStatus === 'true') {
+        const token = localStorage.getItem('adminToken');
+        if (authStatus === 'true' || token) {
             setIsAuthenticated(true);
+            if (token && authStatus !== 'true') {
+                localStorage.setItem('isAdminAuthenticated', 'true');
+            }
         }
     }, []);
 
@@ -35,6 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = () => {
         setIsAuthenticated(false);
         localStorage.removeItem('isAdminAuthenticated');
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('token'); // Also remove legacy 'token' key
         router.push('/login');
     };
 

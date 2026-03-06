@@ -142,7 +142,7 @@ export const api = axios.create({
 });
 
 export const getAuthHeaders = (isFormData = false) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
   
   const headers: any = {
     'x-api-token': API_TOKEN,
@@ -159,7 +159,7 @@ export const getAuthHeaders = (isFormData = false) => {
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('adminToken');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -178,7 +178,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('token');
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('isAdminAuthenticated');
       window.location.href = '/login';
     }
     return Promise.reject(error);

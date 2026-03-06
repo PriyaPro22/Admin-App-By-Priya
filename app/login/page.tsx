@@ -11,11 +11,11 @@
 //     const [showPassword, setShowPassword] = useState(false);
 //     const [error, setError] = useState("");
 //     const [isLoading, setIsLoading] = useState(false);
-    
+
 //     const router = useRouter();
 
-  
-  
+
+
 //   const handleSubmit = async (e: React.FormEvent) => {
 //     e.preventDefault();
 //     setIsLoading(true);
@@ -56,9 +56,9 @@
 //         setIsLoading(false);
 //     }
 // };
-  
-  
-  
+
+
+
 //     return (
 //         <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-gray-200 flex items-center justify-center p-4 relative overflow-hidden">
 //             {/* Ambient Background Elements - more vibrant for glass effect */}
@@ -215,8 +215,9 @@ export default function LoginPage() {
         throw new Error("Token not received from server");
       }
 
-      // ✅ Store JWT Token
+      // ✅ Store Auth State
       localStorage.setItem("adminToken", token);
+      localStorage.setItem("isAdminAuthenticated", "true"); // Added for AuthGuard/Context consistency
 
       // ✅ Redirect to Dashboard
       router.push("/");
@@ -227,7 +228,7 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
-//naman
+  //naman
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-gray-200 flex items-center justify-center p-4 relative overflow-hidden">
 
