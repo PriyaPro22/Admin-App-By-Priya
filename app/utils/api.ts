@@ -130,7 +130,7 @@ import axios from 'axios';
 // FIXED: Correct spelling - bijliwalaaya (with 'w'), NOT bijilwalaaya
 export const BASE_URL = process.env.NEXT_PUBLIC_API_DOMAIN 
   ? `${process.env.NEXT_PUBLIC_API_DOMAIN}/api/product-listing` 
-  : 'https://api.bijliwalaaya.in/api/product-listing';  // ✅ CORRECT SPELLING
+  : 'https://live.bijliwalaaya.in/api/product-listing';  // ✅ CORRECT SPELLING
 
 export const API_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN || 'super_secure_token';
 
