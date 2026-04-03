@@ -1821,6 +1821,7 @@ export default function PartnerAppVideoTutorialsPage() {
     const pages: { [key: string]: string } = {
       'onboarding': 'Onboarding',
       'login': 'login',
+      'approval':'approval',
       'profile':'profile',
       'work type':'work type',
       'services':'services',
@@ -2039,6 +2040,7 @@ export default function PartnerAppVideoTutorialsPage() {
   <option value="bank">bank</option>
   <option value="education">education</option>
   <option value="address">address</option>
+  <option value="approval">approval</option>
                   <option value="onboarding">Onboarding</option>
                   <option value="login">login</option>
                   <option value="onBoardingPaymentPage">onBoardingPaymentPage</option>

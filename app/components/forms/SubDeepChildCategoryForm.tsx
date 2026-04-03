@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Save, Upload, IndianRupee, Clock, ImageIcon, EyeOff } from "lucide-react";
 import { useCategory } from "../../context/CategoryContext";
 import { generateCategoryId } from "../../utils/generateCategoryId";
+import { BASE_URL, API_TOKEN } from "../../utils/api";
 
 interface SubDeepChildCategoryFormProps {
   initialDeepChildCategoryId?: string | null;
@@ -235,21 +236,30 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
 
     const fetchSubCategoriesAPI = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const url = `https://api.bijliwalaaya.in/api/product-listing/main/${selectedMainCategory._id}/sub`;
+        const token = localStorage.getItem("adminToken");
+        const url = `${BASE_URL}/main/${selectedMainCategory._id}/sub`;
         const res = await fetch(url, {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
-            "x-api-token": "super_secure_token",
+            "x-api-token": API_TOKEN,
             "Content-Type": "application/json",
           },
         });
         const json = await res.json();
         const rawData = json?.data || {};
-        const list = Object.entries(rawData).map(([_, value]: any) => ({
-          documentId: value.documentId,
-          name: value.name,
-        }));
+        
+        let list: any[] = [];
+        if (Array.isArray(rawData)) {
+          list = rawData.map((item: any) => ({
+            documentId: item.documentId || item._id,
+            name: item.name || "",
+          }));
+        } else {
+          list = Object.entries(rawData).map(([key, value]: any) => ({
+            documentId: value.documentId || key,
+            name: value.name || key,
+          }));
+        }
         setSubCategories(list);
       } catch (err) {
         console.error("Sub category API failed", err);
@@ -269,21 +279,30 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
     if (selectedMainCategory?.hasSubCategory !== true) {
       const fetchChildCategoriesDirect = async () => {
         try {
-          const token = localStorage.getItem("token");
-          const url = `https://api.bijliwalaaya.in/api/product-listing/main/${formData.mainCategoryId}/child`;
+          const token = localStorage.getItem("adminToken");
+          const url = `${BASE_URL}/main/${formData.mainCategoryId}/child`;
           const res = await fetch(url, {
             headers: {
               Authorization: token ? `Bearer ${token}` : "",
-              "x-api-token": "super_secure_token",
+              "x-api-token": API_TOKEN,
               "Content-Type": "application/json",
             },
           });
           const json = await res.json();
           const rawData = json?.data || {};
-          const list = Object.entries(rawData).map(([key, value]: any) => ({
-            documentId: value.documentId || key,
-            name: value.name || key,
-          }));
+          
+          let list: any[] = [];
+          if (Array.isArray(rawData)) {
+            list = rawData.map((item: any) => ({
+              documentId: item.documentId || item._id,
+              name: item.name || "",
+            }));
+          } else {
+            list = Object.entries(rawData).map(([key, value]: any) => ({
+              documentId: value.documentId || key,
+              name: value.name || key,
+            }));
+          }
           setChildCategoriesLocal(list);
         } catch (err) {
           console.error("Direct child category API failed", err);
@@ -294,21 +313,30 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
     } else if (formData.subCategoryId) {
       const fetchChildCategoriesAPI = async () => {
         try {
-          const token = localStorage.getItem("token");
-          const url = `https://api.bijliwalaaya.in/api/product-listing/main/${formData.mainCategoryId}/sub/${formData.subCategoryId}/child`;
+          const token = localStorage.getItem("adminToken");
+          const url = `${BASE_URL}/main/${formData.mainCategoryId}/sub/${formData.subCategoryId}/child`;
           const res = await fetch(url, {
             headers: {
               Authorization: token ? `Bearer ${token}` : "",
-              "x-api-token": "super_secure_token",
+              "x-api-token": API_TOKEN,
               "Content-Type": "application/json",
             },
           });
           const json = await res.json();
           const rawData = json?.data || {};
-          const list = Object.entries(rawData).map(([_, value]: any) => ({
-            documentId: value.documentId,
-            name: value.name,
-          }));
+          
+          let list: any[] = [];
+          if (Array.isArray(rawData)) {
+            list = rawData.map((item: any) => ({
+              documentId: item.documentId || item._id,
+              name: item.name || "",
+            }));
+          } else {
+            list = Object.entries(rawData).map(([key, value]: any) => ({
+              documentId: value.documentId || key,
+              name: value.name || key,
+            }));
+          }
           setChildCategoriesLocal(list);
         } catch (err) {
           console.error("Child category API failed", err);
@@ -329,29 +357,40 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
 
     const fetchDeepCategories = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("adminToken");
         let url = "";
         if (formData.subCategoryId) {
-          url = `https://api.bijliwalaaya.in/api/product-listing/main/${formData.mainCategoryId}/sub/${formData.subCategoryId}/child/${formData.childCategoryId}/deep`;
+          url = `${BASE_URL}/main/${formData.mainCategoryId}/sub/${formData.subCategoryId}/child/${formData.childCategoryId}/deep`;
         } else {
-          url = `https://api.bijliwalaaya.in/api/product-listing/main/${formData.mainCategoryId}/child/${formData.childCategoryId}/deep`;
+          url = `${BASE_URL}/main/${formData.mainCategoryId}/child/${formData.childCategoryId}/deep`;
         }
 
         const res = await fetch(url, {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
-            "x-api-token": "super_secure_token",
+            "x-api-token": API_TOKEN,
             "Content-Type": "application/json",
           },
         });
         const json = await res.json();
         const rawData = json?.data || {};
-        const list = Object.entries(rawData).map(([key, value]: any) => ({
-          id: key,
-          documentId: key,
-          firstTitle: value.firstTitle || key,
-          name: value.firstTitle || key,
-        }));
+        
+        let list: any[] = [];
+        if (Array.isArray(rawData)) {
+          list = rawData.map((item: any) => ({
+            id: item.documentId || item._id,
+            documentId: item.documentId || item._id,
+            firstTitle: item.firstTitle || item.name || "",
+            name: item.firstTitle || item.name || "",
+          }));
+        } else {
+          list = Object.entries(rawData).map(([key, value]: any) => ({
+            id: key,
+            documentId: key,
+            firstTitle: value.firstTitle || value.name || key,
+            name: value.firstTitle || value.name || key,
+          }));
+        }
         setDeepCategoriesLocal(list);
       } catch (err) {
         console.error("Deep category API failed", err);
@@ -638,7 +677,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
     }
 
     setIsSaving(true);
-
+    console.log("⏳ [SubDeepChildCategoryForm] Starting save process with data:", formData);
     try {
       const subDeepKey = editingCategory
         ? formData.subDeepKey
@@ -690,6 +729,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
       } else if (formData.videoUrl?.trim()) {
         subDeepData.video = formData.videoUrl.trim();
       }
+      console.log("📦 [SubDeepChildCategoryForm] SENDING SUB DEEP CHILD DATA:", subDeepData);
 
       if (editingCategory) {
         await updateSubDeepChildCategory({
@@ -697,9 +737,11 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
           documentId: formData.subDeepKey,
         });
         alert("✅ Sub Deep Category Updated");
+        console.log("✅ [SubDeepChildCategoryForm] Update success:", subDeepData);
       } else {
         await addSubDeepChildCategory(subDeepData);
         alert("✅ Sub Deep Category Added");
+        console.log("🚀 [SubDeepChildCategoryForm] Addition success:", subDeepData);
         resetForm();
       }
 
@@ -730,7 +772,7 @@ const SubDeepChildCategoryForm: React.FC<SubDeepChildCategoryFormProps> = ({
   const shouldShowDeepSelect = formData.childCategoryId && childCategoriesLocal.length > 0;
 
   return (
-    <div className="rounded-lg border border-purple-500 bg-gray-100 p-4 shadow-md">
+    <div className="rounded-lg border border-purple-500 bg-gray-100 p-4 shadow-md text-gray-900">
       <div className="mb-6 flex items-center justify-between rounded-md border-2 border-blue-900 bg-white px-4 py-3">
         <span className="text-xl font-bold text-gray-900">
           {editingCategory ? "Edit" : "Manage"} Sub Deep Child Category

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
     isAuthenticated: boolean;
+    setIsAuthenticated: (status: boolean) => void;
     login: (username: string, password: string) => Promise<boolean>;
     logout: () => void;
 }
@@ -45,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+        <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, login, logout }}>
             {children}
         </AuthContext.Provider>
     );

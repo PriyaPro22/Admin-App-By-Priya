@@ -6,6 +6,7 @@ import { Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { CategoryProvider } from "../context/CategoryContext";
 import { useTheme } from "../context/ThemeContext";
+import NeuralBackground from "./NeuralBackground";
 
 export default function ClientLayoutWrapper({
     children,
@@ -31,7 +32,12 @@ export default function ClientLayoutWrapper({
 
     return (
         <CategoryProvider>
-            <div className={`flex min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0B1437]' : 'bg-[#F4F7FE]'}`}>
+            <div className={`relative flex min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0B1437]/80' : 'bg-[#F4F7FE]/80'}`}>
+                {/* Global Neural Network Background */}
+                <div className="fixed inset-0 z-0 pointer-events-none opacity-50">
+                    <NeuralBackground isDark={isDark} />
+                </div>
+                
                 {pathname !== "/login" && (
                     <Sidebar
                         isOpen={isSidebarOpen}
@@ -45,10 +51,10 @@ export default function ClientLayoutWrapper({
 
 
                 {/* Main Content Area */}
-                <main className={`flex-1 transition-all duration-300 ${isLoginPage ? 'ml-0' : (isSidebarCollapsed && !isSidebarHovered ? 'md:ml-24' : 'md:ml-72')} overflow-hidden`}>
+                <main className={`relative z-10 flex-1 transition-all duration-300 ${isLoginPage ? 'ml-0' : (isSidebarCollapsed && !isSidebarHovered ? 'md:ml-24' : 'md:ml-72')} overflow-hidden`}>
                     {/* Mobile Header to toggle sidebar */}
                     {!isLoginPage && (
-                        <div className={`sticky top-0 z-30 flex items-center justify-between px-6 py-4 shadow-md md:hidden transition-colors ${isDark ? 'bg-[#111C44] text-white border-b border-gray-800' : 'bg-white text-gray-800'
+                        <div className={`sticky top-0 z-30 flex items-center justify-between px-6 py-4 shadow-md md:hidden transition-colors ${isDark ? 'bg-[#111C44]/90 backdrop-blur-md text-white border-b border-gray-800' : 'bg-white/90 backdrop-blur-md text-gray-800'
                             }`}>
                             <div className="flex items-center gap-4">
                                 <button

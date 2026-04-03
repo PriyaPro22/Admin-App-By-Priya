@@ -103,13 +103,16 @@ const requestBody = {
 
 // const BASE_URL=process.env
 // const BASE_URL = process.env.NEXT_PUBLIC_API_DOMAIN;
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+// const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://live.bijliwalaaya.in";
     // 🔥 ADD / EDIT Logic
     let url = `${BASE_URL}/api/partner-rate-card`;
     let method = "POST";
 
     if (editingPart) {
-      url = url = `${BASE_URL}/api/partner-rate-card/${editingPart.id}`;
+      // url = url = `${BASE_URL}/api/partner-rate-card/${editingPart.id}`;
+      url = `${BASE_URL}/api/partner-rate-card/${editingPart.id}`;
       method = "PUT";
     }
 
@@ -122,7 +125,15 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
       body: JSON.stringify(requestBody),
     });
 
-    const result = await res.json();
+    // const result = await res.json();
+    let result;
+
+try {
+  result = await res.json();
+} catch (err) {
+  console.error("Invalid JSON response");
+  return;
+}
 
     if (result.success) {
       alert(

@@ -403,6 +403,7 @@ const SubCategoryForm = ({ editingCategory, onSuccess }: { editingCategory?: any
 
   const handleSave = async () => {
     setIsSaving(true);
+    console.log("⏳ [SubCategoryForm] Starting save process with data:", formData);
     try {
       if (editingCategory) {
         await updateSubCategory({
@@ -414,6 +415,7 @@ const SubCategoryForm = ({ editingCategory, onSuccess }: { editingCategory?: any
           imageFile: formData.image,
         });
         alert("SubCategory updated successfully ✅");
+        console.log("✅ [SubCategoryForm] Update success:", formData);
       } else {
         if (!formData.mainCategoryId) {
           alert("Please select Main Category");
@@ -437,6 +439,7 @@ const SubCategoryForm = ({ editingCategory, onSuccess }: { editingCategory?: any
         });
 
         alert("SubCategory added successfully ✅");
+        console.log("🚀 [SubCategoryForm] Addition success:", formData);
       }
 
       onSuccess?.();
@@ -462,7 +465,7 @@ const SubCategoryForm = ({ editingCategory, onSuccess }: { editingCategory?: any
         <SubLivePreviewCard
           subCategoryName={formData.subCategoryName}
           mainCategoryName={editingCategory.mainCategoryName || ""}
-          imagePreviewUrl={formData.image ? URL.createObjectURL(formData.image) : editingCategory.imageUri || undefined}
+          imagePreviewUrl={formData.image ? URL.createObjectURL(formData.image) : (editingCategory.image || editingCategory.imageUri || undefined)}
           visibility={formData.visibility}
           nameVisibility={formData.nameVisibility}
           imageVisibility={formData.imageVisibility}
@@ -485,7 +488,7 @@ const SubCategoryForm = ({ editingCategory, onSuccess }: { editingCategory?: any
               previewUrl={
                 formData.image
                   ? URL.createObjectURL(formData.image)
-                  : editingCategory.imageUri || undefined
+                  : (editingCategory.image || editingCategory.imageUri || undefined)
               }
             />
           </div>
@@ -503,7 +506,7 @@ const SubCategoryForm = ({ editingCategory, onSuccess }: { editingCategory?: any
   }
 
   return (
-    <div className="rounded-lg border border-green-500 bg-gray-200 p-4 shadow-md">
+    <div className="rounded-lg border border-green-500 bg-gray-200 p-4 shadow-md text-gray-900">
       <div className="mb-4 flex items-center justify-between rounded-md border-2 border-blue-900 bg-white px-4 py-2">
         <span className="font-bold text-gray-900">Manage Sub Category</span>
         <div className="flex items-center gap-2">
@@ -525,7 +528,7 @@ const SubCategoryForm = ({ editingCategory, onSuccess }: { editingCategory?: any
         imageVisibility={formData.imageVisibility}
       />
 
-      <h1 className="text-black font-bold mb-2">Select Main Category Name</h1>
+      <h1 className="text-gray-900 font-bold mb-2">Select Main Category Name</h1>
       <div className="relative mb-4">
         <input
           type="text"
@@ -537,7 +540,7 @@ const SubCategoryForm = ({ editingCategory, onSuccess }: { editingCategory?: any
             setFormData(prev => ({ ...prev, mainCategoryId: "" }));
           }}
           onFocus={() => setOpen(true)}
-          className="w-full rounded-md border-2 border-blue-900 px-3 py-2 text-black"
+          className="w-full rounded-md border-2 border-blue-900 px-3 py-2 text-gray-900"
         />
         {open && (
           <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border bg-white shadow-lg">

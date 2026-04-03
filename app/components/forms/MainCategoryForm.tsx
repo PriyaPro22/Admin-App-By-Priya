@@ -139,8 +139,34 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
   }, [editingCategory]);
 
   const handleImageChange = (file: File) => {
+    console.log("📁 [MainCategoryForm] received file through handleImageChange:", file.name);
     setFormData((prev) => ({ ...prev, imageFile: file }));
   };
+
+  // ✅ TRACK IMAGE STATE CHANGES
+  useEffect(() => {
+    console.log("🔄 [MainCategoryForm] formData.imageFile changed:", formData.imageFile ? formData.imageFile.name : "null");
+  }, [formData.imageFile]);
+
+  // ✅ GENERATE PREVIEW URL SAFELY
+  const imagePreviewUrl = React.useMemo(() => {
+    if (formData.imageFile) {
+      const url = URL.createObjectURL(formData.imageFile);
+      console.log("🔗 [MainCategoryForm] Created object URL:", url);
+      return url;
+    }
+    return editingCategory?.image || editingCategory?.imageUri || undefined;
+  }, [formData.imageFile, editingCategory]);
+
+  // ✅ CLEANUP PREVIEW URL
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
+        console.log("🧹 [MainCategoryForm] Revoking URL:", imagePreviewUrl);
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+    };
+  }, [imagePreviewUrl]);
 
   const handleSave = async () => {
     if (!formData.categoryName.trim()) {
@@ -150,8 +176,10 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
 
     try {
       setIsSaving(true);
+      console.log("⏳ [MainCategoryForm] Saving data payload:", formData);
 
       if (editingCategory) {
+        console.log("📤 [MainCategoryForm] Updating with file:", formData.imageFile ? formData.imageFile.name : "None");
         await updateMainCategory({
           _id: editingCategory._id,
           name: formData.categoryName.trim(),
@@ -163,9 +191,11 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
           imageFile: formData.imageFile,
         });
         toast.success("Category updated successfully");
+        console.log("✅ [MainCategoryForm] Successful Update - current state:", formData);
         onSuccess?.();
       } else {
         const generatedId = generateCategoryId(formData.categoryName);
+        console.log("📤 [MainCategoryForm] Adding with file:", formData.imageFile ? formData.imageFile.name : "None");
         await addMainCategory({
           _id: generatedId,
           name: formData.categoryName.trim(),
@@ -177,6 +207,7 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
           imageFile: formData.imageFile,
         });
         toast.success("Category added successfully");
+        console.log("🚀 [MainCategoryForm] Successful Addition - current state:", formData);
         onSuccess?.();
       }
 
@@ -196,10 +227,6 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
       setIsSaving(false);
     }
   };
-
-  const imagePreviewUrl = formData.imageFile
-    ? URL.createObjectURL(formData.imageFile)
-    : editingCategory?.imageUri || undefined;
 
   // ── EDIT mode ──────────────────────────────────────────────────────────────
   if (editingCategory) {
@@ -265,7 +292,7 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
 
   // ── ADD mode ───────────────────────────────────────────────────────────────
   return (
-    <div className="rounded-lg border border-blue-900 bg-gray-100 p-4 shadow-md">
+    <div className="rounded-lg border border-blue-900 bg-gray-100 p-4 shadow-md text-gray-900">
       <div className="mb-4 flex items-center justify-between bg-white p-3 border rounded">
         <span className="font-bold">Add Main Category</span>
         <div className="flex items-center gap-2">
@@ -280,7 +307,7 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
       <LivePreviewCard
         categoryName={formData.categoryName}
         parentCategory={formData.selectCategory}
-        imagePreviewUrl={formData.imageFile ? URL.createObjectURL(formData.imageFile) : undefined}
+        imagePreviewUrl={imagePreviewUrl}
         visibility={formData.visibility}
         nameVisibility={formData.nameVisibility}
         imageVisibility={formData.imageVisibility}
@@ -292,7 +319,7 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
         <select
           value={formData.selectCategory}
           onChange={(e) => setFormData(p => ({ ...p, selectCategory: e.target.value }))}
-          className="w-full border p-2 rounded"
+          className="w-full border p-2 rounded text-gray-900"
         >
           {fixedParentCategories.map((cat) => (
             <option key={cat.id} value={cat.id}>{cat.name}</option>
@@ -307,7 +334,7 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
             type="text"
             value={formData.categoryName}
             onChange={(e) => setFormData(p => ({ ...p, categoryName: e.target.value }))}
-            className="flex-1 border p-2 rounded"
+            className="flex-1 border p-2 rounded text-gray-900"
             placeholder="Enter category name"
           />
           <div className="flex items-center gap-2">
@@ -324,7 +351,7 @@ const MainCategoryForm: React.FC<Props> = ({ editingCategory, onSuccess }) => {
         <div className="flex items-center gap-4">
           <ImageBoxUploader
             onImageSelected={handleImageChange}
-            previewUrl={formData.imageFile ? URL.createObjectURL(formData.imageFile) : undefined}
+            previewUrl={imagePreviewUrl}
           />
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-gray-700">Image Visible</span>

@@ -171,6 +171,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, User, Eye, EyeOff, LogIn } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -180,6 +181,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const router = useRouter();
+  const { setIsAuthenticated } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,6 +189,15 @@ export default function LoginPage() {
     setError("");
 
     try {
+      // ✅ Special Bypass for admin/admin123 as requested by user (added trim for robustness)
+      if (username.trim() === "admin" && password.trim() === "admin123") {
+        localStorage.setItem("adminToken", "bypass-token-admin");
+        localStorage.setItem("isAdminAuthenticated", "true");
+        setIsAuthenticated(true);
+        router.push("/");
+        return;
+      }
+
       const response = await fetch(
         "https://live.bijliwalaaya.in/api/admin/login",
         {
@@ -218,6 +229,7 @@ export default function LoginPage() {
       // ✅ Store Auth State
       localStorage.setItem("adminToken", token);
       localStorage.setItem("isAdminAuthenticated", "true"); // Added for AuthGuard/Context consistency
+      setIsAuthenticated(true);
 
       // ✅ Redirect to Dashboard
       router.push("/");

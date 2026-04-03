@@ -9,7 +9,7 @@ export default function UserManagementPage() {
        
         { name: "Video Tutorials", href: "partner-app/video-tutorial", icon: Search, color: "text-purple-600", bg: "bg-purple-50" },
         { name: "Cancellation & Reshedule", href: "partner-app/cancel-Reshedule", icon: Search, color: "text-purple-600", bg: "bg-purple-50" },
-     
+         { name: "Registration Fee", href: "partner-app/registration-fee", icon: Search, color: "text-purple-600", bg: "bg-purple-50" },
       
     ];
 

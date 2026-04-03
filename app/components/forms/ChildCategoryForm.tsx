@@ -498,6 +498,7 @@ const ChildCategoryForm = ({ onSuccess, editingCategory }: ChildCategoryFormProp
 
   const handleSave = async () => {
     setIsSaving(true);
+    console.log("⏳ [ChildCategoryForm] Starting save process with data:", formData);
     try {
       if (editingCategory) {
         if (!formData.name.trim()) {
@@ -518,6 +519,7 @@ const ChildCategoryForm = ({ onSuccess, editingCategory }: ChildCategoryFormProp
         }
 
         alert("Child category updated successfully ✅");
+        console.log("✅ [ChildCategoryForm] Update success:", formData);
         onSuccess?.();
         return;
       }
@@ -577,6 +579,7 @@ const ChildCategoryForm = ({ onSuccess, editingCategory }: ChildCategoryFormProp
       setSubOpen(false);
 
       alert("Child category added successfully ✅");
+      console.log("🚀 [ChildCategoryForm] Addition success (batch):", formData);
       onSuccess?.();
     } catch (err) {
       console.error(err);
@@ -657,7 +660,7 @@ const ChildCategoryForm = ({ onSuccess, editingCategory }: ChildCategoryFormProp
   }
 
   return (
-    <div className="rounded-lg border border-red-500 bg-gray-200 p-4">
+    <div className="rounded-lg border border-red-500 bg-gray-200 p-4 text-gray-900">
       <h3 className="mb-4 text-lg font-bold">Manage Child Category</h3>
 
       {/* ✅ Live Preview — Add Mode */}
@@ -693,7 +696,7 @@ const ChildCategoryForm = ({ onSuccess, editingCategory }: ChildCategoryFormProp
         </div>
       </div>
 
-      <label className="font-bold">Select Main Category</label>
+      <label className="font-bold text-gray-900">Select Main Category</label>
       <input
         value={mainSearch}
         placeholder="Search main category..."
@@ -701,7 +704,7 @@ const ChildCategoryForm = ({ onSuccess, editingCategory }: ChildCategoryFormProp
           setMainSearch(e.target.value);
           setMainOpen(true);
         }}
-        className="w-full mb-2 border px-3 py-2 mt-2"
+        className="w-full mb-2 border px-3 py-2 mt-2 text-gray-900"
       />
 
       {mainOpen && (

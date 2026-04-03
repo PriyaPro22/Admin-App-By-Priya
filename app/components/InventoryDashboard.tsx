@@ -1922,6 +1922,7 @@ useEffect(() => {
                                                 initialDeepChildCategoryId={selectedDeepChildCategoryId || undefined}
                                                 editingCategory={editingSubDeepChildCategory}
                                                 onSuccess={() => {
+                                                    console.log("🎯 InventoryDashboard: Sub Deep Category Form success callback");
                                                     if (selectedMainCategoryId && selectedChildCategoryId && selectedDeepChildCategoryId) {
                                                         fetchSubDeepChildCategories(selectedMainCategoryId, selectedChildCategoryId, selectedDeepChildCategoryId, selectedSubCategoryId);
                                                     }
@@ -1933,6 +1934,7 @@ useEffect(() => {
                                             <MainCategoryForm
                                                 editingCategory={editingMainCategory}
                                                 onSuccess={() => {
+                                                    console.log("🎯 InventoryDashboard: Main Category Form success callback");
                                                     fetchMainCategories();
                                                     toggleForm('main');
                                                 }}
@@ -1942,6 +1944,7 @@ useEffect(() => {
                                             <SubCategoryForm
                                                 editingCategory={editingSubCategory}
                                                 onSuccess={() => {
+                                                    console.log("🎯 InventoryDashboard: Sub Category Form success callback");
                                                     if (selectedMainCategoryId) fetchSubCategories(selectedMainCategoryId);
                                                     toggleForm('sub');
                                                 }}
@@ -1950,6 +1953,7 @@ useEffect(() => {
                                         {activeForm === 'child' && <ChildCategoryForm
                                             editingCategory={editingChildCategory}
                                             onSuccess={() => {
+                                                console.log("🎯 InventoryDashboard: Child Category Form success callback");
                                                 if (selectedMainCategoryId) fetchChildCategories(selectedMainCategoryId, selectedSubCategoryId);
                                                 toggleForm('child');
                                             }} />}
@@ -1958,6 +1962,7 @@ useEffect(() => {
                                                 initialChildCategoryId={selectedChildCategoryId || undefined}
                                                 editingCategory={editingDeepChildCategory}
                                                 onSuccess={() => {
+                                                    console.log("🎯 InventoryDashboard: Deep Child Category Form success callback");
                                                     if (selectedMainCategoryId && selectedChildCategoryId) {
                                                         fetchDeepChildCategories(selectedMainCategoryId, selectedChildCategoryId, selectedSubCategoryId);
                                                     }

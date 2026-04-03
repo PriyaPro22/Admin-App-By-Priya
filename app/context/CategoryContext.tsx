@@ -554,50 +554,117 @@ const fetchSubDeepChildCategories = async (
   // ==================== ADD ====================
   
   // ADD MAIN CATEGORY
+  // const addMainCategory = async (category: any) => {
+  //   console.log("⏳ [CategoryContext] Start addMainCategory with:", category);
+  //   const normalize = (str: string) => (str || '').trim().toLowerCase();
+  //   if (mainCategories.some(c => normalize(c.name) === normalize(category.name))) {
+  //     alert('Main Category with this name already exists!');
+  //     return;
+  //   }
+    
+  //   const tempId = `temp-${Date.now()}`;
+  //   const tempItem: any = {
+  //     _id: tempId,
+  //     name: category.name,
+  //     hasSubCategory: category.hasSubCategory || false,
+  //     isMainCategoryVisible: category.isMainCategoryVisible ?? true,
+  //     imageUri: category.imageFile ? 'uploading...' : null,
+  //   };
+    
+  //   setMainCategories(prev => [...prev, tempItem]);
+    
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append("_id", category._id);
+  //     formData.append('name', category.name);
+  //     formData.append('documentId', category._id || generateCategoryId(category.name));
+  //     formData.append('parentId', category.parentId || '');
+  //     formData.append('hasSubCategory', String(category.hasSubCategory || false));
+  //     formData.append('isMainCategoryVisible', String(category.isMainCategoryVisible ?? true));
+  //     formData.append('isMainCategoryNameVisible', String(category.isMainCategoryNameVisible ?? true));
+  //     formData.append('isMainCategoryImageVisible', String(category.isMainCategoryImageVisible ?? true));
+      
+  //     if (category.imageFile instanceof File) {
+  //       formData.append('image', category.imageFile);
+  //     }
+      
+  //     console.log("📤 [CategoryContext] Final FormData being sent to POST /main:");
+  //     for (let pair of (formData as any).entries()) {
+  //       console.log(`   ${pair[0]}: ${pair[1] instanceof File ? '[FILE] ' + pair[1].name : pair[1]}`);
+  //     }
+      
+  //     await axios.post(`${BASE_URL}/main`, formData, {
+  //       headers: getAuthHeaders(true),
+  //     });
+      
+  //     await fetchMainCategories();
+  //     console.log("✅ Context: Main Category added successfully:", category.name);
+  //   } catch (error) {
+  //     setMainCategories(prev => prev.filter(item => !item._id?.startsWith('temp-')));
+  //     console.error('Failed to add main category:', error);
+  //     throw error;
+  //   }
+  // };
   const addMainCategory = async (category: any) => {
-    const normalize = (str: string) => (str || '').trim().toLowerCase();
-    if (mainCategories.some(c => normalize(c.name) === normalize(category.name))) {
-      alert('Main Category with this name already exists!');
-      return;
-    }
-    
-    const tempId = `temp-${Date.now()}`;
-    const tempItem: any = {
-      _id: tempId,
-      name: category.name,
-      hasSubCategory: category.hasSubCategory || false,
-      isMainCategoryVisible: category.isMainCategoryVisible ?? true,
-      imageUri: category.imageFile ? 'uploading...' : null,
-    };
-    
-    setMainCategories(prev => [...prev, tempItem]);
-    
-    try {
-      const formData = new FormData();
-      formData.append("_id", category._id);
-      formData.append('name', category.name);
-      formData.append('documentId', category._id || generateCategoryId(category.name));
-      formData.append('parentId', category.parentId || '');
-      formData.append('hasSubCategory', String(category.hasSubCategory || false));
-      formData.append('isMainCategoryVisible', String(category.isMainCategoryVisible ?? true));
-      formData.append('isMainCategoryNameVisible', String(category.isMainCategoryNameVisible ?? true));
-      formData.append('isMainCategoryImageVisible', String(category.isMainCategoryImageVisible ?? true));
-      
-      if (category.imageFile instanceof File) {
-        formData.append('imageUri', category.imageFile);
-      }
-      
-      await axios.post(`${BASE_URL}/main`, formData, {
-        headers: getAuthHeaders(true),
-      });
-      
-      await fetchMainCategories();
-    } catch (error) {
-      setMainCategories(prev => prev.filter(item => !item._id?.startsWith('temp-')));
-      console.error('Failed to add main category:', error);
-      throw error;
-    }
+  console.log("⏳ [CategoryContext] Start addMainCategory with:", category);
+
+  const normalize = (str: string) => (str || '').trim().toLowerCase();
+  if (mainCategories.some(c => normalize(c.name) === normalize(category.name))) {
+    alert('Main Category with this name already exists!');
+    return;
+  }
+
+  const tempId = `temp-${Date.now()}`;
+  const tempItem: any = {
+    _id: tempId,
+    name: category.name,
+    hasSubCategory: category.hasSubCategory || false,
+    isMainCategoryVisible: category.isMainCategoryVisible ?? true,
+    imageUri: category.imageFile ? 'uploading...' : null,
   };
+
+  setMainCategories(prev => [...prev, tempItem]);
+
+  try {
+    const formData = new FormData();
+
+    formData.append("_id", category._id);
+    formData.append('name', category.name);
+    formData.append('documentId', category._id || generateCategoryId(category.name));
+    formData.append('parentId', category.parentId || '');
+    formData.append('hasSubCategory', String(category.hasSubCategory || false));
+    formData.append('isMainCategoryVisible', String(category.isMainCategoryVisible ?? true));
+    formData.append('isMainCategoryNameVisible', String(category.isMainCategoryNameVisible ?? true));
+    formData.append('isMainCategoryImageVisible', String(category.isMainCategoryImageVisible ?? true));
+
+    // 🔥 IMAGE FIX
+    if (category.imageFile instanceof File) {
+      formData.append('image', category.imageFile);
+    }
+
+    console.log("📤 FormData:");
+    for (let pair of (formData as any).entries()) {
+      console.log(`${pair[0]}: ${pair[1] instanceof File ? '[FILE] ' + pair[1].name : pair[1]}`);
+    }
+
+    // ✅ FINAL FIX HERE
+    await axios.post(`${BASE_URL}/main`, formData, {
+      headers: {
+        ...getAuthHeaders(false), // ❗ JSON header hatao
+        "Content-Type": "multipart/form-data", // 🔥 ADD THIS
+        "x-api-token": "super_secure_token"
+      },
+    });
+
+    await fetchMainCategories();
+    console.log("✅ Category added:", category.name);
+
+  } catch (error) {
+    setMainCategories(prev => prev.filter(item => !item._id?.startsWith('temp-')));
+    console.error('❌ Failed:', error);
+    throw error;
+  }
+};
 
   // ADD SUB CATEGORY
   const addSubCategory = async (category: any) => {
@@ -624,9 +691,14 @@ const fetchSubDeepChildCategories = async (
       formData.append('isSubCategoryImageVisible', String(category.isSubCategoryImageVisible ?? true));
       
       if (category.imageFile instanceof File) {
-        formData.append('imageUri', category.imageFile);
+        formData.append('image', category.imageFile);
       }
       
+      console.log("📤 [CategoryContext] Final FormData for SUB CATEGORY:");
+      for (let [key, value] of (formData as any).entries()) {
+        console.log(`   ${key}: ${value instanceof File ? '[FILE] ' + value.name : value}`);
+      }
+
       await axios.post(
         `${BASE_URL}/main/${category.mainCategoryId}/sub/${docId}`,
         formData,
@@ -673,6 +745,7 @@ const addChildCategory = async (category: any) => {
       ? `${BASE_URL}/main/${category.mainCategoryId}/sub/${category.subCategoryId}/child/${childId}`
       : `${BASE_URL}/main/${category.mainCategoryId}/child/${childId}`;
     
+    console.log("📤 [CategoryContext] Sending CHILD CATEGORY to:", url, { name: category.name, visibility: category.visible ?? true });
     await axios.post(
       url,
       { name: category.name, visibility: category.visible ?? true },
@@ -901,6 +974,7 @@ const addDeepChildCategory = async (data: any) => {
       childCategoryId,
       subCategoryId
     );
+    console.log("✅ Context: Deep Child Category added successfully");
 
   } catch (error) {
     console.error("Failed to add deep child category:", error);
@@ -1103,6 +1177,11 @@ const addSubDeepChildCategory = async (data: any) => {
       formData.append("video", data.video);
     }
 
+    console.log("📤 [CategoryContext] SUB DEEP CHILD FormData:");
+    for (let [key, value] of (formData as any).entries()) {
+      console.log(`   ${key}: ${value instanceof File ? '[FILE] ' + value.name : value}`);
+    }
+
     await axios.post(url, formData, {
       headers: getAuthHeaders(true),
     });
@@ -1197,6 +1276,7 @@ const addSubDeepChildCategory = async (data: any) => {
   
   // UPDATE MAIN CATEGORY
   const updateMainCategory = async (item: any) => {
+    console.log("⏳ [CategoryContext] Start updateMainCategory with:", item);
     try {
       const formData = new FormData();
       formData.append('name', item.name);
@@ -1210,7 +1290,12 @@ const addSubDeepChildCategory = async (data: any) => {
       }
       
       if (item.imageFile instanceof File) {
-        formData.append('imageUri', item.imageFile);
+        formData.append('image', item.imageFile);
+      }
+
+      console.log("📤 [CategoryContext] Final FormData being sent to PUT /main:");
+      for (let [key, value] of (formData as any).entries()) {
+        console.log(`   ${key}: ${value instanceof File ? '[FILE] ' + value.name : value}`);
       }
       
       await axios.put(`${BASE_URL}/main/${item._id}`, formData, {
@@ -1218,6 +1303,7 @@ const addSubDeepChildCategory = async (data: any) => {
       });
       
       await fetchMainCategories();
+      console.log("✅ Context: Main Category updated successfully:", item.name);
     } catch (error) {
       console.error('Failed to update main category:', error);
       throw error;
@@ -1235,7 +1321,12 @@ const addSubDeepChildCategory = async (data: any) => {
       formData.append('isSubCategoryImageVisible', String(item.isSubCategoryImageVisible ?? true));
       
       if (item.imageFile instanceof File) {
-        formData.append('imageUri', item.imageFile);
+        formData.append('image', item.imageFile);
+      }
+      
+      console.log("📤 [CategoryContext] Updating SUB CATEGORY FormData:");
+      for (let [key, value] of (formData as any).entries()) {
+        console.log(`   ${key}: ${value instanceof File ? '[FILE] ' + value.name : value}`);
       }
       
       await axios.put(
@@ -1245,6 +1336,7 @@ const addSubDeepChildCategory = async (data: any) => {
       );
       
       await fetchSubCategories(item.mainCategoryId);
+      console.log("✅ Context: Sub Category updated successfully");
     } catch (error) {
       console.error('Failed to update sub category:', error);
       throw error;
@@ -1259,9 +1351,14 @@ const addSubDeepChildCategory = async (data: any) => {
       formData.append('visibility', String(item.visible ?? true));
       
       if (item.imageFile instanceof File) {
-        formData.append('imageUri', item.imageFile);
+        formData.append('image', item.imageFile);
       }
       
+      console.log("📤 [CategoryContext] Updating CHILD CATEGORY (No Sub) FormData:");
+      for (let [key, value] of (formData as any).entries()) {
+        console.log(`   ${key}: ${value instanceof File ? '[FILE] ' + value.name : value}`);
+      }
+
       await axios.put(
         `${BASE_URL}/main/${item.mainCategoryId}/child/${item.documentId}`,
         formData,
@@ -1269,6 +1366,7 @@ const addSubDeepChildCategory = async (data: any) => {
       );
       
       await fetchChildCategories(item.mainCategoryId, item.subCategoryId);
+      console.log("✅ Context: Child Category (No Sub) updated successfully");
     } catch (error) {
       console.error('Failed to update child category:', error);
       throw error;
@@ -1283,9 +1381,14 @@ const addSubDeepChildCategory = async (data: any) => {
       formData.append('visibility', String(item.visible ?? true));
       
       if (item.imageFile instanceof File) {
-        formData.append('imageUri', item.imageFile);
+        formData.append('image', item.imageFile);
       }
       
+      console.log("📤 [CategoryContext] Updating CHILD CATEGORY (With Sub) FormData:");
+      for (let [key, value] of (formData as any).entries()) {
+        console.log(`   ${key}: ${value instanceof File ? '[FILE] ' + value.name : value}`);
+      }
+
       await axios.put(
         `${BASE_URL}/main/${item.mainCategoryId}/sub/${item.subCategoryId}/child/${item.documentId}`,
         formData,
@@ -1293,6 +1396,7 @@ const addSubDeepChildCategory = async (data: any) => {
       );
       
       await fetchChildCategories(item.mainCategoryId, item.subCategoryId);
+      console.log("✅ Context: Child Category (With Sub) updated successfully");
     } catch (error) {
       console.error('Failed to update child category with sub:', error);
       throw error;
@@ -1362,8 +1466,14 @@ const addSubDeepChildCategory = async (data: any) => {
         url = `${BASE_URL}/main/${item.mainCategoryId}/child/${item.childCategoryId}/deep/${item.documentId}`;
       }
       
+      console.log("📤 [CategoryContext] Updating DEEP CHILD CATEGORY FormData:");
+      for (let [key, value] of (formData as any).entries()) {
+        console.log(`   ${key}: ${value instanceof File ? '[FILE] ' + value.name : value}`);
+      }
+
       await axios.put(url, formData, { headers: getAuthHeaders(true) });
       await fetchDeepChildCategories(item.mainCategoryId, item.childCategoryId, item.subCategoryId);
+      console.log("✅ Context: Deep Child Category updated successfully");
     } catch (error) {
       console.error('Failed to update deep child category:', error);
       throw error;
@@ -1381,7 +1491,7 @@ const addSubDeepChildCategory = async (data: any) => {
       formData.append('deepCategoryVisible', String(item.deepCategoryVisible ?? true));
       
       if (item.imageFile instanceof File) {
-        formData.append('imageUri', item.imageFile);
+        formData.append('image', item.imageFile);
       }
       
       const url = `${BASE_URL}/main/${item.mainCategoryId}/sub/${item.subCategoryId}/child/${item.childCategoryId}/deep/${item.documentId}`;
@@ -1469,8 +1579,11 @@ const updateSubDeepChildCategory = async (item: any) => {
       formData.append('video', item.video);
     }
     
-    console.log("📦 UPDATING SUB DEEP CATEGORY:", url);
-    
+    console.log("📤 [CategoryContext] Updating SUB DEEP CHILD CATEGORY FormData:");
+    for (let [key, value] of (formData as any).entries()) {
+      console.log(`   ${key}: ${value instanceof File ? '[FILE] ' + value.name : value}`);
+    }
+
     // ✅ PUT with FormData
     await axios.put(url, formData, { 
       headers: getAuthHeaders(true) 
@@ -1483,6 +1596,7 @@ const updateSubDeepChildCategory = async (item: any) => {
       item.deepChildCategoryId,  // ✅ Document ID
       item.subCategoryId
     );
+    console.log("✅ Context: Sub Deep Child Category updated successfully");
     
   } catch (error) {
     console.error('Failed to update sub deep child category:', error);
